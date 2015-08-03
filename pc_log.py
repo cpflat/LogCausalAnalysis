@@ -70,7 +70,7 @@ def pc_all_args(dirname, term_str, dur_str):
 
 def pc_mthread(l_args, pal=1):
 
-    _logger.debug("tast start ({0} jobs)".format(len(l_args)))
+    _logger.debug("task start ({0} jobs)".format(len(l_args)))
 
     l_thread = [threading.Thread(name = thread_name(*args),
         target = pc_log, args = args) for args in l_args]
@@ -82,8 +82,8 @@ def pc_mthread(l_args, pal=1):
             job.start()
             l_job.append(job)
         else:
-            l_job = [j for j in l_job if j.is_alive()]
             time.sleep(1)
+            l_job = [j for j in l_job if j.is_alive()]
     else:
         for job in l_job:
             job.join()

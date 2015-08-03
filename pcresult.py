@@ -7,6 +7,7 @@ import datetime
 import optparse
 import cPickle as pickle
 
+import fslib
 import config
 import lt_manager
 import log_db
@@ -176,27 +177,38 @@ class PCOutput():
         print ">", fn
 
 
+def list_results(src_dir):
+    print "datetime\t\tarea\tnodes\tedges\tfilepath"
+    for fp in fslib.rep_dir(src_dir):
+        output = PCOutput(src_dir).load(fp)
+        print "\t".join((str(output.top_dt), output.area,
+                str(len(output.graph.nodes())),
+                str(len(output.graph.edges())), fp))
+
+
 if __name__ == "__main__":
 
     src_dir = _config.get("dag", "default_output_dir")
 
-    usage = "usage: %s [options] fn" % sys.argv[0]
+    usage = "usage: %s [options] <fn>" % sys.argv[0]
     op = optparse.OptionParser(usage)
     op.add_option("-d", action="store", dest="src_dir", type="string",
-            default=src_dir, help="detail output")
+            default=src_dir, help="output directory")
     op.add_option("-g", action="store", dest="graph_fn", type="string",
             default=None, help="graph output")
     op.add_option("-l", action="store_true", dest="detail",
             default=False, help="detail output")
     (options, args) = op.parse_args()
-    if len(args) == 0: sys.exit(usage)
-
-    output = PCOutput(options.src_dir).load(args[0])
-    output.print_env() 
-    output.print_result() 
-    output.print_result_lt()
-    if options.graph_fn:
-        output.show_graph(options.graph_fn)
-    if options.detail:
-        output.print_result_detail()
+    
+    if len(args) == 0:
+        list_results(options.src_dir)
+    else:
+        output = PCOutput(options.src_dir).load(args[0])
+        output.print_env() 
+        output.print_result() 
+        output.print_result_lt()
+        if options.graph_fn:
+            output.show_graph(options.graph_fn)
+        if options.detail:
+            output.print_result_detail()
 
