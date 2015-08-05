@@ -1,0 +1,12 @@
+
+pcalg.py
+gsq
+gsq/*
+
+*.pyc
+*.pdf
+test.temp
+lt.dump
+log.db 
+pc_output/*
+auto.log
