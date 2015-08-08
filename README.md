@@ -23,7 +23,7 @@ $ python testlog.py > test.temp
 First, you need to define log templates for dataset.
 (If you have completed log template set, you can import it with lt_manager.)
 
-$ python lt_generate.py va test.temp
+$ python lt_generate_shiso.py va test.temp
 
 Then classify dataset and register them with database.
 
