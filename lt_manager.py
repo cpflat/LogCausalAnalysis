@@ -39,6 +39,10 @@ class LogTemplateLine():
         return [cnt for cnt, w in enumerate(self.words)\
                 if w == VARIABLE_SYMBOL]
 
+    def replace(self, l_w, l_s):
+        self.words = l_w
+        self.style = l_s
+
     def get_variable(self, l_w):
         ret = []
         for e in zip(self.words, l_w):
@@ -57,10 +61,19 @@ class LogTemplateSearchTreeBranch():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
-    def __init__(self):
+    def __init__(self, parent = None, word = None):
         self.windex = {}
         self.wild = None
         self.end = None
+
+        # for reverse search
+        self.parent = parent
+        self.word = word  # word is None : for wild
+
+    def unnecessary(self):
+        return (len(self.windex) == 0) and \
+                (self.wild is None) and \
+                (self.end is None)
 
 
 class LogTemplateSearchTree():
@@ -71,22 +84,46 @@ class LogTemplateSearchTree():
         self.tree = self._new_branch()
 
     @staticmethod
-    def _new_branch():
-        return LogTemplateSearchTreeBranch()
+    def _new_branch(parent = None):
+        return LogTemplateSearchTreeBranch(parent)
 
     def add(self, ltid, lt):
         point = self.tree
         for w in lt:
             if w == VARIABLE_SYMBOL:
                 if point.wild is None:
-                    point.wild = self._new_branch()
+                    point.wild = self._new_branch(point)
                 point = point.wild
             else:
                 if not point.windex.has_key(w):
-                    point.windex[w] = self._new_branch()
+                    point.windex[w] = self._new_branch(point)
                 point = point.windex[w]
         else:
             point.end = ltid
+
+    def remove(self, ltid, lt):
+        point = self.tree
+        for w in lt:
+            if w in point.windex.keys():
+                point = point.windex[w]
+            elif point.wild is not None:
+                point = point.wild
+            else:
+                # failed to find lt
+                return None
+        else:
+            assert point.end == ltid 
+            point.end = None 
+            while point.unnecessary():
+                w = point.word
+                point = point.parent
+                if w is None:
+                    point.wild = None
+                else:
+                    point.wdict.pop(w)
+            else:
+                if self.tree is None:
+                    self.tree = self._new_branch()
 
     def lt_exists(self, lt):
         point = self.tree
@@ -217,18 +254,23 @@ class LogTemplate():
         self.ltlen += 1
         return ltid
 
-    def _count(self, ltid):
+    def count(self, ltid):
         self.ltdict[ltid].count()
 
     # add or count
     def read_lt(self, ltwords, style):
         ltid = self.treem.lt_exists(ltwords)
         if ltid is not None:
-            self._count(ltid)
+            self.count(ltid)
             return False
         else:
             self.add(ltwords, style, 1)
             return True
+
+    def replace(self, ltid, ltwords, style):
+        self.ltdict[ltid].replace(ltwords, style)
+        self.treem.remove(ltid, ltwords)
+        self.treem.add(ltid, ltwords)
 
     # return ltid, or None if no lt found
     def search(self, words, style = None):
