@@ -10,7 +10,6 @@ in IEEE 10th International Conference on Services Computing, pp. 595–602, 2013
 import sys
 import logging
 import numpy
-#import scipy.spatial.distance
 
 import lt_generate_common
 
@@ -97,7 +96,8 @@ class LTGen(lt_generate_common.LTGen):
                     l_cnt[2] += 1.0
                 else:
                     l_cnt[3] += 1.0
-            return l_cnt
+            deno = numpy.linalg.norm(l_cnt)
+            return [1.0 * e / deno for e in l_cnt]
 
         if len(m1) == len(m2):
             length = len(m1)
