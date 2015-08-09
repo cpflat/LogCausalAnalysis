@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import os
+import logging
 import cPickle as pickle
 
 import config
@@ -10,6 +11,7 @@ import logheader
 import logsplitter
 
 _config = config.common_config()
+_logger = logging.getLogger(__name__)
 
 class LTLine():
 
@@ -91,11 +93,8 @@ class LTTable():
     def count_lt(self, ltid):
         self.ltdict[ltid].count()
 
-    #def input_line(self, ltwords, style):
-    #    # judge whether table have the given lt or not
-    #    # if exists, count it and return ltid
-    #    # if not, add it and return ltid
-    #    raise NotImplementedError
+    def replace_lt(self, ltid, l_w, l_s):
+        self.ltdict[ltid].replace(l_w, l_s)
 
 
 class LTManager(object):
@@ -122,6 +121,7 @@ class LTManager(object):
         for fp in fslib.rep_dir(targets):
             with open(fp, 'r') as f:
                 for line in f:
+                    _logger.debug("line > {0}".format(line.rstrip("\n")))
                     message, info = logheader.split_header(line.rstrip("\n"))
                     if message is None: continue
                     l_w, l_s = logsplitter.split(message)
