@@ -198,9 +198,9 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 2:
         sys.exit("usage : {0} targets".format(sys.argv[0]))
-    ltgen = LTGen(None, 0.9, 4)
-    ltgen.generate_ltset(sys.argv[1:])
-
+    ltm = LTManager(None, 0.9, 4)
+    ltm.process_dataset(sys.argv[1:])
+    ltm.show()
 
 
 
