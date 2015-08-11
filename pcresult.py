@@ -9,7 +9,7 @@ import cPickle as pickle
 
 import fslib
 import config
-import lt_manager
+#import lt
 import log_db
 import pc_log
 
@@ -24,7 +24,6 @@ class PCOutput():
     def __init__(self, dirname):
         self.dirname = dirname
         self.ldb = None
-        self.ltobj = None
     
     def make(self, graph, evmap, top_dt, end_dt, dur, area, threshold):
         self.graph = graph
@@ -71,14 +70,15 @@ class PCOutput():
             dedges = temp
         return dedges, udedges
 
-    def _init_lt(self):
-        if self.ltobj is None:
-            self.ltobj = lt_manager.open_lt()
+    #def _init_lt(self):
+    #    if self.ltobj is None:
+    #        self.ltobj = lt_manager.open_lt()
 
     def _init_ldb(self):
         if self.ldb is None:
             self.ldb = log_db.ldb_manager()
-    
+            self.ldb.open_lt()
+
     def _get_fn(self):
         return pc_log.thread_name(self.dirname, self.top_dt, self.end_dt,
                 self.dur, self.area, self.threshold)
@@ -92,15 +92,15 @@ class PCOutput():
     def _print_edge_lt(self, edge):
         src_ltid, src_host = self.evmap.info(edge[0])
         dst_ltid, dst_host = self.evmap.info(edge[1])
-        print("src> " + str(self.ltobj[src_ltid]))
-        print("dst> " + str(self.ltobj[dst_ltid]))
+        print("src> " + str(self.ldb.lt.table[src_ltid]))
+        print("dst> " + str(self.ldb.lt.table[dst_ltid]))
         print
     
     def _print_edge_detail(self, edge, limit = None):
         src_ltid, src_host = self.evmap.info(edge[0])
         dst_ltid, dst_host = self.evmap.info(edge[1])
  
-        print("src>" + str(self.ltobj[src_ltid]))
+        print("src>" + str(self.self.ldb.lt.table[src_ltid]))
         cnt = 0
         for line in self.ldb.generate(src_ltid, self.top_dt, self.end_dt,
                 src_host, self.area):
@@ -110,7 +110,7 @@ class PCOutput():
                 print("...")
                 break
         
-        print("dst>" + str(self.ltobj[src_ltid]))
+        print("dst>" + str(self.ldb.lt.table[src_ltid]))
         cnt = 0
         for line in self.ldb.generate(dst_ltid, self.top_dt, self.end_dt,
                 dst_host, self.area):
@@ -143,7 +143,8 @@ class PCOutput():
 
     def print_result_lt(self):
         self._none_caution()
-        self._init_lt()
+        #self._init_lt()
+        self._init_ldb()
         print("### directed ###")
         for edge in self.d_edges:
             self._print_edge(edge)
@@ -155,7 +156,7 @@ class PCOutput():
 
     def print_result_detail(self):
         self._none_caution()
-        self._init_lt()
+        #self._init_lt()
         self._init_ldb()
         print("### directed ###")
         for edge in self.d_edges:

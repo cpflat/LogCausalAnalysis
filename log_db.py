@@ -23,7 +23,7 @@ class LogMessage():
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
     def __init__(self, ltins, ltid, ltgid, dt, host, args):
-        self.ltins = ltins
+        self.lt = ltins
         self.ltid = ltid
         self.ltgid = ltgid
         self.dt = dt
@@ -35,7 +35,7 @@ class LogMessage():
                 str(self.args)))
 
     def restore(self):
-        return self.ltins[self.ltid].restore(self.args)
+        return self.lt[self.ltid].restore(self.args)
 
     def restore_message(self):
         return " ".join((str(self.dt), str(self.host), self.restore()))
@@ -60,7 +60,7 @@ class LogList():
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
     def __init__(self, ltins):
-        self.ltins = ltins
+        self.lt = ltins
         self.l_line = []
 
     def __iter__(self):
@@ -88,7 +88,7 @@ class LogList():
         self.l_line.extend(other.l_line)
 
     def get(self, ltid, top_dt, end_dt, host):
-        ret = LogList(self.ltins)
+        ret = LogList(self.lt)
         for line in self.l_line:
             if line.verify(ltid, top_dt, end_dt, host):
                 ret.add(line)
@@ -139,13 +139,13 @@ class HostArea():
 class LogDBManager(object):
 
     def __init__(self, ltfn = None):
-        self.init_lt(ltfn)
+        self._init_lt(ltfn)
 
-    def init_lt(self, ltfn):
-        self.ltins = lt.LTManager(ltfn, 0.9, 4)
+    def _init_lt(self, ltfn):
+        self.lt = lt.LTManager(ltfn, 0.9, 4)
 
     def open_lt(self, fn = None):
-        self.ltins.load() 
+        self.lt.load() 
 
     def _init_db(self):
         raise NotImplementedError
@@ -173,7 +173,7 @@ class LogDBManager(object):
 #    DIRNAME = "logpickle"
 #
 #    def __init__(self, dirname = None, ltfn = None):
-#        self.ltins = lt_manager.open_lt(ltfn)
+#        self.lt = lt_manager.open_lt(ltfn)
 #        if dirname is None:
 #            dirname = self.DIRNAME
 #        self.dirname = dirname
@@ -218,7 +218,7 @@ class LogDBManager(object):
 #            if self.lastfn is not None:
 #                self._dump()
 #            self._init_buffer(fn)
-#        e = LogMessage(self.ltins, ltid, ltid, dt, host, args)
+#        e = LogMessage(self.lt, ltid, ltid, dt, host, args)
 #        self.lastdata.add(e)
 #
 #    def commit(self):
@@ -379,7 +379,7 @@ class LogDBManagerSQL(LogDBManager):
             args = None
         else:
             args = line[4].split(",")
-        return LogMessage(self.ltins, ltid, ltgid, dt, host, args)
+        return LogMessage(self.lt, ltid, ltgid, dt, host, args)
 
     # Notice : use generate to avoid memory excess
     def get(self, ltid = None, top_dt = None, end_dt = None, \
@@ -409,13 +409,13 @@ def db_add(ldb, line):
     message, info = logheader.split_header(line)
     if message is None: return
     l_w, l_s = logsplitter.split(message)
-    ltid = ldb.ltins.process_line(l_w, l_s)
+    ltid = ldb.lt.process_line(l_w, l_s)
     if ltid is None:
         _logger.warning(
                 "Log template not found for message [{0}]".format(line))
     else:
         ldb.add(ltid, info["timestamp"], info["hostname"],\
-                ldb.ltins.table[ltid].get_variable(l_w))
+                ldb.lt.table[ltid].get_variable(l_w))
 
 
 def construct_db(targets):
@@ -428,7 +428,7 @@ def construct_db(targets):
                 db_add(ldb, line)
     ldb.areadb()
     ldb.commit()
-    ldb.ltins.dump()
+    ldb.lt.dump()
 
 
 def area_db():
