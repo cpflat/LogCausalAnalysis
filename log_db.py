@@ -5,24 +5,25 @@ import sys
 import os
 import datetime
 import sqlite3
-from logging import getLogger
+import logging
 #import cPickle as pickle
 
 import config
 import fslib
-import lt_manager
+#import lt_manager
+import lt_shiso as lt
 import logsplitter
 import logheader
 
 _config = config.common_config()
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 class LogMessage():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
     def __init__(self, ltins, ltid, ltgid, dt, host, args):
-        self.lt = ltins
+        self.ltins = ltins
         self.ltid = ltid
         self.ltgid = ltgid
         self.dt = dt
@@ -34,7 +35,7 @@ class LogMessage():
                 str(self.args)))
 
     def restore(self):
-        return self.lt[self.ltid].restore(self.args)
+        return self.ltins[self.ltid].restore(self.args)
 
     def restore_message(self):
         return " ".join((str(self.dt), str(self.host), self.restore()))
@@ -59,7 +60,7 @@ class LogList():
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
     def __init__(self, ltins):
-        self.lt = ltins
+        self.ltins = ltins
         self.l_line = []
 
     def __iter__(self):
@@ -87,7 +88,7 @@ class LogList():
         self.l_line.extend(other.l_line)
 
     def get(self, ltid, top_dt, end_dt, host):
-        ret = LogList(self.lt)
+        ret = LogList(self.ltins)
         for line in self.l_line:
             if line.verify(ltid, top_dt, end_dt, host):
                 ret.add(line)
@@ -135,10 +136,16 @@ class HostArea():
         return ret
 
 
-class LogDBManager():
+class LogDBManager(object):
 
     def __init__(self, ltfn = None):
-        self.lt = lt_manager.open_lt(ltfn)
+        self.init_lt(ltfn)
+
+    def init_lt(self, ltfn):
+        self.ltins = lt.LTManager(ltfn, 0.9, 4)
+
+    def open_lt(self, fn = None):
+        self.ltins.load() 
 
     def _init_db(self):
         raise NotImplementedError
@@ -166,7 +173,7 @@ class LogDBManager():
 #    DIRNAME = "logpickle"
 #
 #    def __init__(self, dirname = None, ltfn = None):
-#        self.lt = lt_manager.open_lt(ltfn)
+#        self.ltins = lt_manager.open_lt(ltfn)
 #        if dirname is None:
 #            dirname = self.DIRNAME
 #        self.dirname = dirname
@@ -211,7 +218,7 @@ class LogDBManager():
 #            if self.lastfn is not None:
 #                self._dump()
 #            self._init_buffer(fn)
-#        e = LogMessage(self.lt, ltid, ltid, dt, host, args)
+#        e = LogMessage(self.ltins, ltid, ltid, dt, host, args)
 #        self.lastdata.add(e)
 #
 #    def commit(self):
@@ -241,8 +248,8 @@ class LogDBManager():
 
 class LogDBManagerSQL(LogDBManager):
 
-    def __init__(self, dbfn = None, ltfn = None):
-        self.lt = lt_manager.open_lt(ltfn)
+    def __init__(self, ltfn = None, dbfn = None):
+        super(LogDBManagerSQL, self).__init__(ltfn)
         if dbfn is None:
             dbfn = _config.get("database", "db_filename")
         self.dbfn = dbfn
@@ -372,7 +379,7 @@ class LogDBManagerSQL(LogDBManager):
             args = None
         else:
             args = line[4].split(",")
-        return LogMessage(self.lt, ltid, ltgid, dt, host, args)
+        return LogMessage(self.ltins, ltid, ltgid, dt, host, args)
 
     # Notice : use generate to avoid memory excess
     def get(self, ltid = None, top_dt = None, end_dt = None, \
@@ -390,8 +397,8 @@ class LogDBManagerSQL(LogDBManager):
             yield self._restore_lm(line)
 
 
-def ldb_manager():
-    return LogDBManagerSQL(_config.get("database", "db_filename"))
+def ldb_manager(ltfn = None):
+    return LogDBManagerSQL(ltfn, _config.get("database", "db_filename"))
     #if SQLFLAG:
     #    return LogDBManagerSQL()
     #else:
@@ -402,13 +409,13 @@ def db_add(ldb, line):
     message, info = logheader.split_header(line)
     if message is None: return
     l_w, l_s = logsplitter.split(message)
-    ltid = ldb.lt.search(l_w, l_s)
+    ltid = ldb.ltins.process_line(l_w, l_s)
     if ltid is None:
         _logger.warning(
                 "Log template not found for message [{0}]".format(line))
     else:
         ldb.add(ltid, info["timestamp"], info["hostname"],\
-                ldb.lt[ltid].get_variable(l_w))
+                ldb.ltins.table[ltid].get_variable(l_w))
 
 
 def construct_db(targets):
@@ -417,9 +424,11 @@ def construct_db(targets):
     for fn in fslib.rep_dir(targets):
         with open(fn, 'r') as f:
             for line in f:
-                db_add(ldb, line.rstrip("\n"))
+                line = line.rstrip("\n")
+                db_add(ldb, line)
     ldb.areadb()
     ldb.commit()
+    ldb.ltins.dump()
 
 
 def area_db():

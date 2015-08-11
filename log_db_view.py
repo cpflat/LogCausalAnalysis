@@ -11,6 +11,7 @@ import log_db
 def view(ltid, top_dt, end_dt, host, area, oflag):
 
     ldb = log_db.ldb_manager()
+    ldb.open_lt()
     for e in ldb.generate(ltid, top_dt, end_dt, host, area):
         if oflag:
             print e.restore_message()

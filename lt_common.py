@@ -16,6 +16,7 @@ _logger = logging.getLogger(__name__)
 class LTLine():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
+    sym = _config.get("log_template", "variable_symbol")
 
     def __init__(self, ltid, words, style, cnt):
         self.ltid = ltid
@@ -34,23 +35,23 @@ class LTLine():
         self.style = l_s
 
     def len_variable(self):
-        return sum(1 for w in self.words if w == VARIABLE_SYMBOL)
+        return sum(1 for w in self.words if w == self.sym)
 
     def variable_location(self):
         return [cnt for cnt, w in enumerate(self.words)\
-                if w == VARIABLE_SYMBOL]
+                if w == self.sym]
 
     def get_variable(self, l_w):
         ret = []
         for e in zip(self.words, l_w):
-            if e[0] == VARIABLE_SYMBOL:
+            if e[0] == self.sym:
                 ret.append(e[1])
         return ret            
 
     def restore(self, args):
         buf = self.__str__()
         for arg in args:
-            buf = buf.replace(VARIABLE_SYMBOL, arg, 1)
+            buf = buf.replace(self.sym, arg, 1)
         return buf
 
 

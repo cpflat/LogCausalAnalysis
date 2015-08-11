@@ -24,7 +24,7 @@ class LTManager(lt_common.LTManager):
         self.ltgen = LTGen(self.table, threshold, max_child)
 
     def process_line(self, l_w, l_s):
-        self.ltgen.process_line(l_w, l_s)
+        return self.ltgen.process_line(l_w, l_s)
 
 
 class Node():
