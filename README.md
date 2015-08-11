@@ -20,16 +20,13 @@ You can generate pseudo log dataset for testing functions.
 
 $ python testlog.py > test.temp
 
-First, you need to define log templates for dataset.
-(If you have completed log template set, you can import it with lt_manager.)
-
-$ python lt_generate_shiso.py test.temp
-
-Then classify dataset and register them with database.
+First, classify dataset and register them with database.
+Classification works with log template generation inside this command.
+#(If you have completed log template set, you can import it with lt_manager.)
 
 $ python log_db.py test.temp
 
-Finally, analyze causal relations generating DAG.
+Then analyze causal relations generating DAG.
 (This step requires much time. If your machine have enough performance,
 we recommend you to use -p options for multithreading.)
 
