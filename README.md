@@ -22,7 +22,6 @@ $ python testlog.py > test.temp
 
 First, classify dataset and register them with database.
 Classification works with log template generation inside this command.
-#(If you have completed log template set, you can import it with lt_manager.)
 
 $ python log_db.py test.temp
 
