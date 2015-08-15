@@ -12,11 +12,12 @@ import logsplitter
 
 _config = config.common_config()
 _logger = logging.getLogger(__name__)
+VARIABLE_SYMBOL = _config.get("log_template", "variable_symbol")
 
 class LTLine():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    sym = _config.get("log_template", "variable_symbol")
+    sym = VARIABLE_SYMBOL
 
     def __init__(self, ltid, words, style, cnt):
         self.ltid = ltid
@@ -30,9 +31,12 @@ class LTLine():
     def count(self):
         self.cnt += 1
     
-    def replace(self, l_w, l_s):
+    def replace(self, l_w, l_s = None, count = None):
         self.words = l_w
-        self.style = l_s
+        if l_s is not None:
+            self.style = l_s
+        if count is not None:
+            self.cnt = count
 
     def len_variable(self):
         return sum(1 for w in self.words if w == self.sym)
@@ -54,6 +58,16 @@ class LTLine():
             buf = buf.replace(self.sym, arg, 1)
         return buf
 
+    def restore_wordlist(self, args):
+        l_arg = args[:]
+        ret = []
+        for w in self.words:
+            if w == self.sym:
+                ret.append(l_arg.pop(0))
+            else:
+                ret.append(w)
+        return ret
+
 
 class LTTable():
 
@@ -61,22 +75,21 @@ class LTTable():
 
     def __init__(self):
         self.ltdict = {}
-        self.ltlen = 0
 
     def __iter__(self):
         return self._generator()
 
     def _generator(self):
-        for ltid in range(self.ltlen):
+        for ltid in self.ltdict.keys():
             yield self.ltdict[ltid]
 
     def __len__(self):
-        return self.ltlen
+        return len(self.ltdict.keys())
 
     def __getitem__(self, key):
-        if key >= self.ltlen:
+        assert isinstance(key, int)
+        if not self.ltdict.has_key(key):
             raise IndexError("list index out of range")
-            sys.stderr.write("")
         return self.ltdict[key]
 
     def __setitem__(self, key, value):
@@ -84,22 +97,32 @@ class LTTable():
                 "Warning : LogTemplate NOT allows using __setitem__\n")
         return None
 
+    def next_ltid(self):
+        cnt = 0
+        while self.ltdict.has_key(cnt):
+            cnt += 1 
+        else:
+            return cnt
+
     def add_lt(self, ltwords, style, cnt = 1):
-        ltid = self.ltlen
+        ltid = self.next_ltid()
         assert not self.ltdict.has_key(ltid)
         self.ltdict[ltid] = LTLine(ltid, ltwords, style, cnt)
-        self.ltlen += 1
         return ltid
 
     def count_lt(self, ltid):
         self.ltdict[ltid].count()
 
-    def replace_lt(self, ltid, l_w, l_s):
-        self.ltdict[ltid].replace(l_w, l_s)
+    def replace_lt(self, ltid, l_w, l_s = None, count = None):
+        self.ltdict[ltid].replace(l_w, l_s, count)
+
+    def remove_lt(self, ltid):
+        self.ltdict.pop(ltid)
 
 
 class LTManager(object):
 
+    __module__ = os.path.splitext(os.path.basename(__file__))[0]
     default_fn = _config.get("log_template", "db_filename")
 
     def __init__(self, filename = None):
@@ -182,7 +205,7 @@ class LTSearchTree():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
-    sym = _config.get("log_template", "variable_symbol")
+    sym = VARIABLE_SYMBOL
     
     def __init__(self):
         self.root = self._new_node()
@@ -267,4 +290,13 @@ class LTSearchTree():
             return node.get_ltid()
 
 
+def merge_lt(m1, m2):
+    #return common area of log message (to be log template)
+    ret = []
+    for w1, w2 in zip(m1, m2):
+        if w1 == w2:
+            ret.append(w1)
+        else:
+            ret.append(VARIABLE_SYMBOL)
+    return ret
 

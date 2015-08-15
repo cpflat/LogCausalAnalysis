@@ -10,7 +10,6 @@ import logging
 
 import config
 import fslib
-#import lt_manager
 import lt_shiso as lt
 import logsplitter
 import logheader
@@ -35,10 +34,13 @@ class LogMessage():
                 str(self.args)))
 
     def restore(self):
-        return self.lt[self.ltid].restore(self.args)
+        return self.lt.table[self.ltid].restore(self.args)
 
     def restore_message(self):
         return " ".join((str(self.dt), str(self.host), self.restore()))
+
+    def restore_wordlist(self):
+        return self.lt.table[self.ltid].restore_wordlist(self.args)
 
     def verify_ltid(self, ltid):
         return (ltid is None) or (self.ltid == ltid)
@@ -142,7 +144,8 @@ class LogDBManager(object):
         self._init_lt(ltfn)
 
     def _init_lt(self, ltfn):
-        self.lt = lt.LTManager(ltfn, 0.9, 4)
+        self.lt = lt.LTManager(ltfn)
+        self.lt.set_param(0.9, 4)
 
     def open_lt(self, fn = None):
         self.lt.load() 
@@ -304,12 +307,48 @@ class LogDBManagerSQL(LogDBManager):
         }
         self.connect.execute(sql, sqlv)
 
+    def update(self, l_cond_column, l_cond_value, l_new_column, l_new_value):
+        if "area" in l_cond_column:
+            raise ValueError("update do not allow area in condition")
+        else:
+            sql_header = "update db set "
+        l_buf = []
+        for col, val in zip(l_new_column, l_new_value):
+            l_buf.append("{0} = \'{1}\'".format(col, val))
+        sql_update = ", ".join(l_buf)
+        sql_mid = " where "
+        for col, val in zip(l_cond_column, l_cond_value):
+            l_buf.append("{0} = \'{1}\'".format(col, val))
+        sql_cond = " and ".join(l_buf)
+        sql = "".join((sql_header, sql_update, sql_mid, sql_cond))
+        cursor = self.connect.cursor()
+        cursor.execute(sql)
+
+
+    def update_lid(self, lid, l_new_column, l_new_value):
+        sql_header = "update db set "
+        l_buf = []
+        for col, val in zip(l_new_column, l_new_value):
+            if col == "area":
+                l_buf.append("{0} = \'{1}\'".format(col, val))
+            else:
+                l_buf.append("{0} = \'{1}\'".format(col, val))
+        sql_update = ", ".join(l_buf)
+        sql_cond = " where id = {0}".format(lid)
+        sql = "".join((sql_header, sql_update, sql_cond))
+        cursor = self.connect.cursor()
+        cursor.execute(sql)
+
+
     def commit(self):
         self.connect.commit()
         sql = u"""
             create index whole_index on db(ltid, dt, host);
         """
-        self.connect.execute(sql)
+        try:
+            self.connect.execute(sql)
+        except sqlite3.OperationalError:
+            pass
         self.connect.commit()
 
     def areadb(self):
@@ -340,7 +379,6 @@ class LogDBManagerSQL(LogDBManager):
         self.connect.commit()
 
     def _select(self, ltid, top_dt, end_dt, host, area):
-        cursor = self.connect.cursor()
         if area is not None:
             sql_header = "select * from db left outer join area " \
             "on db.host == area.host where"
@@ -367,19 +405,22 @@ class LogDBManagerSQL(LogDBManager):
             "host" : host,
             "area" : area
         }
+        cursor = self.connect.cursor()
         cursor.execute(sql, sqlv)
         return cursor
 
     def _restore_lm(self, line):
+        lid = line[0]
         ltid = line[1]
         ltgid = line[1] # To be edited if LTG added
         dt = datetime.datetime.strptime(line[2], '%Y-%m-%d %H:%M:%S')
         host = line[3]
         if line[4] == "":
-            args = None
+            args = []
         else:
-            args = line[4].split(",")
-        return LogMessage(self.lt, ltid, ltgid, dt, host, args)
+            args = self.lt.table[ltid].get_variable(line[4].split(","))
+            #args = line[4].split(",")
+        return lid, LogMessage(self.lt, ltid, ltgid, dt, host, args)
 
     # Notice : use generate to avoid memory excess
     def get(self, ltid = None, top_dt = None, end_dt = None, \
@@ -387,14 +428,34 @@ class LogDBManagerSQL(LogDBManager):
         cursor = self._select(ltid, top_dt, end_dt, host, area)
         ret = self._init_db()
         for line in cursor:
-            ret.add(self._restore_lm(line))
+            lid, lm = self._restore_lm(line)
+            ret.add(lm)
         return ret
 
     def generate(self, ltid = None, top_dt = None, end_dt = None, \
             host = None, area = None):
         cursor = self._select(ltid, top_dt, end_dt, host, area)
         for line in cursor:
-            yield self._restore_lm(line)
+            lid, lm = self._restore_lm(line)
+            yield lm
+
+    def generate_with_id(self, ltid = None, top_dt = None, end_dt = None, \
+            host = None, area = None):
+        cursor = self._select(ltid, top_dt, end_dt, host, area)
+        for line in cursor:
+            lid, lm = self._restore_lm(line)
+            yield lid, lm
+
+    def generate_wordlist(self, ltid = None, top_dt = None, end_dt = None, \
+            host = None, area = None):
+        # return wordlist, not using information of lt
+        cursor = self._select(ltid, top_dt, end_dt, host, area)
+        for line in cursor:
+            wordlist = line[4]
+            if wordlist == "":
+                yield []
+            else:
+                yield wordlist.split(",")
 
 
 def ldb_manager(ltfn = None):
@@ -414,8 +475,9 @@ def db_add(ldb, line):
         _logger.warning(
                 "Log template not found for message [{0}]".format(line))
     else:
-        ldb.add(ltid, info["timestamp"], info["hostname"],\
-                ldb.lt.table[ltid].get_variable(l_w))
+        #l_var = ldb.lt.table[ltid].get_variable(l_w)
+        #ldb.add(ltid, info["timestamp"], info["hostname"], l_var)
+        ldb.add(ltid, info["timestamp"], info["hostname"], l_w)
 
 
 def construct_db(targets):

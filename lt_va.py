@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import sys
+import os
 import math
 
 import config
@@ -13,6 +14,8 @@ import logsplitter
 _config = config.common_config()
 
 class LTManager(lt_common.LTManager):
+
+    __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
     def __init__(self, filename, past_targets):
         super(LTManager, self).__init__(filename)
@@ -32,6 +35,7 @@ class LTManager(lt_common.LTManager):
 
 class VA():
 
+    __module__ = os.path.splitext(os.path.basename(__file__))[0]
     sym = _config.get("log_template", "variable_symbol")
     
     def __init__(self, past_targets, th_mode = "median"):

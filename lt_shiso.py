@@ -8,6 +8,7 @@ in IEEE 10th International Conference on Services Computing, pp. 595–602, 2013
 """
 
 import sys
+import os
 import logging
 import numpy
 
@@ -19,16 +20,33 @@ _logger = logging.getLogger(__name__)
 
 class LTManager(lt_common.LTManager):
     
-    def __init__(self, filename, threshold, max_child):
+    __module__ = os.path.splitext(os.path.basename(__file__))[0]
+    
+    def __init__(self, filename = None):
         super(LTManager, self).__init__(filename)
-        self.ltgen = LTGen(self.table, threshold, max_child)
+        self.ltgen = None
+        self.threshold = 0.9
+        self.max_child = 4
+
+    def _init_ltgen(self):
+        self.ltgen = LTGen(self.table, self.threshold, self.max_child)
+
+    def set_param(self, threshold = None, max_child = None):
+        if threshold is not None:
+            self.threshold = threshold
+        if max_child is not None:
+            self.max_child = max_child
 
     def process_line(self, l_w, l_s):
+        if self.ltgen is None:
+            self._init_ltgen()
         return self.ltgen.process_line(l_w, l_s)
 
 
 class Node():
 
+    __module__ = os.path.splitext(os.path.basename(__file__))[0]
+    
     def __init__(self):
         self.l_child = []
         self.lt = None
@@ -45,6 +63,7 @@ class Node():
 
 class LTGen():
 
+    __module__ = os.path.splitext(os.path.basename(__file__))[0]
     sym = _config.get("log_template", "variable_symbol")
     
     def __init__(self, table, threshold, max_child):
@@ -73,7 +92,8 @@ class LTGen():
                 if sr >= self.threshold:
                     _logger.debug(
                             "merged with ltid {0}".format(n_child.lt.ltid))
-                    new_lt = self.merge_lt(nc_lt, l_w)
+                    #new_lt = self.merge_lt(nc_lt, l_w)
+                    new_lt = lt_common.merge_lt(nc_lt, l_w)
                     if not new_lt == nc_lt:
                         n_child.lt.replace(new_lt, l_s)
                         _logger.debug(
@@ -181,7 +201,8 @@ class LTGen():
 
 
 def test_make():
-    ltm = LTManager(None, 0.9, 4)
+    ltm = LTManager(None)
+    ltm.set_param(0.9, 4)
     ltm.process_dataset("test.temp")
     ltm.show()
 
@@ -198,14 +219,9 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 2:
         sys.exit("usage : {0} targets".format(sys.argv[0]))
-    ltm = LTManager(None, 0.9, 4)
+    ltm = LTManager(None)
+    ltm.set_param(0.9, 4)
     ltm.process_dataset(sys.argv[1:])
     ltm.show()
-
-
-
-
-
-
 
 
