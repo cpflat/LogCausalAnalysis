@@ -5,8 +5,10 @@ gsq/*
 
 *.pyc
 *.pdf
-test.temp
+*.temp
 lt.dump
 log.db 
 pc_output/*
 auto.log
+
+*.bak
