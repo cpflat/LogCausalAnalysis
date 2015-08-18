@@ -104,6 +104,9 @@ class HostArea():
         self.defaultgroup = ""
         self.open_def(fn)
 
+    def _all_host(self):
+        return self.hdict.keys()
+
     def open_def(self, fn):
         group = ""
         f = open(fn, 'r')

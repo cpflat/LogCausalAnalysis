@@ -54,7 +54,11 @@ class LogEventIDMap():
 
 
 def log2event(top_dt, end_dt, dur, area):
+    if area == "all":
+        area = None
+
     ldb = log_db.ldb_manager()
+    ldb.open_lt()
     evmap = LogEventIDMap()
     ltf = ltfilter.IDFilter(_config.getlist("dag", "use_filter"))
     edict = {}

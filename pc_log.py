@@ -20,8 +20,8 @@ _logger = logging.getLogger(__name__)
 
 
 def pc_log(dirname, top_dt, end_dt, dur, area, threshold):
-    
-    _logger.debug("job start")
+
+    _logger.debug("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
 
     edict, evmap = log2event.log2event(top_dt, end_dt, dur, area)
     

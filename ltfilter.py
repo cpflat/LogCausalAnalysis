@@ -84,6 +84,7 @@ def mkfilter_self_corr_file(fn, lfn, top_dt, end_dt, l_dur, threshold):
     ret = []
     lg = logger(lfn)
     ldb = log_db.ldb_manager()
+    ldb.open_lt()
     with open(fn, "r") as f:
         for line in f:
             if line == "\n": continue
@@ -152,7 +153,7 @@ if __name__ == "__main__":
     (options, args) = op.parse_args()
     if len(args) == 0: sys.exit(usage)
 
-    top_dt, end_dt = _config.getterm("database", "term")
+    top_dt, end_dt = _config.getterm("filter", "term")
     lfn = _config.get("filter", "log_filename")
     l_dur = [
             datetime.timedelta(hours=1),
