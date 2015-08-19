@@ -92,39 +92,6 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
             return str2dur(ret)
 
 
-#class ExtendedConfigParser(ConfigParser.SafeConfigParser):
-#
-#    def __init__(self, defaults=None,
-#            dict_type=collections.OrderedDict, allow_no_value=False):
-#        ConfigParser.SafeConfigParser.__init__(self, defaults = defaults,
-#                dict_type = dict_type, allow_no_value = allow_no_value)
-#
-#    def get(self, section, name):
-#        try:
-#            ConfigParser.SafeConfigParser.get(section, name)
-#
-#
-#    def gettuple(self, section, name):
-#        return tuple(e.strip() for e in self.get(section, name).split(",")
-#                if not e.strip() == "")
-#
-#    def getlist(self, section, name):
-#        return [e.strip() for e in self.get(section, name).split(",")
-#                if not e.strip() == ""]
-#
-#    def getdt(self, section, name):
-#        return datetime.datetime.strptime(self.get(section, name).strip(),
-#                "%Y-%m-%d %H:%M:%S")
-#
-#    def getterm(self, section, name):
-#        return tuple(datetime.datetime.strptime(
-#                e.strip(), "%Y-%m-%d %H:%M:%S")
-#                for e in self.get(section, name).split(","))
-#
-#    def getdur(self, section, name):
-#        return str2dur(self.get(section, name))
-
-
 def str2dur(string):
     if "s" in string:
         num = int(string.partition("s")[0])
@@ -142,7 +109,10 @@ def str2dur(string):
         raise ValueError("Duration string invalid")
 
 
+# singleton config instance, to be shared in whole system
 _fn = "config.conf"
+if not os.path.exists(_fn):
+    raise IOError("common configuration file {0} not found".format(_fn))
 _config = ExtendedConfigParser(noopterror = False)
 _config.read(_fn)
 
