@@ -141,6 +141,9 @@ class LTGen():
 
         if len(m1) == len(m2):
             length = len(m1)
+            if length == 0:
+                return 1.0
+
             sum_dist = 0.0
             for w1, w2 in zip(m1, m2):
                 if w1 == self.sym or w2 == self.sym:
