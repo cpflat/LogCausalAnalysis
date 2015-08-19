@@ -3,6 +3,7 @@ pcalg.py
 gsq
 gsq/*
 
+config.conf
 *.pyc
 *.pdf
 *.temp

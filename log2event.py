@@ -68,7 +68,7 @@ def log2event(top_dt, end_dt, dur, area):
             eid = evmap.eid(line)
             ev.key = line.dt
             ev.val = 1
-            ev.args = line.args
+            #ev.args = line.args
             if not edict.has_key(eid):
                 edict[eid] = nodestat.EventSequence(eid, \
                         top_dt, end_dt, dur, maxval=2, default=0)

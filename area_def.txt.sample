@@ -1,10 +1,10 @@
 
-# core
+[core]
 rt0
 rt1
 rt2
 
-# area1
+[area1]
 rt0
 sw0
 sw1
@@ -15,19 +15,19 @@ sv2
 sv3
 sv4
 
-# area2
+[area]
 rt1
 sw3
 sv5
 sv6
 sv7
 
-# area3
+[area3]
 rt2
 sw4
 sv8
 
-# all
+[all]
 rt0
 rt1
 rt2

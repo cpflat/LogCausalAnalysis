@@ -97,50 +97,6 @@ class LogList():
         return ret
 
 
-class HostArea():
-
-    def __init__(self, fn = _config.get("database", "area_filename")):
-        self.hdict = {}
-        self.defaultgroup = ""
-        self.open_def(fn)
-
-    def _all_host(self):
-        return self.hdict.keys()
-
-    def open_def(self, fn):
-        group = ""
-        f = open(fn, 'r')
-        for line in f.readlines():
-            line = line.rstrip("\n")
-            if line == "": continue
-            if line[0] == "#":
-                setgroup = line[1:].strip()
-                if group == "": self.defaultgroup = setgroup
-                group = setgroup
-            else:
-                if group == "":
-                    raise IOError("no group name")
-                if "," in line:
-                    host = line.split(",")[0]
-                else:
-                    host = line
-                #self.hdict[host] = group
-                self.hdict.setdefault(host, []).append(group)
-
-    def get_group(self, host):
-        if self.hdict.has_key(host):
-            return self.hdict[host]
-        else:
-            return self.defaultgroup
-
-    def get_def(self):
-        ret = []
-        for host, l_area in self.hdict.iteritems():
-            for area in l_area:
-                ret.append((host, area))
-        return ret
-
-
 class LogDBManager(object):
 
     def __init__(self, ltfn = None):
@@ -355,7 +311,7 @@ class LogDBManagerSQL(LogDBManager):
         self.connect.commit()
 
     def areadb(self):
-        areains = HostArea()
+        areadict = config.GroupDef(_config.get("database", "area_filename"))
         try:
             sql = u"""
                 create table area (
@@ -367,7 +323,7 @@ class LogDBManagerSQL(LogDBManager):
             self.connect.execute(sql)
         except sqlite3.OperationalError:
             pass
-        for host, area in areains.get_def(): 
+        for area, host in areadict.iter_def():
             sql = u"""
                 insert into area (host, area) values (
                     :host,

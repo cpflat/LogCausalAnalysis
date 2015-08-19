@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import sys
+import os
 import datetime
 import collections
 import ConfigParser
@@ -90,6 +91,69 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
             return self._no_option(err)
         else:
             return str2dur(ret)
+
+
+class GroupDef():
+
+    def __init__(self, fn, default_val = None):
+        self.gdict = {}
+        self.rgdict = {}
+        self.default = default_val
+        if fn is None or fn == "":
+            pass
+        else:
+            self.open_def(fn)
+
+    def open_def(self, fn):
+        group = None
+        with open(fn, 'r'):
+            for line in f:
+                # ignore after comment sygnal
+                line = line.strip().partition("#")[0]
+                if line == "":
+                    continue
+                elif line[0] == "#":
+                    continue
+                elif line[0] == "[" and line[1] == "]":
+                    group = line[1:].strip("[]")
+                else:
+                    if group is None:
+                        raise ValueError("no group definition before value")
+                    val = line 
+                    self.gdict.setdefault(group, []).append(val)
+                    self.rgdict.setdefault(val, []).append(group)
+
+    def setdefault(self, group):
+        self.default = group
+
+    def groups(self):
+        return self.gdict.keys()
+
+    def values(self):
+        return self.rgdict.keys()
+
+    def ingroup(self, group, val):
+        if self.rgdict(val):
+            return val in self.rgdict[val]
+        else:
+            return False
+
+    def get_group(self, val):
+        if self.rgdict.has_key(val):
+            return self.rgdict[val]
+        else:
+            return []
+
+    def get_value(self, group):
+        if self.gdict.has_key(group):
+            return self.gdict[group]
+        else:
+            return []
+
+    def iter_def(self):
+        for group, l_val in self.gdict.iteritems():
+            for val in l_val:
+                yield group, val
 
 
 def str2dur(string):

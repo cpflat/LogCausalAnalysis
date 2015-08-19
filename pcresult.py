@@ -9,7 +9,6 @@ import cPickle as pickle
 
 import fslib
 import config
-#import lt
 import log_db
 import pc_log
 
@@ -70,10 +69,6 @@ class PCOutput():
             dedges = temp
         return dedges, udedges
 
-    #def _init_lt(self):
-    #    if self.ltobj is None:
-    #        self.ltobj = lt_manager.open_lt()
-
     def _init_ldb(self):
         if self.ldb is None:
             self.ldb = log_db.ldb_manager()
@@ -102,8 +97,12 @@ class PCOutput():
  
         print("src> " + str(self.ldb.lt.table[src_ltid]))
         cnt = 0
+        if self.area == "all":
+            area = None
+        else:
+            area = self.area
         for line in self.ldb.generate(src_ltid, self.top_dt, self.end_dt,
-                src_host, self.area):
+                src_host, area):
             print line.restore_message()
             cnt += 1
             if limit is not None and cnt >= limit:
@@ -113,7 +112,7 @@ class PCOutput():
         print("dst> " + str(self.ldb.lt.table[dst_ltid]))
         cnt = 0
         for line in self.ldb.generate(dst_ltid, self.top_dt, self.end_dt,
-                dst_host, self.area):
+                dst_host, area):
             print line.restore_message()
             cnt += 1
             if limit is not None and cnt >= limit:
@@ -143,12 +142,12 @@ class PCOutput():
 
     def print_result_lt(self):
         self._none_caution()
-        #self._init_lt()
         self._init_ldb()
         print("### directed ###")
         for edge in self.d_edges:
             self._print_edge(edge)
             self._print_edge_lt(edge)
+        print
         print("### undirected ###")
         for edge in self.ud_edges:
             self._print_edge(edge)
@@ -156,7 +155,6 @@ class PCOutput():
 
     def print_result_detail(self):
         self._none_caution()
-        #self._init_lt()
         self._init_ldb()
         print("### directed ###")
         for edge in self.d_edges:
@@ -207,9 +205,10 @@ if __name__ == "__main__":
         output = PCOutput(options.src_dir).load(args[0])
         output.print_env() 
         output.print_result() 
-        output.print_result_lt()
-        if options.graph_fn:
-            output.show_graph(options.graph_fn)
         if options.detail:
             output.print_result_detail()
+        else:
+            output.print_result_lt()
+        if options.graph_fn:
+            output.show_graph(options.graph_fn)
 

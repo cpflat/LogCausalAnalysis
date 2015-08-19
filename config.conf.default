@@ -5,7 +5,9 @@
 db_filename = log.db
 
 # Network area groups of host names
-area_filename = area_def.txt
+# For exapmle:
+# area_filename = area_def.txt
+area_filename = 
 
 # If no year string in log message, add following year
 # (Use this year of localtime with empty value)
