@@ -27,6 +27,8 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
             ret = method(section, name)
         except ConfigParser.NoOptionError as err:
             return self._no_option(err)
+        except ValueError as err:
+            return self._no_option(err)
         else:
             return ret
 
@@ -141,7 +143,7 @@ def str2dur(string):
 
 
 _fn = "config.conf"
-_config = ExtendedConfigParser()
+_config = ExtendedConfigParser(noopterror = False)
 _config.read(_fn)
 
 def common_config():

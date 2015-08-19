@@ -6,55 +6,79 @@ import datetime
 import re
 
 import fslib
+import config
+
+_config = config.common_config()
 
 MONTH_NAME = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-FREEWRITE_DESCRIPTION = ("KEY ",
-                    "UI_CMDLINE_READ_LINE: ",
-                    "UI_COMMIT_PROGRESS: ")
-
 RE_DATETIME = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
 RE_YEAR = re.compile(r"^[12]\d{3}$")
 
+RM_HEADER = []
+for fn in _config.getlist("database", "remove_header_filename"):
+    try:
+        with open(fn, 'r'):
+            for line in f:
+                RM_HEADER.append(line.rstrip("\n"))
+    except IOError:
+        pass
+
+
 def split_header(line):
-    l_line = line.split(None, 5)
+
+    def pop_string(line):
+        string, line = line.split(" ", 1)
+        return string, line
+
+    def str2month(string):
+        return MONTH_NAME.index(string) + 1
+
+    src_line = line
     if RE_DATETIME.match(line):
-        dt = datetime.datetime.strptime(" ".join(l_line[0:2]),
+        date_str, line = pop_string(line)
+        time_str, line = pop_string(line)
+        dt = datetime.datetime.strptime(" ".join((date_str, time_str)),
                 "%Y-%m-%d %H:%M:%S")
-        host = l_line[2]
-        message = " ".join(l_line[3:])
-    elif RE_YEAR.match(l_line[0]):
-        year = int(l_line[0])
-        month = MONTH_NAME.index(l_line[1]) + 1
-        day = int(l_line[2])
-        timestr = l_line[3]
-        hour, minute, second = tuple(int(e) for e in timestr.split(":"))
-        host = l_line[4]
-        message = l_line[-1]
-        dt = datetime.datetime(year = year, month = month, day = day, 
-                hour = hour, minute = minute, second = second, microsecond = 0)
+        host, line = pop_string(line)
+        message = line
     else:
-        year = datetime.datetime.today().year
-        month = MONTH_NAME.index(l_line[0]) + 1
-        day = int(l_line[1])
-        timestr = l_line[2]
-        hour, minute, second = tuple(int(e) for e in timestr.split(":"))
-        host = l_line[3]
-        message = l_line[-1]
+        string, line = pop_string(line)
+        if RE_YEAR.match(string):
+            year = int(string)
+            month_str, line = pop_string(line)
+            month = str2month(month_str)
+        else:
+            year = give_year()
+            month = str2month(string)
+        day_str, line = pop_string(line)
+        day = int(day_str)
+        time_str, line = pop_string(line)
+        hour, minute, second = tuple(int(e) for e in time_str.split(":"))
+        host, line = pop_string(line)
+        message = line
         dt = datetime.datetime(year = year, month = month, day = day, 
                 hour = hour, minute = minute, second = second, microsecond = 0)
 
     info = {"timestamp" : dt, "hostname" : host}
 
-    if is_freewrite(message):
+    if is_removed(message):
         return None, None
     else:
         return message, info 
 
 
-def is_freewrite(line):
-    for description in FREEWRITE_DESCRIPTION:
+def give_year():
+    default_year = _config.getint("database", "default_year")
+    if default_year is None:
+        return datetime.datetime.today().year
+    else:
+        return default_year
+
+
+def is_removed(line):
+    for description in RM_HEADER:
         if description in line:
             return True
     else:
