@@ -100,7 +100,7 @@ class PCOutput():
         src_ltid, src_host = self.evmap.info(edge[0])
         dst_ltid, dst_host = self.evmap.info(edge[1])
  
-        print("src>" + str(self.self.ldb.lt.table[src_ltid]))
+        print("src> " + str(self.ldb.lt.table[src_ltid]))
         cnt = 0
         for line in self.ldb.generate(src_ltid, self.top_dt, self.end_dt,
                 src_host, self.area):
@@ -110,7 +110,7 @@ class PCOutput():
                 print("...")
                 break
         
-        print("dst>" + str(self.ldb.lt.table[src_ltid]))
+        print("dst> " + str(self.ldb.lt.table[dst_ltid]))
         cnt = 0
         for line in self.ldb.generate(dst_ltid, self.top_dt, self.end_dt,
                 dst_host, self.area):
