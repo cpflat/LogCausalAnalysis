@@ -123,19 +123,35 @@ class LTGen():
 
     def seq_ratio(self, m1, m2):
 
+        #def c_coordinate(w):
+        #    # retrun vector of characters of word
+        #    # 4 demension : upper-case, lower-case, digit, symbol(others)
+        #    l_cnt = [0.0 for i in range(4)]
+        #    for c in w:
+        #        if c.islower():
+        #            l_cnt[0] += 1.0
+        #        elif c.isupper():
+        #            l_cnt[1] += 1.0
+        #        elif c.isdigit():
+        #            l_cnt[2] += 1.0
+        #        else:
+        #            l_cnt[3] += 1.0
+        #    deno = numpy.linalg.norm(l_cnt)
+        #    return [1.0 * e / deno for e in l_cnt]
+
         def c_coordinate(w):
-            # retrun vector of characters of word
-            # 4 demension : upper-case, lower-case, digit, symbol(others)
-            l_cnt = [0.0 for i in range(4)]
+            l_cnt = [0.0 for i in range(26 + 26 + 2)]
             for c in w:
-                if c.islower():
-                    l_cnt[0] += 1.0
-                elif c.isupper():
-                    l_cnt[1] += 1.0
+                if c.isupper():
+                    ind = ord(c) - 65
+                    l_cnt[ind] += 1.0
+                elif c.islower():
+                    ind = ord(c) - 97
+                    l_cnt[ind + 26] += 1.0
                 elif c.isdigit():
-                    l_cnt[2] += 1.0
+                    l_cnt[-2] += 1.0
                 else:
-                    l_cnt[3] += 1.0
+                    l_cnt[-1] += 1.0
             deno = numpy.linalg.norm(l_cnt)
             return [1.0 * e / deno for e in l_cnt]
 
