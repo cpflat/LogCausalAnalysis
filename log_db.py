@@ -429,14 +429,14 @@ def db_add(ldb, line):
     message, info = logheader.split_header(line)
     if message is None: return
     l_w, l_s = logsplitter.split(message)
-    ltid = ldb.lt.process_line(l_w, l_s)
-    if ltid is None:
+    ltline = ldb.lt.process_line(l_w, l_s)
+    if ltline.ltid is None:
         _logger.warning(
                 "Log template not found for message [{0}]".format(line))
     else:
         #l_var = ldb.lt.table[ltid].get_variable(l_w)
         #ldb.add(ltid, info["timestamp"], info["hostname"], l_var)
-        ldb.add(ltid, info["timestamp"], info["hostname"], l_w)
+        ldb.add(ltline.ltid, info["timestamp"], info["hostname"], l_w)
 
 
 def construct_db(targets):

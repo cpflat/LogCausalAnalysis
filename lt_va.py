@@ -30,7 +30,7 @@ class LTManager(lt_common.LTManager):
             self.searchtree.add(ltid, ltw)
         else:
             self.table.count_lt(ltid)
-        return ltid
+        return self.table[ltid]
 
 
 class VA():

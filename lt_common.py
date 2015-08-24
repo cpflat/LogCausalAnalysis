@@ -137,7 +137,7 @@ class LTManager(object):
             print line.ltid, str(line), "({0})".format(line.cnt)
 
     def process_line(self, l_w, l_s):
-        # retrun ltid
+        # retrun ltline
         raise NotImplementedError
 
     def process_dataset(self, targets):
@@ -149,7 +149,7 @@ class LTManager(object):
                     message, info = logheader.split_header(line.rstrip("\n"))
                     if message is None: continue
                     l_w, l_s = logsplitter.split(message)
-                    ltw = self.process_line(l_w, l_s)
+                    self.process_line(l_w, l_s)
         self.dump()
 
     def load(self, fn = None):
