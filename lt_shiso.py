@@ -133,40 +133,40 @@ class LTGen():
         n_parent = self.n_root
         while True:
             for n_child in n_parent:
-            #    _logger.debug(
-            #            "comparing with ltid {0}".format(n_child.lt.ltid))
+                _logger.debug(
+                        "comparing with ltid {0}".format(n_child.lt.ltid))
                 nc_lt = n_child.lt.words
                 sr = self.seq_ratio(nc_lt, l_w)
-            #    _logger.debug("seq_ratio : {0}".format(sr))
+                _logger.debug("seq_ratio : {0}".format(sr))
                 if sr >= self.threshold:
-            #        _logger.debug(
-            #                "merged with ltid {0}".format(n_child.lt.ltid))
+                    _logger.debug(
+                            "merged with ltid {0}".format(n_child.lt.ltid))
                     new_lt = lt_common.merge_lt(nc_lt, l_w)
                     if not new_lt == nc_lt:
                         n_child.lt.replace(new_lt, l_s)
-            #            _logger.debug(
-            #                    "ltid {0} replaced".format(n_child.lt.ltid))
-            #            _logger.debug("-> {0}".format(str(n_child.lt)))
+                        _logger.debug(
+                                "ltid {0} replaced".format(n_child.lt.ltid))
+                        _logger.debug("-> {0}".format(str(n_child.lt)))
                     n_child.lt.count()
                     return n_child.lt, False
-            #    else:
-            #        if self.equal(nc_lt, l_w):
-            #            _logger.warning(
-            #                "comparing same line, but seqratio is small...")
+                else:
+                    if self.equal(nc_lt, l_w):
+                        _logger.warning(
+                            "comparing same line, but seqratio is small...")
             else:
                 if len(n_parent) < self.max_child:
-            #        _logger.debug("no node to be merged, add new node")
+                    _logger.debug("no node to be merged, add new node")
                     n = self._new_node(l_w, l_s)
                     n_parent.join(n)
                     return n.lt, True
                 else:
-            #        _logger.debug("children : {0}".format(
-            #                [e.lt.ltid for e in n_parent.l_child]))
+                    _logger.debug("children : {0}".format(
+                            [e.lt.ltid for e in n_parent.l_child]))
                     l_sim = [(edit_distance(n_child.lt.words, l_w),
                             n_child) for n_child in n_parent]
                     n_parent = max(l_sim, key=lambda x: x[0])[1]
-            #        _logger.debug("go down to node(ltid {0})".format(
-            #                n_parent.lt.ltid))
+                    _logger.debug("go down to node(ltid {0})".format(
+                            n_parent.lt.ltid))
 
     def seq_ratio(self, m1, m2):
 
@@ -220,28 +220,6 @@ class LTGen():
             return 1.0 - (sum_dist / (2.0 * length))
         else:
             return 0.0
-
-    #def similarity(self, m1, m2):
-        # return levenshtein distance that allows wildcard
-
-        #table = [ [0] * (len(m2) + 1) for i in range(len(m1) + 1) ]
-
-        #for i in range(len(m1) + 1):
-        #    table[i][0] = i
-
-        #for j in range(len(m2) + 1):
-        #    table[0][j] = j
-
-        #for i in range(1, len(m1) + 1):
-        #    for j in range(1, len(m2) + 1):
-        #        if (m1[i - 1] == m2[j - 1]) or \
-        #                m1[i - 1] == self.sym or m2[j - 1] == self.sym:
-        #            cost = 0
-        #        else:
-        #            cost = 1
-        #        table[i][j] = min(table[i - 1][j] + 1, table[i][ j - 1] + 1, \
-        #                table[i - 1][j - 1] + cost)
-        #return table[-1][-1]
 
     def equal(self, m1, m2):
         if len(m1) == len(m2):
@@ -396,25 +374,29 @@ def edit_distance(m1, m2):
 
 def test_make():
     ltm = LTManager(None)
-    ltm.set_param(0.9, 4)
+    ltm.set_param_ltgen(0.9, 4)
+    ltm.set_param_ltgroup(3, 0.3, 0.85, True)
     ltm.process_dataset("test.temp")
     ltm.show()
 
 
 if __name__ == "__main__":
     #logger_super = logging.getLogger("lt_common")
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    #ch = logging.StreamHandler()
+    #ch.setLevel(logging.DEBUG)
     #logger_super.setLevel(logging.DEBUG)
     #logger_super.addHandler(ch)
-    _logger.setLevel(logging.DEBUG)
-    _logger.addHandler(ch)
+    #_logger.setLevel(logging.DEBUG)
+    #_logger.addHandler(ch)
     #test_make()
 
     if len(sys.argv) < 2:
         sys.exit("usage : {0} targets".format(sys.argv[0]))
     ltm = LTManager(None)
     ltm.set_param_ltgen(0.9, 4)
+    ltm.set_param_ltgroup(3, 0.3, 0.85, True)
+    def set_param_ltgroup(self, ngram_length = None, th_lookup = None,
+            th_distance = None, mem_ngram = None):
     ltm.process_dataset(sys.argv[1:])
     ltm.show()
 
