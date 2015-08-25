@@ -53,9 +53,10 @@ def thread_name(dirname, top_dt, end_dt, dur, area, threshold):
     return "".join(l_header)
 
 
-def pc_all_args(dirname, term_str, dur_str):
+def pc_all_args(dirname, term_str, diff_str, dur_str):
     w_top_dt, w_end_dt = _config.getterm("dag", "whole_term")
     term = config.str2dur(term_str)
+    diff = config.str2dur(diff_str)
     dur = config.str2dur(dur_str)
     threshold = _config.getfloat("dag", "threshold")
     l_args = []
@@ -64,7 +65,7 @@ def pc_all_args(dirname, term_str, dur_str):
         while top_dt < w_end_dt:
             end_dt = top_dt + term
             l_args.append((dirname, top_dt, end_dt, dur, area, threshold))
-            top_dt = end_dt
+            top_dt = top_dt + diff
     return l_args
 
 
@@ -111,6 +112,7 @@ if __name__ == "__main__":
     logging.config.fileConfig("logging.conf")
     default_term = _config.get("dag", "default_term")
     default_dur = _config.get("dag", "default_dur")
+    default_diff = _config.get("dag", "default_diff")
     output_dir = _config.get("dag", "default_output_dir")
 
     usage = "usage: %s [options]" % sys.argv[0]
@@ -119,6 +121,8 @@ if __name__ == "__main__":
             default=default_term, help="date term of each dataset")
     op.add_option("-d", "--duration", action="store", dest="dur", type="string",
             default=default_dur, help="bin size of event occurrance")
+    op.add_option("--diff", action="store", dest="diff", type="string",
+            default=default_diff, help="")
     op.add_option("-p", "--parallel", action="store", dest="pal", type="int",
             default=1, help="multithreading")
     op.add_option("-r", action="store_true", dest="rflag",
@@ -132,7 +136,8 @@ if __name__ == "__main__":
 
     fslib.mkdir(options.dirname)
         
-    l_args = pc_all_args(options.dirname, options.term, options.dur)
+    l_args = pc_all_args(options.dirname,
+            options.term, options.diff, options.dur)
     pc_mthread(l_args, options.pal)
 
 

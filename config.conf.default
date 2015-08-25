@@ -32,9 +32,6 @@ sym_filename = symdef.txt
 # Symbol string to abstract variable strings in log templates
 variable_symbol = **
 
-# Log template group definition : TODO, not implemented
-# group_def_filename = ltg.txt
-
 
 [dag]
 
@@ -49,7 +46,10 @@ whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
 area = all
 
 # Length of unit terms to construct DAG
-default_term = 1d
+default_term = 30h
+
+# Length of time difference of unit terms
+default_diff = 24h
 
 # Bin size of discrete data for G square test
 default_dur = 10s
