@@ -364,8 +364,6 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit("usage : {0} targets".format(sys.argv[0]))
     ltm = LTManager(None)
-    ltm.set_param_ltgen(0.9, 4)
-    ltm.set_param_ltgroup(3, 0.3, 0.85, True)
     ltm.process_dataset(sys.argv[1:])
     ltm.show()
 
