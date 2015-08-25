@@ -20,11 +20,11 @@ class LogEventIDMap():
     def __len__(self):
         return self.eidlen
 
-    def _info(self, line):
-        return (line.ltid, line.host)
+    def _info(self, gid, line):
+        return (gid, line.host)
 
-    def eid(self, line):
-        info = self._info(line)
+    def eid(self, gid, line):
+        info = self._info(gid, line)
         if self.ermap.has_key(info):
             return self.ermap[info]
         else:
@@ -64,8 +64,9 @@ def log2event(top_dt, end_dt, dur, area):
     edict = {}
     for line in ldb.generate(None, top_dt, end_dt, None, area):
         if not ltf.isremoved(line.ltid):
+            ltgid = ldb.lt.ltgroup.get_gid(line.ltid)
             ev = nodestat.Event(line.dt, 1)
-            eid = evmap.eid(line)
+            eid = evmap.eid(ltgid, line)
             ev.key = line.dt
             ev.val = 1
             #ev.args = line.args

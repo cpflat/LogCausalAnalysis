@@ -78,46 +78,48 @@ class PCOutput():
         return pc_log.thread_name(self.dirname, self.top_dt, self.end_dt,
                 self.dur, self.area, self.threshold)
 
+    def _print_lt(self, eid, header = "lt"):
+        ltgid, host = self.evmap.info(eid)
+        print("{0}>")
+        print("\n ".join(
+            [str(ltline) for ltline in self.ldb.lt.ltgroup[ltgid]]))
+
     def _print_edge(self, edge):
-        src_ltid, src_host = self.evmap.info(edge[0])
-        dst_ltid, dst_host = self.evmap.info(edge[1])
-        print("{0}({1}) -> {2}({3})".format(src_ltid, src_host, \
-                dst_ltid, dst_host)) 
+        src_ltgid, src_host = self.evmap.info(edge[0])
+        dst_ltgid, dst_host = self.evmap.info(edge[1])
+        print("{0}({1}) -> {2}({3})".format(src_ltgid, src_host, \
+                dst_ltgid, dst_host)) 
 
     def _print_edge_lt(self, edge):
-        src_ltid, src_host = self.evmap.info(edge[0])
-        dst_ltid, dst_host = self.evmap.info(edge[1])
-        print("src> " + str(self.ldb.lt.table[src_ltid]))
-        print("dst> " + str(self.ldb.lt.table[dst_ltid]))
-        print
+        for eid, header in zip(edge, ("src", "dst")):
+            ltgid, host = self.evmap.info(eid)
+            print("{0}>".format(header))
+            print("\n ".join(
+                [str(ltline) for ltline in self.ldb.lt.ltgroup[ltgid]]))
+            print
     
     def _print_edge_detail(self, edge, limit = None):
-        src_ltid, src_host = self.evmap.info(edge[0])
-        dst_ltid, dst_host = self.evmap.info(edge[1])
- 
-        print("src> " + str(self.ldb.lt.table[src_ltid]))
-        cnt = 0
         if self.area == "all":
             area = None
         else:
             area = self.area
-        for line in self.ldb.generate(src_ltid, self.top_dt, self.end_dt,
-                src_host, area):
-            print line.restore_message()
-            cnt += 1
-            if limit is not None and cnt >= limit:
-                print("...")
-                break
         
-        print("dst> " + str(self.ldb.lt.table[dst_ltid]))
-        cnt = 0
-        for line in self.ldb.generate(dst_ltid, self.top_dt, self.end_dt,
-                dst_host, area):
-            print line.restore_message()
-            cnt += 1
-            if limit is not None and cnt >= limit:
-                print("...")
-                break
+        for eid, header in zip(edge, ("src", "dst")):
+            ltgid, host = self.evmap.info(eid)
+            print("{0}>".format(header))
+            for ltline in self.ldb.lt.ltgroup[ltgid]:
+                buf = []
+                cnt = 0
+                for line in self.ldb.generate(ltline.ltid,
+                        self.top_dt, self.end_dt, host, area):
+                    buf.append(line.restore_message())
+                    cnt += 1
+                    if limit is not None and cnt >= limit:
+                        buf.append("...")
+                        break
+                if cnt > 0:
+                    print " " + str(ltline)
+                    print "\n".join(buf)
         print
 
     def print_env(self):
@@ -153,18 +155,18 @@ class PCOutput():
             self._print_edge(edge)
             self._print_edge_lt(edge)
 
-    def print_result_detail(self):
+    def print_result_detail(self, limit = None):
         self._none_caution()
         self._init_ldb()
         print("### directed ###")
         for edge in self.d_edges:
             self._print_edge(edge)
-            self._print_edge_detail(edge, DETAIL_SHOW_LIMIT)
+            self._print_edge_detail(edge, limit)
         print
         print("### undirected ###")
         for edge in self.ud_edges:
             self._print_edge(edge)
-            self._print_edge_detail(edge, DETAIL_SHOW_LIMIT)
+            self._print_edge_detail(edge, limit)
 
     def show_graph(self, fn):
         import networkx as nx
@@ -206,7 +208,7 @@ if __name__ == "__main__":
         output.print_env() 
         output.print_result() 
         if options.detail:
-            output.print_result_detail()
+            output.print_result_detail(DETAIL_SHOW_LIMIT)
         else:
             output.print_result_lt()
         if options.graph_fn:

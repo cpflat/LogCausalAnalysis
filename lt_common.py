@@ -131,10 +131,32 @@ class LTManager(object):
         else:
             self.filename = filename
         self.table = LTTable()
+        self.ltgroup = None # LTGroup
 
     def show(self):
-        for line in self.table:
-            print line.ltid, str(line), "({0})".format(line.cnt)
+        
+        def print_line(line):
+            return " ".join((str(line.ltid), str(line),
+                    "({0})".format(line.cnt)))
+        
+        if self.ltgroup is None:
+            for ltline in self.table:
+                print_line(ltline)
+        else:
+            for gid, l_ltline in self.ltgroup.iteritems():
+                cnt = 0
+                buf = []
+                for ltline in l_ltline:
+                    buf.append(print_line(ltline))
+                    cnt += ltline.cnt
+                print "[log template group {0} ({1}, {2})]".format(\
+                        gid, len(l_ltline), cnt)
+                print "\n".join(buf)
+
+    def generate_ltg(self):
+        if self.ltgroup is None:
+            yield self.table
+
 
     def process_line(self, l_w, l_s):
         # retrun ltline
@@ -163,6 +185,50 @@ class LTManager(object):
         if not fn: fn = self.filename
         with open(fn, 'w') as f:
             pickle.dump(self.__dict__, f)
+
+
+class LTGroup(object):
+
+    __module__ = os.path.splitext(os.path.basename(__file__))[0]
+
+    def __init__(self, table):
+        self.table = table # LTTable, readonly
+        self.d_group = {} # key : groupid, val : [ltline, ...]
+        self.d_rgroup = {} # key : ltid, val : groupid
+
+    def __iter__(self):
+        return self._generator()
+
+    def _generator(self):
+        for gid in self.d_group.keys():
+            yield self.d_group[gid]
+
+    def __getitem__(self, gid):
+        assert isinstance(gid, int)
+        if not self.d_group.has_key(gid):
+            raise IndexError("list index out of range")
+        return self.d_group[gid]
+
+    def get_lt(self, gid):
+        return self.d_group[gid]
+
+    def get_gid(self, ltid):
+        return self.d_rgroup[ltid]
+
+    def iteritems(self):
+        for gid in self.d_group.keys():
+            yield gid, self.d_group[gid]
+
+    def _next_groupid(self):
+        cnt = 0
+        while self.d_group.has_key(cnt):
+            cnt += 1
+        else:
+            return cnt
+
+    def add_ltid(self, gid, ltline):
+        self.d_group.setdefault(gid, []).append(ltline)
+        self.d_rgroup[ltline.ltid] = gid
 
 
 class LTSearchTreeNode():

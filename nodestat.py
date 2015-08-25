@@ -4,6 +4,7 @@
 
 import timelabel
 
+
 class NodeStat():
 
     def __init__(self, nid, l_nodevalue, maxval=2):

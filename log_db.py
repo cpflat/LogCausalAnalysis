@@ -104,7 +104,7 @@ class LogDBManager(object):
 
     def _init_lt(self, ltfn):
         self.lt = lt.LTManager(ltfn)
-        self.lt.set_param(0.9, 4)
+        #self.lt.set_param_ltgen(0.9, 4)
 
     def open_lt(self, fn = None):
         self.lt.load() 

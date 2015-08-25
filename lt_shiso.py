@@ -42,7 +42,7 @@ class LTManager(lt_common.LTManager):
                 )
         
     def _init_ltgroup(self):
-        self.ltgroup = LTGroup(self.table,
+        self.ltgroup = LTGroupSHISO(self.table,
                 ngram_length = self.ltgroup_nglength,
                 th_lookup = self.ltgroup_th_lookup,
                 th_distance = self.ltgroup_th_distance,
@@ -75,22 +75,6 @@ class LTManager(lt_common.LTManager):
             self.ltgroup.add(ltline)
         return ltline
 
-    def show(self):
-
-        def print_line(line):
-            print line.ltid, str(line), "({0})".format(line.cnt)
-
-        done_ltid = []
-        for gid, l_ltline in self.ltgroup.iteritems():
-            print "[log template group {0}]".format(gid)
-            for ltline in l_ltline:
-                print_line(ltline)
-                done_ltid.append(ltline.ltid)
-
-        print "[log template with no group]"
-        for line in self.table:
-            if not line.ltid in done_ltid:
-                print_line(line)
 
 class LTGenNode():
 
@@ -244,40 +228,21 @@ class LTGen():
         return ret
 
 
-class LTGroup():
+class LTGroupSHISO(lt_common.LTGroup):
 
-    __module__ = os.path.splitext(os.path.basename(__file__))[0]
     sym = _config.get("log_template", "variable_symbol")
 
     def __init__(self, table, ngram_length = 3,
             th_lookup = 0.3, th_distance = 0.85, mem_ngram = True):
-        self.table = table
-        self.d_group = {} # key : groupid, val : [ltline, ...]
-        self.d_vgroup = {} # key : ltid, val : groupid
+        super(LTGroupSHISO, self).__init__(table)
+        #self.d_group = {} # key : groupid, val : [ltline, ...]
+        #self.d_rgroup = {} # key : ltid, val : groupid
         self.ngram_length = ngram_length
         self.th_lookup = th_lookup
         self.th_distance = th_distance
         self.mem_ngram = mem_ngram
         if self.mem_ngram:
             self.d_ngram = {} # key : ltid, val : [str, ...]
-
-    def __iter__(self):
-        return self._generator()
-
-    def _generator(self):
-        for gid in self.d_group.keys():
-            yield self.d_group[gid]
-
-    def iteritems(self):
-        for gid in self.d_group.keys():
-            yield gid, self.d_group[gid]
-
-    def _next_groupid(self):
-        cnt = 0
-        while self.d_group.has_key(cnt):
-            cnt += 1
-        else:
-            return cnt
 
     def add(self, lt_new):
         _logger.debug("group search for ltid {0}".format(lt_new.ltid))
@@ -303,28 +268,34 @@ class LTGroup():
                     (len(lt_new.words) + len(lt_max.words))
             _logger.debug("edit distance ratio : {0}".format(d))
             if d < self.th_distance:
-                gid = self.mk_group(lt_new, lt_max)
+                gid = self._mk_group(lt_new, lt_max)
                 _logger.debug("smaller than threshold")
                 _logger.debug("merge it (gid {0})".format(gid))
                 _logger.debug("gid {0} : {1}".format(gid, \
                         [ltline.ltid for ltline in self.d_group[gid]]))
                 return gid
-        return None
+        # No merge, make group with single lt
+        gid = self._mk_group_single(lt_new)
+        _logger.debug("No similar format found, make group with single lt")
+        _logger.debug("gid {0} : {1}".format(gid, \
+                [ltline.ltid for ltline in self.d_group[gid]]))
+        return gid
 
-    def mk_group(self, lt_new, lt_old):
-
-        def add_ltid(groupid, ltline):
-            self.d_group.setdefault(groupid, []).append(ltline)
-            self.d_vgroup[ltline.ltid] = groupid
-
-        assert not self.d_vgroup.has_key(lt_new.ltid)
-        if self.d_vgroup.has_key(lt_old.ltid):
-            groupid = self.d_vgroup[lt_old.ltid]
-            add_ltid(groupid, lt_new)
+    def _mk_group(self, lt_new, lt_old):
+        assert not self.d_rgroup.has_key(lt_new.ltid)
+        if self.d_rgroup.has_key(lt_old.ltid):
+            groupid = self.d_rgroup[lt_old.ltid]
+            self.add_ltid(groupid, lt_new)
         else:
             groupid = self._next_groupid()
-            add_ltid(groupid, lt_old)
-            add_ltid(groupid, lt_new)
+            self.add_ltid(groupid, lt_old)
+            self.add_ltid(groupid, lt_new)
+        return groupid
+
+    def _mk_group_single(self, lt_new):
+        assert not self.d_rgroup.has_key(lt_new.ltid)
+        groupid = self._next_groupid()
+        self.add_ltid(groupid, lt_new)
         return groupid
 
     def _get_ngram(self, ltline):
@@ -395,8 +366,6 @@ if __name__ == "__main__":
     ltm = LTManager(None)
     ltm.set_param_ltgen(0.9, 4)
     ltm.set_param_ltgroup(3, 0.3, 0.85, True)
-    def set_param_ltgroup(self, ngram_length = None, th_lookup = None,
-            th_distance = None, mem_ngram = None):
     ltm.process_dataset(sys.argv[1:])
     ltm.show()
 
