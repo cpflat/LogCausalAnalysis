@@ -131,7 +131,7 @@ class LogParser():
     def pop_header(self, src_line):
 
         def pop_string(line):
-            string, line = line.split(" ", 1)
+            string, line = line.strip(" ").split(" ", 1)
             return string, line
 
         def str2month(string):
