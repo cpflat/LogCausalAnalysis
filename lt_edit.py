@@ -2,16 +2,12 @@
 # coding: utf-8
 
 import sys
-import logging
-import logging.config
 import optparse
 
 import config
 import log_db
 import lt_common
 
-_config = config.common_config()
-_logger = logging.getLogger(__name__)
 MAX_ARG_VARIETY = 10
 
 
@@ -44,7 +40,7 @@ def breakdown_ltid(ldb, ltid):
     return "\n".join(buf)
 
 
-def merge_ltid(ldb, ltid1, ltid2):
+def merge_ltid(ldb, ltid1, ltid2, sym):
     print("merge following log templates...")
     print("ltid {0} : {1}".format(ltid1, str(ldb.lt.table[ltid1])))
     print("ltid {0} : {1}".format(ltid2, str(ldb.lt.table[ltid2])))
@@ -57,7 +53,7 @@ def merge_ltid(ldb, ltid1, ltid2):
     cnt2 = ldb.lt.table[ltid2].cnt
     if not len(ltw1) == len(ltw2):
         sys.exit("log template length is different, failed")
-    new_ltw = lt_common.merge_lt(ltw1, ltw2)
+    new_ltw = lt_common.merge_lt(ltw1, ltw2, sym)
 
     ldb.lt.table.replace_lt(ltid1, new_ltw, l_s, cnt1 + cnt2)
     ldb.lt.table.remove_lt(ltid2)
@@ -112,18 +108,18 @@ def separate_ltid(ldb, ltid, vid, value):
 
 
 if __name__ == "__main__":
-    logging.config.fileConfig("logging.conf")
     usage = "usage: %s [options] mode" % sys.argv[0]
     op = optparse.OptionParser(usage)
-    #op.add_option("-f", "--filename",
-    #        action="store", dest="ltfn", type="string", default=None,
-    #        help="use given log template dump file")
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+            help="configuration file")
     (options, args) = op.parse_args()
     if len(args) == 0:
         sys.exit(usage)
     mode = args[0]
+    conf = config.open_config(options.conf)
 
-    ldb = log_db.ldb_manager()
+    ldb = log_db.ldb_manager(conf)
     ldb.open_lt()
     if mode == "show":
         show_lt(ldb)

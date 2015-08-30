@@ -7,8 +7,6 @@ import log_db
 import nodestat
 import ltfilter
 
-_config = config.common_config()
-
 
 class LogEventIDMap():
 
@@ -53,14 +51,14 @@ class LogEventIDMap():
             self.ermap[old_info] = new_eid
 
 
-def log2event(top_dt, end_dt, dur, area):
+def log2event(conf, top_dt, end_dt, dur, area):
     if area == "all":
         area = None
 
-    ldb = log_db.ldb_manager()
+    ldb = log_db.ldb_manager(conf)
     ldb.open_lt()
+    ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
     evmap = LogEventIDMap()
-    ltf = ltfilter.IDFilter(_config.getlist("dag", "use_filter"))
     edict = {}
     for line in ldb.generate(None, top_dt, end_dt, None, area):
         if not ltf.isremoved(line.ltid):
@@ -69,7 +67,6 @@ def log2event(top_dt, end_dt, dur, area):
             eid = evmap.eid(ltgid, line)
             ev.key = line.dt
             ev.val = 1
-            #ev.args = line.args
             if not edict.has_key(eid):
                 edict[eid] = nodestat.EventSequence(eid, \
                         top_dt, end_dt, dur, maxval=2, default=0)

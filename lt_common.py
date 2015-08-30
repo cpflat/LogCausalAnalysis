@@ -7,44 +7,30 @@ import cPickle as pickle
 
 import config
 import fslib
-import logheader
-import logsplitter
+import logparser
+#import logheader
+#import logsplitter
 
-_config = config.common_config()
 _logger = logging.getLogger(__name__)
-VARIABLE_SYMBOL = _config.get("log_template", "variable_symbol")
 
 class LTLine():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    sym = VARIABLE_SYMBOL
 
-    def __init__(self, ltid, words, style, cnt):
+    def __init__(self, ltid, words, style, cnt, sym):
         self.ltid = ltid
         self.words = words
-        self.style = style  # s[0], w[0], s[1]..., w[n], s[n+1]
+        self.style = style # None if conf(log_template.sym_ignore) is False
+        # s[0], w[0], s[1]..., w[n], s[n+1]
         self.cnt = cnt
+        self.sym = sym
 
-    def __str__(self): 
-        return "".join([s + w for w, s in zip(self.words + [""], self.style)])
-
-    def count(self):
-        self.cnt += 1
-    
-    def replace(self, l_w, l_s = None, count = None):
-        self.words = l_w
-        if l_s is not None:
-            self.style = l_s
-        if count is not None:
-            self.cnt = count
+    def __str__(self):
+        return self.restore_words(self.words)
 
     def len_variable(self):
         return sum(1 for w in self.words if w == self.sym)
-
-    def variable_location(self):
-        return [cnt for cnt, w in enumerate(self.words)\
-                if w == self.sym]
-
+    
     def get_variable(self, l_w):
         ret = []
         for e in zip(self.words, l_w):
@@ -52,28 +38,39 @@ class LTLine():
                 ret.append(e[1])
         return ret            
 
-    def restore(self, args):
+    def variable_location(self):
+        return [cnt for cnt, w in enumerate(self.words)\
+                if w == self.sym]
+
+    def restore_words(self, l_w):
+        if self.style is None:
+            return "".join(l_w)
+        else:
+            return "".join([s + w for w, s in zip(l_w, self.style)])
+
+    def restore_args(self, args):
         buf = self.__str__()
         for arg in args:
             buf = buf.replace(self.sym, arg, 1)
         return buf
 
-    def restore_wordlist(self, args):
-        l_arg = args[:]
-        ret = []
-        for w in self.words:
-            if w == self.sym:
-                ret.append(l_arg.pop(0))
-            else:
-                ret.append(w)
-        return ret
+    def count(self):
+        self.cnt += 1
+
+    def replace(self, l_w, l_s = None, count = None):
+        self.words = l_w
+        if l_s is not None:
+            self.style = l_s
+        if count is not None:
+            self.cnt = count
 
 
 class LTTable():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
-    def __init__(self):
+    def __init__(self, sym):
+        self.sym = sym
         self.ltdict = {}
 
     def __iter__(self):
@@ -107,7 +104,7 @@ class LTTable():
     def add_lt(self, ltwords, style, cnt = 1):
         ltid = self.next_ltid()
         assert not self.ltdict.has_key(ltid)
-        self.ltdict[ltid] = LTLine(ltid, ltwords, style, cnt)
+        self.ltdict[ltid] = LTLine(ltid, ltwords, style, cnt, self.sym)
         return ltid
 
     def count_lt(self, ltid):
@@ -123,14 +120,15 @@ class LTTable():
 class LTManager(object):
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    default_fn = _config.get("log_template", "db_filename")
 
-    def __init__(self, filename = None):
+    def __init__(self, conf, filename = None):
+        self.conf = conf
         if filename is None:
-            self.filename = self.default_fn
+            self.filename = self.conf.get("log_template", "db_filename")
         else:
             self.filename = filename
-        self.table = LTTable()
+        self.sym = self.conf.get("log_template", "variable_symbol")
+        self.table = LTTable(self.sym)
         self.ltgroup = None # LTGroup
 
     def show(self):
@@ -153,11 +151,6 @@ class LTManager(object):
                         gid, len(l_ltline), cnt)
                 print "\n".join(buf)
 
-    def generate_ltg(self):
-        if self.ltgroup is None:
-            yield self.table
-
-
     def process_line(self, l_w, l_s):
         # retrun ltline
         raise NotImplementedError
@@ -167,10 +160,12 @@ class LTManager(object):
         for fp in fslib.rep_dir(targets):
             with open(fp, 'r') as f:
                 for line in f:
-                    _logger.debug("line > {0}".format(line.rstrip("\n")))
-                    message, info = logheader.split_header(line.rstrip("\n"))
-                    if message is None: continue
-                    l_w, l_s = logsplitter.split(message)
+                    line = line.rstrip("\n")
+                    _logger.debug("line > {0}".format(line))
+                    #message, info = logheader.split_header(line)
+                    #if message is None: continue
+                    #l_w, l_s = logsplitter.split(message)
+                    dt, host, l_w, l_s = logparser.process_line(line)
                     self.process_line(l_w, l_s)
         self.dump()
 
@@ -271,9 +266,8 @@ class LTSearchTree():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
-    sym = VARIABLE_SYMBOL
-    
-    def __init__(self):
+    def __init__(self, sym):
+        self.sym = sym
         self.root = self._new_node()
 
     def __str__(self):
@@ -356,13 +350,13 @@ class LTSearchTree():
             return node.get_ltid()
 
 
-def merge_lt(m1, m2):
+def merge_lt(m1, m2, sym):
     #return common area of log message (to be log template)
     ret = []
     for w1, w2 in zip(m1, m2):
         if w1 == w2:
             ret.append(w1)
         else:
-            ret.append(VARIABLE_SYMBOL)
+            ret.append(sym)
     return ret
 

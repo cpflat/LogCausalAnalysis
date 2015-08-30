@@ -11,16 +11,15 @@ import lt_common
 import logheader
 import logsplitter
 
-_config = config.common_config()
 
 class LTManager(lt_common.LTManager):
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
-    def __init__(self, filename, past_targets):
-        super(LTManager, self).__init__(filename)
-        self.ltgen = VA(past_targets)
-        self.searchtree = lt_common.LTSearchTree()
+    def __init__(self, conf, past_targets, filename = None):
+        super(LTManager, self).__init__(conf, filename)
+        self.ltgen = LTGenVA(past_targets, self.sym)
+        self.searchtree = lt_common.LTSearchTree(self.sym)
 
     def process_line(self, l_w, l_s):
         ltw = self.ltgen.process_line(l_w)
@@ -33,12 +32,12 @@ class LTManager(lt_common.LTManager):
         return self.table[ltid]
 
 
-class VA():
+class LTGenVA():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    sym = _config.get("log_template", "variable_symbol")
     
-    def __init__(self, past_targets, th_mode = "median"):
+    def __init__(self, past_targets, sym, th_mode = "median"):
+        self.sym = sym
         self.th_mode = th_mode
         self.d_w = {}
         for fp in fslib.rep_dir(past_targets):
@@ -84,7 +83,8 @@ class VA():
 
 
 def test_make():
-    ltm = LTManager(None, "va_learn.temp")
+    conf = config.open_config("config.conf.default")
+    ltm = LTManager(conf, "va_learn.temp")
     ltm.process_dataset("test.temp")
     ltm.show()
 

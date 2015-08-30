@@ -10,61 +10,42 @@ in IEEE 10th International Conference on Services Computing, pp. 595–602, 2013
 import sys
 import os
 import logging
+import optparse
 import numpy
 
 import config
 import lt_common
 
-_config = config.common_config()
 _logger = logging.getLogger(__name__)
 
 class LTManager(lt_common.LTManager):
     
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
     
-    def __init__(self, filename = None):
-        super(LTManager, self).__init__(filename)
+    def __init__(self, conf, filename = None):
+        super(LTManager, self).__init__(conf, filename)
         self.ltgen = None
         self.ltgroup = None
 
-        self.ltgen_threshold = 0.9
-        self.ltgen_max_child = 4
-
-        self.ltgroup_nglength = 3
-        self.ltgroup_th_lookup = 0.3
-        self.ltgroup_th_distance = 0.85
-        self.ltgroup_mem_ngram = True
-
     def _init_ltgen(self):
         self.ltgen = LTGen(self.table,
-                threshold = self.ltgen_threshold,
-                max_child = self.ltgen_max_child
+                threshold = self.conf.getfloat(
+                    "log_template_shiso", "ltgen_threshold"),
+                max_child = self.conf.getint(
+                    "log_template_shiso", "ltgen_max_child")
                 )
         
     def _init_ltgroup(self):
         self.ltgroup = LTGroupSHISO(self.table,
-                ngram_length = self.ltgroup_nglength,
-                th_lookup = self.ltgroup_th_lookup,
-                th_distance = self.ltgroup_th_distance,
-                mem_ngram = self.ltgroup_mem_ngram
+                ngram_length = self.conf.getint(
+                    "log_template_shiso", "ltgroup_ngram_length"),
+                th_lookup = self.conf.getfloat(
+                    "log_template_shiso", "ltgroup_th_lookup"),
+                th_distance = self.conf.getfloat(
+                    "log_template_shiso", "ltgroup_th_distance"),
+                mem_ngram = self.conf.getboolean(
+                    "log_template_shiso", "ltgroup_mem_ngram")
                 )
-
-    def set_param_ltgen(self, threshold = None, max_child = None):
-        if threshold is not None:
-            self.ltgen_threshold = threshold
-        if max_child is not None:
-            self.ltgen_max_child = max_child
-
-    def set_param_ltgroup(self, ngram_length = None, th_lookup = None,
-            th_distance = None, mem_ngram = None):
-        if ngram_length is not None:
-            self.ltgroup_nglength = ngram_length
-        if th_lookup is not None:
-            self.ltgroup_th_lookup = th_lookup
-        if th_distance is not None:
-            self.ltgroup_th_distance = th_distance
-        if mem_ngram is not None:
-            self.ltgroup_mem_ngram = mem_ngram
 
     def process_line(self, l_w, l_s):
         if self.ltgen is None:
@@ -97,10 +78,10 @@ class LTGenNode():
 class LTGen():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    sym = _config.get("log_template", "variable_symbol")
     
-    def __init__(self, table, threshold, max_child):
+    def __init__(self, table, threshold = 0.9, max_child = 4):
         self.table = table
+        self.sym = self.table.sym
         self.n_root = self._new_node()
         self.threshold = threshold
         self.max_child = max_child
@@ -125,7 +106,7 @@ class LTGen():
                 if sr >= self.threshold:
                     _logger.debug(
                             "merged with ltid {0}".format(n_child.lt.ltid))
-                    new_lt = lt_common.merge_lt(nc_lt, l_w)
+                    new_lt = lt_common.merge_lt(nc_lt, l_w, self.sym)
                     if not new_lt == nc_lt:
                         n_child.lt.replace(new_lt, l_s)
                         _logger.debug(
@@ -146,7 +127,7 @@ class LTGen():
                 else:
                     _logger.debug("children : {0}".format(
                             [e.lt.ltid for e in n_parent.l_child]))
-                    l_sim = [(edit_distance(n_child.lt.words, l_w),
+                    l_sim = [(edit_distance(n_child.lt.words, l_w, self.sym),
                             n_child) for n_child in n_parent]
                     n_parent = max(l_sim, key=lambda x: x[0])[1]
                     _logger.debug("go down to node(ltid {0})".format(
@@ -217,24 +198,13 @@ class LTGen():
         else:
             return False
 
-    def merge_lt(self, m1, m2):
-        #return common area of log message (to be log template)
-        ret = []
-        for w1, w2 in zip(m1, m2):
-            if w1 == w2:
-                ret.append(w1)
-            else:
-                ret.append(self.sym)
-        return ret
-
 
 class LTGroupSHISO(lt_common.LTGroup):
-
-    sym = _config.get("log_template", "variable_symbol")
 
     def __init__(self, table, ngram_length = 3,
             th_lookup = 0.3, th_distance = 0.85, mem_ngram = True):
         super(LTGroupSHISO, self).__init__(table)
+        self.sym = self.table.sym
         #self.d_group = {} # key : groupid, val : [ltline, ...]
         #self.d_rgroup = {} # key : ltid, val : groupid
         self.ngram_length = ngram_length
@@ -264,7 +234,7 @@ class LTGroupSHISO(lt_common.LTGroup):
             assert lt_max is not None, "bad threshold for lt group lookup"
             _logger.debug("lt_max ltid : {0}".format(lt_max.ltid))
             ltw2 = lt_max.words
-            d = 2.0 * edit_distance(lt_new.words, lt_max.words) / \
+            d = 2.0 * edit_distance(lt_new.words, lt_max.words, self.sym) / \
                     (len(lt_new.words) + len(lt_max.words))
             _logger.debug("edit distance ratio : {0}".format(d))
             if d < self.th_distance:
@@ -319,9 +289,8 @@ class LTGroupSHISO(lt_common.LTGroup):
         return ret
 
 
-def edit_distance(m1, m2):
+def edit_distance(m1, m2, sym):
     # return levenshtein distance that allows wildcard
-    sym = lt_common.VARIABLE_SYMBOL
 
     table = [ [0] * (len(m2) + 1) for i in range(len(m1) + 1) ]
 
@@ -344,9 +313,8 @@ def edit_distance(m1, m2):
 
 
 def test_make():
-    ltm = LTManager(None)
-    ltm.set_param_ltgen(0.9, 4)
-    ltm.set_param_ltgroup(3, 0.3, 0.85, True)
+    conf = config.open_config("config.conf.default")
+    ltm = LTManager(conf)
     ltm.process_dataset("test.temp")
     ltm.show()
 
@@ -361,10 +329,18 @@ if __name__ == "__main__":
     #_logger.addHandler(ch)
     #test_make()
 
-    if len(sys.argv) < 2:
-        sys.exit("usage : {0} targets".format(sys.argv[0]))
-    ltm = LTManager(None)
-    ltm.process_dataset(sys.argv[1:])
+    usage = "usage: {0} [options] file...".format(sys.argv[0])
+    op = optparse.OptionParser(usage)
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+            help="configuration file path")
+    options, args = op.parse_args()
+    if len(args) < 1:
+        sys.exit(usage)
+
+    conf = config.open_config(options.conf)
+    ltm = LTManager(conf)
+    ltm.process_dataset(args)
     ltm.show()
 
 

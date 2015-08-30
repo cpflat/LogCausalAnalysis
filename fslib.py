@@ -24,6 +24,25 @@ def rep_dir(args):
         raise NotImplementedError
 
 
+def recur_dir(args):
+
+    def open_path(path):
+        if os.path.isdir(path):
+            ret = []
+            for fn in sorted(os.listdir(path)):
+                ret += open_path("/".join((arg, fn)))
+            return ret
+        else:
+            return [path]
+
+    if isinstance(args, list):
+        for arg in args:
+            ret = open_path(arg)
+    else:
+        ret = open_path(args)
+    return ret
+
+
 def mkdir(path):
     if not os.path.exists(path):
         os.mkdir(path)

@@ -20,11 +20,13 @@ class PCOutput():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
-    def __init__(self, dirname):
-        self.dirname = dirname
+    def __init__(self, conf):
+        self.conf = conf
         self.ldb = None
     
-    def make(self, graph, evmap, top_dt, end_dt, dur, area, threshold):
+    def make(self, graph, evmap, top_dt, end_dt, dur, area):
+
+        self.dirname = self.conf.get("dag", "output_dir")
         self.graph = graph
         self.d_edges, self.ud_edges = self._init_edges()
         
@@ -33,7 +35,7 @@ class PCOutput():
         self.end_dt = end_dt
         self.dur = dur
         self.area = area
-        self.threshold = threshold
+        self.threshold = self.conf.getfloat("dag", "threshold")
         
         self.filename = self._get_fn()
 
@@ -71,12 +73,12 @@ class PCOutput():
 
     def _init_ldb(self):
         if self.ldb is None:
-            self.ldb = log_db.ldb_manager()
+            self.ldb = log_db.ldb_manager(self.conf)
             self.ldb.open_lt()
 
     def _get_fn(self):
-        return pc_log.thread_name(self.dirname, self.top_dt, self.end_dt,
-                self.dur, self.area, self.threshold)
+        return pc_log.thread_name(self.conf, self.top_dt, self.end_dt,
+                self.dur, self.area)
 
     def _print_lt(self, eid, header = "lt"):
         ltgid, host = self.evmap.info(eid)
@@ -112,7 +114,7 @@ class PCOutput():
                 cnt = 0
                 for line in self.ldb.generate(ltline.ltid,
                         self.top_dt, self.end_dt, host, area):
-                    buf.append(line.restore_message())
+                    buf.append(line.restore_line())
                     cnt += 1
                     if limit is not None and cnt >= limit:
                         buf.append("...")
@@ -178,10 +180,12 @@ class PCOutput():
         print ">", fn
 
 
-def list_results(src_dir):
+def list_results(conf):
+    src_dir = conf.get("dag", "output_dir")
+ 
     print "datetime\t\tarea\tnodes\tedges\tfilepath"
     for fp in fslib.rep_dir(src_dir):
-        output = PCOutput(src_dir).load(fp)
+        output = PCOutput(conf).load(fp)
         print "\t".join((str(output.top_dt), output.area,
                 str(len(output.graph.nodes())),
                 str(len(output.graph.edges())), fp))
@@ -191,20 +195,23 @@ if __name__ == "__main__":
 
     src_dir = _config.get("dag", "default_output_dir")
 
-    usage = "usage: %s [options] <fn>" % sys.argv[0]
+    usage = "usage: %s [options] <filename>\n" % sys.argv[0] + \
+            "if no filename given, show abstraction of results"
     op = optparse.OptionParser(usage)
-    op.add_option("-d", action="store", dest="src_dir", type="string",
-            default=src_dir, help="output directory")
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+            help="configuration file path")
     op.add_option("-g", action="store", dest="graph_fn", type="string",
-            default=None, help="graph output")
+            default=None, help="output graph view")
     op.add_option("-l", action="store_true", dest="detail",
-            default=False, help="detail output")
+            default=False, help="output examples of log events")
     (options, args) = op.parse_args()
-    
+
+    conf = config.open_config(options.conf)
     if len(args) == 0:
-        list_results(options.src_dir)
+        list_results(conf)
     else:
-        output = PCOutput(options.src_dir).load(args[0])
+        output = PCOutput(conf).load(args[0])
         output.print_env() 
         output.print_result() 
         if options.detail:

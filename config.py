@@ -7,6 +7,7 @@ import datetime
 import collections
 import ConfigParser
 
+DEFAULT_CONFIG_NAME = "config.conf"
 
 class ExtendedConfigParser(ConfigParser.SafeConfigParser):
 
@@ -174,7 +175,7 @@ def str2dur(string):
 
 
 # singleton config instance, to be shared in whole system
-_fn = "config.conf"
+_fn = DEFAULT_CONFIG_NAME
 if not os.path.exists(_fn):
     raise IOError("common configuration file {0} not found".format(_fn))
 _config = ExtendedConfigParser(noopterror = False)
@@ -182,4 +183,9 @@ _config.read(_fn)
 
 def common_config():
     return _config
+
+def open_config(fn, noopterror = False):
+    conf = ExtendedConfigParser(noopterror = noopterror)
+    conf.read(fn)
+    return conf
 

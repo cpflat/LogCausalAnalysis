@@ -6,41 +6,39 @@ import os
 import datetime
 import sqlite3
 import logging
+import optparse
 #import cPickle as pickle
 
 import config
 import fslib
 import lt_shiso as lt
-import logsplitter
-import logheader
+import logparser
+#import logsplitter
+#import logheader
 
-_config = config.common_config()
 _logger = logging.getLogger(__name__)
 
 class LogMessage():
 
     __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
-    def __init__(self, ltins, ltid, ltgid, dt, host, args):
+    def __init__(self, ltins, ltid, ltgid, dt, host, l_w):
         self.lt = ltins
         self.ltid = ltid
         self.ltgid = ltgid
         self.dt = dt
         self.host = host
-        self.args = args
+        self.l_w = l_w
 
     def __str__(self):
         return " ".join((str(self.dt), self.host, str(self.ltid),\
-                str(self.args)))
+                str(self.l_w)))
 
     def restore(self):
-        return self.lt.table[self.ltid].restore(self.args)
+        return self.lt.table[self.ltid].restore_words(self.l_w)
 
-    def restore_message(self):
+    def restore_line(self):
         return " ".join((str(self.dt), str(self.host), self.restore()))
-
-    def restore_wordlist(self):
-        return self.lt.table[self.ltid].restore_wordlist(self.args)
 
     def verify_ltid(self, ltid):
         return (ltid is None) or (self.ltid == ltid)
@@ -57,78 +55,79 @@ class LogMessage():
                 self.verify_host(host)
 
 
-class LogList():
+#class LogList():
+#
+#    __module__ = os.path.splitext(os.path.basename(__file__))[0]
+#
+#    def __init__(self, ltins):
+#        self.lt = ltins
+#        self.l_line = []
+#
+#    def __iter__(self):
+#        self.itercnt = 0
+#        self.plen = len(self.l_line)
+#        return self
+#
+#    def __next__(self):
+#        return self.next()
+#
+#    def next(self):
+#        if self.itercnt >= self.plen:
+#            raise StopIteration
+#        ret = self.l_line[self.itercnt]
+#        self.itercnt += 1
+#        return ret
+#
+#    def __len__(self):
+#        return len(self.l_line)
+#
+#    def add(self, elem):
+#        self.l_line.append(elem)
+#
+#    def merge(self, other):
+#        self.l_line.extend(other.l_line)
+#
+#    def get(self, ltid, top_dt, end_dt, host):
+#        ret = LogList(self.lt)
+#        for line in self.l_line:
+#            if line.verify(ltid, top_dt, end_dt, host):
+#                ret.add(line)
+#        return ret
 
-    __module__ = os.path.splitext(os.path.basename(__file__))[0]
 
-    def __init__(self, ltins):
-        self.lt = ltins
-        self.l_line = []
-
-    def __iter__(self):
-        self.itercnt = 0
-        self.plen = len(self.l_line)
-        return self
-
-    def __next__(self):
-        return self.next()
-
-    def next(self):
-        if self.itercnt >= self.plen:
-            raise StopIteration
-        ret = self.l_line[self.itercnt]
-        self.itercnt += 1
-        return ret
-
-    def __len__(self):
-        return len(self.l_line)
-
-    def add(self, elem):
-        self.l_line.append(elem)
-
-    def merge(self, other):
-        self.l_line.extend(other.l_line)
-
-    def get(self, ltid, top_dt, end_dt, host):
-        ret = LogList(self.lt)
-        for line in self.l_line:
-            if line.verify(ltid, top_dt, end_dt, host):
-                ret.add(line)
-        return ret
-
-
-class LogDBManager(object):
-
-    def __init__(self, ltfn = None):
-        self._init_lt(ltfn)
-
-    def _init_lt(self, ltfn):
-        self.lt = lt.LTManager(ltfn)
-        #self.lt.set_param_ltgen(0.9, 4)
-
-    def open_lt(self, fn = None):
-        self.lt.load() 
-
-    def _init_db(self):
-        raise NotImplementedError
-
-    def formatdb(self):
-        raise NotImplementedError
-
-    def add(self, ltid, dt, host, args):
-        raise NotImplementedError
-
-    def commit(self):
-        raise NotImplementedError
-
-    def get(self, ltid = None, top_dt = None, end_dt = None,
-            host = None, area = None):
-        raise NotImplementedError
-
-    def generate(self, ltid = None, top_dt = None, end_dt = None,
-            host = None, area = None):
-        raise NotImplementedError
-
+#class LogDBManager(object):
+#
+#    def __init__(self, conf, ltfn = None):
+#        self.conf = conf
+#        self._init_lt(ltfn)
+#
+#    def _init_lt(self, ltfn):
+#        self.lt = lt.LTManager(ltfn)
+#        #self.lt.set_param_ltgen(0.9, 4)
+#
+#    def open_lt(self, fn = None):
+#        self.lt.load() 
+#
+#    def _init_db(self):
+#        raise NotImplementedError
+#
+#    def formatdb(self):
+#        raise NotImplementedError
+#
+#    def add(self, ltid, dt, host, args):
+#        raise NotImplementedError
+#
+#    def commit(self):
+#        raise NotImplementedError
+#
+#    def get(self, ltid = None, top_dt = None, end_dt = None,
+#            host = None, area = None):
+#        raise NotImplementedError
+#
+#    def generate(self, ltid = None, top_dt = None, end_dt = None,
+#            host = None, area = None):
+#        raise NotImplementedError
+#
 
 #class LogDBManagerPickle(LogDBManager):
 #
@@ -208,13 +207,21 @@ class LogDBManager(object):
 #        return data
 
 
-class LogDBManagerSQL(LogDBManager):
+class LogDBManager():
 
-    def __init__(self, ltfn = None, dbfn = None):
-        super(LogDBManagerSQL, self).__init__(ltfn)
+    def __init__(self, conf, dbfn = None, ltfn = None):
+        self.conf = conf
         if dbfn is None:
-            dbfn = _config.get("database", "db_filename")
-        self.dbfn = dbfn
+            self.dbfn = self.conf.get("database", "db_filename")
+        else:
+            self.dbfn = dbfn
+        if ltfn is None:
+            self.ltfn = self.conf.get("log_template", "db_filename")
+        else:
+            self.ltfn = ltfn
+        self.splitter = self.conf.get("database", "split_symbol")
+
+        self._init_lt(ltfn)
         if os.path.exists(self.dbfn):
             self._open()
         else:
@@ -223,6 +230,12 @@ class LogDBManagerSQL(LogDBManager):
 
     def __del__(self):
         self._close()
+
+    def _init_lt(self, ltfn):
+        self.lt = lt.LTManager(self.conf, self.ltfn)
+    
+    def open_lt(self, fn = None):
+        self.lt.load() 
 
     def _open(self):
         self.connect = sqlite3.connect(self.dbfn)
@@ -235,7 +248,7 @@ class LogDBManagerSQL(LogDBManager):
                 ltid integer,
                 dt text,
                 host text,
-                args text
+                words text
             );
         """
         self.connect.execute(sql)
@@ -249,20 +262,20 @@ class LogDBManagerSQL(LogDBManager):
         self._open()
         self._initdb()
 
-    def add(self, ltid, dt, host, args):
+    def add(self, ltid, dt, host, words):
         sql = u"""
-            insert into db (ltid, dt, host, args) values (
+            insert into db (ltid, dt, host, words) values (
                 :ltid,
                 :dt,
                 :host,
-                :args
+                :words
             );
         """
         sqlv = {
             "ltid" : ltid,
             "dt" : dt.strftime('%Y-%m-%d %H:%M:%S'),
             "host" : host,
-            "args" : ",".join(args)
+            "words" : self.splitter.join(words)
         }
         self.connect.execute(sql, sqlv)
 
@@ -311,7 +324,7 @@ class LogDBManagerSQL(LogDBManager):
         self.connect.commit()
 
     def areadb(self):
-        areadict = config.GroupDef(_config.get("database", "area_filename"))
+        areadict = config.GroupDef(self.conf.get("database", "area_filename"))
         try:
             sql = u"""
                 create table area (
@@ -375,11 +388,13 @@ class LogDBManagerSQL(LogDBManager):
         dt = datetime.datetime.strptime(line[2], '%Y-%m-%d %H:%M:%S')
         host = line[3]
         if line[4] == "":
-            args = []
+            l_w = []
         else:
-            args = self.lt.table[ltid].get_variable(line[4].split(","))
+            l_w = line[4].split(self.splitter)
+            #args = self.lt.table[ltid].get_variable(
+            #        line[4].split(self.splitter))
             #args = line[4].split(",")
-        return lid, LogMessage(self.lt, ltid, ltgid, dt, host, args)
+        return lid, LogMessage(self.lt, ltid, ltgid, dt, host, l_w)
 
     # Notice : use generate to avoid memory excess
     def get(self, ltid = None, top_dt = None, end_dt = None, \
@@ -414,21 +429,14 @@ class LogDBManagerSQL(LogDBManager):
             if wordlist == "":
                 yield []
             else:
-                yield wordlist.split(",")
+                yield wordlist.split(self.splitter)
 
 
-def ldb_manager(ltfn = None):
-    return LogDBManagerSQL(ltfn, _config.get("database", "db_filename"))
-    #if SQLFLAG:
-    #    return LogDBManagerSQL()
-    #else:
-    #    return LogDBManagerPickle()
+def ldb_manager(conf):
+    return LogDBManager(conf)
 
 
-def db_add(ldb, line):
-    message, info = logheader.split_header(line)
-    if message is None: return
-    l_w, l_s = logsplitter.split(message)
+def db_add(ldb, dt, host, l_w, l_s):
     ltline = ldb.lt.process_line(l_w, l_s)
     if ltline.ltid is None:
         _logger.warning(
@@ -436,17 +444,20 @@ def db_add(ldb, line):
     else:
         #l_var = ldb.lt.table[ltid].get_variable(l_w)
         #ldb.add(ltid, info["timestamp"], info["hostname"], l_var)
-        ldb.add(ltline.ltid, info["timestamp"], info["hostname"], l_w)
+        ldb.add(ltline.ltid, dt, host, l_w)
 
 
-def construct_db(targets):
-    ldb = ldb_manager()
+def construct_db(conf_name, targets):
+    conf = config.open_config(conf_name)
+    lp = logparser.LogParser(conf)
+    ldb = ldb_manager(conf)
     ldb.formatdb()
     for fn in fslib.rep_dir(targets):
         with open(fn, 'r') as f:
             for line in f:
                 line = line.rstrip("\n")
-                db_add(ldb, line)
+                dt, host, l_w, l_s = lp.process_line(line)
+                db_add(ldb, dt, host, l_w, l_s)
     ldb.areadb()
     ldb.commit()
     ldb.lt.dump()
@@ -457,20 +468,16 @@ def area_db():
     ldb.areadb()
 
 
-def test_make():
-    if not os.path.exists(_config.get("log_template", "db_filename")):
-        import lt_generate
-        lt_generate.test_make()
-    construct_db("test.temp")
-
-
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        sys.exit("usage: {0} targets...".format(sys.argv[0]))
-    if sys.argv[1] == "--test":
-        test_make()
-        sys.exit()
-    targets = sys.argv[1:]
-    construct_db(targets)
+    usage = "usage: {0} [options] file...".format(sys.argv[0])
+    op = optparse.OptionParser(usage)
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+            help="configuration file path")
+    options, args = op.parse_args()
+    if len(args) < 1:
+        sys.exit(usage)
+    
+    construct_db(options.conf, args)
 
 

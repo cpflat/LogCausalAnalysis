@@ -6,15 +6,16 @@ import optparse
 import time
 import datetime
 
+import config
 import log_db
 
-def view(ltid, top_dt, end_dt, host, area, oflag):
+def view(conf, ltid, top_dt, end_dt, host, area, oflag):
 
-    ldb = log_db.ldb_manager()
+    ldb = log_db.ldb_manager(conf)
     ldb.open_lt()
     for e in ldb.generate(ltid, top_dt, end_dt, host, area):
         if oflag:
-            print e.restore_message()
+            print e.restore_line()
         else:
             print e
 
@@ -22,10 +23,13 @@ def view(ltid, top_dt, end_dt, host, area, oflag):
 if __name__ == "__main__":
     usage = "usage: %s [options]" % sys.argv[0]
     op = optparse.OptionParser(usage)
-    op.add_option("-l", "--ltid", action="store", dest="ltid", type="int",
-            default=None, help="Log template group identifier")
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+            help="configuration file path")
     op.add_option("-a", "--area", action="store", dest="area", type="string",
             default=None, help="Host area name")
+    op.add_option("-l", "--ltid", action="store", dest="ltid", type="int",
+            default=None, help="Log template group identifier")
     op.add_option("-n", "--host", action="store", dest="host", type="string",
             default=None, help="Hostname")
     op.add_option("-d", "--date", action="store", dest="date", type="string",
@@ -35,8 +39,9 @@ if __name__ == "__main__":
     op.add_option("-o", "--original", action="store_true", dest="oflag",
             default=False, help="output as original log message")
     (options, args) = op.parse_args()
-    if len(sys.argv) == 1: sys.exit(usage)
-    
+    if len(sys.argv) == 1: sys.exit(usage) # No option, avoid all dump
+
+    conf = config.open_config(options.conf)
     if options.date is not None and options.month is not None:
         raise ValueError("date and month are competitive, use either")
     elif options.date is not None:
@@ -50,6 +55,6 @@ if __name__ == "__main__":
     else:
         top_dt = None; end_dt = None
 
-    view(options.ltid, top_dt, end_dt, options.host, \
+    view(conf, options.ltid, top_dt, end_dt, options.host, \
             options.area, options.oflag)
 

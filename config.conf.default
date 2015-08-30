@@ -4,6 +4,11 @@
 # Classified log database
 db_filename = log.db
 
+# Store log data with following splitter symbol string
+# If log_template.sym_ignore is False,
+# use symbol that will not appear in raw log messages
+split_symbol = @@
+
 # Network area groups of host names
 # For exapmle:
 # area_filename = area_def.txt
@@ -29,8 +34,33 @@ db_filename = lt.dump
 # Definition file of symbol strings to split log messages
 sym_filename = symdef.txt
 
+# Ignore splitting symbol strings in log template generation
+sym_ignore = false
+
 # Symbol string to abstract variable strings in log templates
+# that will not appear in raw log messages
 variable_symbol = **
+
+
+[log_template_shiso]
+
+# Threshold for SeqRatio in Search Phase
+ltgen_threshold = 0.9
+
+# Max child size of 1 node of tree in Search Phase
+ltgen_max_child = 4
+
+# Size of Ngram in Adjustment Phase
+ltgroup_ngram_length = 3
+
+# Lookup threshold for Ngram in Adjustment Phase
+ltgroup_th_lookup = 0.3
+
+# Threshold for edit distance in Adjustment Phase
+ltgroup_th_distance = 0.85
+
+# Keep found ngram database on memory
+ltgroup_mem_ngram = true
 
 
 [dag]
@@ -46,19 +76,19 @@ whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
 area = all
 
 # Length of unit terms to construct DAG
-default_term = 30h
+unit_term = 30h
 
 # Length of time difference of unit terms
-default_diff = 24h
+unit_diff = 24h
 
 # Bin size of discrete data for G square test
-default_dur = 10s
+stat_bin = 10s
 
 # Threshold of G square test to find conditional dependency
 threshold = 0.01
 
 # Found DAG object data
-default_output_dir = pc_output
+output_dir = pc_output
 
 # Log template IDs to be removed from input log data
 # For example:
