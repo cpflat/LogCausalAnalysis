@@ -70,6 +70,7 @@ class LogParser():
             return False
 
     def _part(self, string):
+        # partition if string have splitter
         for cnt, c in enumerate(string):
             if c in self.spl:
                 return string[0:cnt], string[cnt], string[cnt+1:]
@@ -83,6 +84,7 @@ class LogParser():
         return string, None, None
 
     def _split_word(self, string):
+        # partition string recursively and label them
         w1, s, w2 = self._part(string)
         if w2 is None:
             assert s is None
@@ -94,6 +96,9 @@ class LogParser():
 
     @staticmethod
     def _merge_sym(l_elem):
+        # merge continuous symbol strings
+        # input : splited strings and labels(w or s)
+        # output : sequence of words and symbol strings
         l_w = []
         l_s = []
         temp = []
@@ -118,13 +123,13 @@ class LogParser():
         if self.sym_ignore:
             return l_w, l_s
         else:
+            # restore order of l_w and l_s, and return it as l_w (l_s is None)
+            # s[0], w[0], s[1], w[1], ..., s[n], w[n], s[n+1]
             ret = []
-            for w, s in zip(l_w, l_s[:-1]):
-                if not s == "":
-                    ret.append(s)
-                ret.append(w)
-            if not s == 2:
-                ret.append(s[-1])
+            for w, s in zip(l_w + [""], l_s):
+                for c in (s, w):
+                    if not c == "":
+                        ret.append(c)
             return ret, None
             #return [i[0] for i in ret if not i[0] == ""], None
 
@@ -164,7 +169,8 @@ class LogParser():
             host, line = pop_string(line)
             message = line
             dt = datetime.datetime(year = year, month = month, day = day, 
-                    hour = hour, minute = minute, second = second, microsecond = 0)
+                    hour = hour, minute = minute,
+                    second = second, microsecond = 0)
 
         return dt, host, message
 
