@@ -155,7 +155,7 @@ class LogParser():
                 month_str, line = pop_string(line)
                 month = str2month(month_str)
             else:
-                year = _set_year()
+                year = self._set_year()
                 month = str2month(string)
             day_str, line = pop_string(line)
             day = int(day_str)
