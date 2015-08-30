@@ -447,13 +447,13 @@ def db_add(ldb, dt, host, l_w, l_s):
         ldb.add(ltline.ltid, dt, host, l_w)
 
 
-def construct_db(conf_name, targets):
+def construct_db(conf_name, l_fp):
     conf = config.open_config(conf_name)
     lp = logparser.LogParser(conf)
     ldb = ldb_manager(conf)
     ldb.formatdb()
-    for fn in fslib.rep_dir(targets):
-        with open(fn, 'r') as f:
+    for fp in l_fp:
+        with open(fp, 'r') as f:
             for line in f:
                 line = line.rstrip("\n")
                 dt, host, l_w, l_s = lp.process_line(line)
@@ -474,10 +474,16 @@ if __name__ == "__main__":
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
+    op.add_option("-r", action="store_true", dest="recur",
+            default=False, help="search log file recursively")
     options, args = op.parse_args()
     if len(args) < 1:
         sys.exit(usage)
     
-    construct_db(options.conf, args)
+    if options.recur:
+        l_file = fslib.recur_dir(args)
+    else:
+        l_file = fslib.rep_dir(args)
+    construct_db(options.conf, l_file)
 
 
