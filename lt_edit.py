@@ -11,8 +11,19 @@ import lt_common
 MAX_ARG_VARIETY = 10
 
 
-def show_lt(ldb):
+def show_all(ldb):
     ldb.lt.show()
+
+
+def show_lt(ldb):
+    ldb.lt.show_all_lt()
+
+
+def show_ltg(ldb, gid):
+    if gid is None:
+        ldb.lt.show_all_group()
+    else:
+        ldb.lt.show_group(gid)
 
 
 def breakdown_ltid(ldb, ltid):
@@ -64,6 +75,7 @@ def merge_ltid(ldb, ltid1, ltid2, sym):
 
     print("> new log template : ltid {0}".format(ltid1))
     print("ltid {0} : {1}".format(ltid1, str(ldb.lt.table[ltid1])))
+
 
 def separate_ltid(ldb, ltid, vid, value):
 
@@ -122,7 +134,14 @@ if __name__ == "__main__":
     ldb = log_db.ldb_manager(conf)
     ldb.open_lt()
     if mode == "show":
+        show_all(ldb)
+    elif mode == "show-lt":
         show_lt(ldb)
+    elif mode == "show-group":
+        if len(args) <= 1:
+            show_ltg(ldb, None)
+        else:
+            show_ltg(ldb, int(args[1]))
     elif mode == "breakdown":
         if len(args) <= 1:
             sys.exit("give me ltid, following \"{0}\"".format(mode))

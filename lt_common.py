@@ -131,28 +131,44 @@ class LTManager(object):
         self.table = LTTable(self.sym)
         self.ltgroup = None # LTGroup
 
+    @staticmethod
+    def _str_ltline(line):
+        return " ".join((str(line.ltid), str(line),
+                "({0})".format(line.cnt)))
+
+    def _str_group(self, gid):
+        length = len(self.ltgroup.get_lt(gid))
+        cnt = self.ltgroup.get_count(gid)
+        rep = self.ltgroup.rep(gid)
+        return "[ltgroup {0} ({1}, {2}) {3}]".format(gid, length, cnt, rep)
+
     def show(self):
-        
-        def print_line(line):
-            return " ".join((str(line.ltid), str(line),
-                    "({0})".format(line.cnt)))
-        
         if self.ltgroup is None:
             for ltline in self.table:
-                print_line(ltline)
+                self._str_ltline(ltline)
         else:
-            for gid, l_ltline in self.ltgroup.iteritems():
-                cnt = 0
-                buf = []
-                for ltline in l_ltline:
-                    buf.append(print_line(ltline))
-                    cnt += ltline.cnt
-                print "[log template group {0} ({1}, {2})]".format(\
-                        gid, len(l_ltline), cnt)
-                print "\n".join(buf)
+            for gid in self.ltgroup:
+                self.show_group(gid)
+
+    def show_group(self, gid):
+        buf = []
+        for ltline in self.ltgroup.get_lt(gid):
+            buf.append(self._str_ltline(ltline))
+        print self._str_group(gid)
+        print "\n".join(buf)
+
+    def show_all_lt(self):
+        for ltline in self.table:
+            print self._str_ltline(ltline)
+
+    def show_all_group(self):
+        if self.ltgroup is None:
+            _logger.warning("ltgroup not used")
+        for gid in self.ltgroup:
+            print self._str_group(gid)
 
     def process_line(self, l_w, l_s):
-        # retrun ltline
+        # return ltline
         raise NotImplementedError
 
     def process_dataset(self, targets):
@@ -162,10 +178,8 @@ class LTManager(object):
                 for line in f:
                     line = line.rstrip("\n")
                     _logger.debug("line > {0}".format(line))
-                    #message, info = logheader.split_header(line)
-                    #if message is None: continue
-                    #l_w, l_s = logsplitter.split(message)
                     dt, host, l_w, l_s = logparser.process_line(line)
+                    if l_w is None: continue
                     self.process_line(l_w, l_s)
         self.dump()
 
@@ -196,7 +210,7 @@ class LTGroup(object):
 
     def _generator(self):
         for gid in self.d_group.keys():
-            yield self.d_group[gid]
+            yield gid
 
     def __getitem__(self, gid):
         assert isinstance(gid, int)
@@ -209,6 +223,25 @@ class LTGroup(object):
 
     def get_gid(self, ltid):
         return self.d_rgroup[ltid]
+
+    def get_count(self, gid):
+        return sum([ltline.cnt for ltline in self.d_group[gid]])
+
+    def rep(self, gid):
+        # return representative lt in given group
+        # lt with smallest id in lts of shortest length
+        min_len = None
+        l_ltline = []
+        for ltline in self.d_group[gid]:
+            if min_len is None:
+                min_len = len(ltline.words)
+                l_ltline.append(ltline)
+            elif len(ltline.words) == min_len:
+                l_ltline.append(ltline)
+            elif len(lt.words) < min_len:
+                min_len = len(ltline.words)
+                l_ltline = [ltline]
+        return min(l_ltline, key=lambda ltline: ltline.ltid)
 
     def iteritems(self):
         for gid in self.d_group.keys():

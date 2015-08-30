@@ -457,6 +457,7 @@ def construct_db(conf_name, l_fp):
             for line in f:
                 line = line.rstrip("\n")
                 dt, host, l_w, l_s = lp.process_line(line)
+                if l_w is None: continue
                 db_add(ldb, dt, host, l_w, l_s)
     ldb.areadb()
     ldb.commit()
