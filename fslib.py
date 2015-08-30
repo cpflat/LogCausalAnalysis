@@ -30,7 +30,7 @@ def recur_dir(args):
         if os.path.isdir(path):
             ret = []
             for fn in sorted(os.listdir(path)):
-                ret += open_path("/".join((arg, fn)))
+                ret += open_path("/".join((path, fn)))
             return ret
         else:
             return [path]
