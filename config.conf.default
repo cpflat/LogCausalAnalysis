@@ -35,7 +35,7 @@ db_filename = lt.dump
 sym_filename = symdef.txt
 
 # Ignore splitting symbol strings in log template generation
-sym_ignore = false
+sym_ignore = true
 
 # Symbol string to abstract variable strings in log templates
 # that will not appear in raw log messages
