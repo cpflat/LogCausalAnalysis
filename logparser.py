@@ -150,7 +150,7 @@ class LogParser():
         else:
             # (2112) Sep 01 10:00:00 hostname messages...
             string, line = pop_string(line)
-            if RE_YEAR.match(string):
+            if self.re_year.match(string):
                 year = int(string)
                 month_str, line = pop_string(line)
                 month = str2month(month_str)
