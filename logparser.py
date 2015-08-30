@@ -59,7 +59,7 @@ class LogParser():
         if self.default_year is None:
             return datetime.datetime.today().year
         else:
-            return default_year
+            return self.default_year
     
     def _re_cspl(self, string):
         # judge string is a variable or complex word to be parted
