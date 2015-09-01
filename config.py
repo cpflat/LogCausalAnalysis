@@ -4,6 +4,7 @@
 import sys
 import os
 import datetime
+import logging
 import collections
 import ConfigParser
 
@@ -190,4 +191,28 @@ def open_config(fn, noopterror = False):
     conf = ExtendedConfigParser(noopterror = noopterror)
     conf.read(fn)
     return conf
+
+
+# common objects for logging
+def set_common_logging(conf, logger = None, l_logger_name = None):
+    fn = conf.get("general", "info_log")
+    fmt = logging.Formatter(
+            fmt = "%(asctime)s %(levelname)s (%(threadName)s) %(message)s",
+            datefmt = "%Y-%m-%d %H:%M:%S")
+    lv = logging.INFO
+    if fn is None:
+        ch = logging.StreamHandler()
+    else:
+        ch = logging.FileHandler(fn)
+    ch.setFormatter(fmt)
+    ch.setLevel(lv)
+    if logger is not None:
+        logger.setLevel(lv)
+        logger.addHandler(ch)
+    if l_logger_name is not None:
+        for ln in l_logger_name:
+            temp = logging.getLogger(ln)
+            temp.setLevel(lv)
+            temp.addHandler(ch)
+    return
 

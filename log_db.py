@@ -442,18 +442,17 @@ def db_add(ldb, dt, host, l_w, l_s):
         _logger.warning(
                 "Log template not found for message [{0}]".format(line))
     else:
-        #l_var = ldb.lt.table[ltid].get_variable(l_w)
-        #ldb.add(ltid, info["timestamp"], info["hostname"], l_var)
         ldb.add(ltline.ltid, dt, host, l_w)
 
 
-def construct_db(conf_name, l_fp):
-    conf = config.open_config(conf_name)
+def construct_db(conf, l_fp):
+    _logger.info("log_db task start")
     lp = logparser.LogParser(conf)
     ldb = ldb_manager(conf)
     ldb.formatdb()
     for fp in l_fp:
         with open(fp, 'r') as f:
+            _logger.info("log_db processing {0}".format(fp))
             for line in f:
                 line = line.rstrip("\n")
                 dt, host, l_w, l_s = lp.process_line(line)
@@ -462,6 +461,7 @@ def construct_db(conf_name, l_fp):
     ldb.areadb()
     ldb.commit()
     ldb.lt.dump()
+    _logger.info("log_db task done")
 
 
 def area_db():
@@ -481,10 +481,13 @@ if __name__ == "__main__":
     if len(args) < 1:
         sys.exit(usage)
     
+    usage = "usage: {0} [options] file...".format(sys.argv[0])
+    conf = config.open_config(options.conf)
+    config.set_common_logging(conf, _logger, ["lt_shiso", "lt_common"])
     if options.recur:
         l_file = fslib.recur_dir(args)
     else:
         l_file = fslib.rep_dir(args)
-    construct_db(options.conf, l_file)
+    construct_db(conf, l_file)
 
 

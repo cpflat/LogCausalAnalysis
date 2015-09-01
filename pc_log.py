@@ -7,7 +7,6 @@ import datetime
 import optparse
 import threading
 import logging
-import logging.config
 
 import config
 import fslib
@@ -20,7 +19,7 @@ _logger = logging.getLogger(__name__)
 
 def pc_log(conf, top_dt, end_dt, dur, area):
 
-    _logger.debug("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
+    _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
 
     edict, evmap = log2event.log2event(conf, top_dt, end_dt, dur, area)
     
@@ -28,14 +27,14 @@ def pc_log(conf, top_dt, end_dt, dur, area):
     if len(edict) > 2:
         graph = pc_input.pc(edict, threshold)
     else:
-        _logger.debug("insufficient events({0}), return empty dag".format(\
+        _logger.info("insufficient events({0}), return empty dag".format(\
                 len(edict)))
         graph = pc_input.empty_dag()
 
     output = pcresult.PCOutput(conf)
     output.make(graph, evmap, top_dt, end_dt, dur, area)
     output.dump()
-    _logger.debug("job done, output {0}".format(output.filename))
+    _logger.info("job done, output {0}".format(output.filename))
     return output
 
 
@@ -70,7 +69,7 @@ def pc_all_args(conf):
 
 def pc_mthread(l_args, pal=1):
 
-    _logger.debug("task start ({0} jobs)".format(len(l_args)))
+    _logger.info("pc_log task start ({0} jobs)".format(len(l_args)))
 
     l_thread = [threading.Thread(name = thread_name(*args),
         target = pc_log, args = args) for args in l_args]
@@ -88,10 +87,10 @@ def pc_mthread(l_args, pal=1):
         for job in l_job:
             job.join()
 
+    _logger.info("pc_log task done")
+
 
 if __name__ == "__main__":
-    logging.config.fileConfig("logging.conf")
-
     usage = "usage: %s [options]" % sys.argv[0]
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
@@ -104,6 +103,8 @@ if __name__ == "__main__":
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
+    config.set_common_logging(conf, _logger, [])
+
     fslib.mkdir(conf.get("dag", "output_dir"))
     l_args = pc_all_args(conf)
     pc_mthread(l_args, options.pal)
