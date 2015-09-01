@@ -238,7 +238,7 @@ class LTGroup(object):
                 l_ltline.append(ltline)
             elif len(ltline.words) == min_len:
                 l_ltline.append(ltline)
-            elif len(lt.words) < min_len:
+            elif len(ltline.words) < min_len:
                 min_len = len(ltline.words)
                 l_ltline = [ltline]
         return min(l_ltline, key=lambda ltline: ltline.ltid)
