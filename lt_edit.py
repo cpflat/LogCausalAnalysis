@@ -26,6 +26,14 @@ def show_ltg(ldb, gid):
         ldb.lt.show_group(gid)
 
 
+def show_sort(ldb):
+    buf = []
+    for ltline in ldb.lt.table:
+        buf.append(str(ltline))
+    buf.sort()
+    print "\n".join(buf)
+
+
 def breakdown_ltid(ldb, ltid):
     d_args = {}
     for line in ldb.generate(ltid = ltid):
@@ -142,6 +150,8 @@ if __name__ == "__main__":
             show_ltg(ldb, None)
         else:
             show_ltg(ldb, int(args[1]))
+    elif mode == "show-sort":
+        show_sort(ldb)
     elif mode == "breakdown":
         if len(args) <= 1:
             sys.exit("give me ltid, following \"{0}\"".format(mode))
