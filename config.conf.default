@@ -103,6 +103,12 @@ output_dir = pc_output
 use_filter = 
 
 
+[visual]
+
+# Log template label definition
+ltlabel = lt_label.conf
+
+
 [filter]
 # Options for constructing filters to remove regular log messages
 # by calculating self-correlation of each log events

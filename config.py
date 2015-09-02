@@ -36,7 +36,13 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
             return ret
 
     def read(self, fn):
-        return self._conf.read(fn)
+        if not os.path.exists(fn):
+            raise IOError
+        else:
+            return self._conf.read(fn)
+
+    def sections(self):
+        return getattr(self._conf, sys._getframe().f_code.co_name)()
 
     def get(self, section, name):
         return self._call_method(sys._getframe().f_code.co_name, section, name)
