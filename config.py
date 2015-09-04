@@ -8,7 +8,7 @@ import logging
 import collections
 import ConfigParser
 
-DEFAULT_CONFIG_NAME = "config.conf"
+DEFAULT_CONFIG_NAME = "config.conf.default"
 
 class ExtendedConfigParser(ConfigParser.SafeConfigParser):
 
