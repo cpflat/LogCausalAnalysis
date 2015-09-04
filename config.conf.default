@@ -1,6 +1,13 @@
 
 [general]
 
+# Source log data path
+src_path = test.temp, test2.temp
+
+# Search source path recursively
+# If false, only search right under the given directory
+src_recur = false
+
 # Processing log output path (not dataset but log of this system)
 # If blank, output log on stdout
 info_log = auto.log

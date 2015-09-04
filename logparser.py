@@ -182,6 +182,20 @@ class LogParser():
         return dt, host, l_word, l_symbol
 
 
+def test_parse(conf):
+    LP = LogParser(conf)
+    ret = []
+    if conf.getboolean("general", "src_recur"):
+        l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
+    else:
+        l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
+    for fp in l_fp:
+        with open(fp, 'r') as f:
+            for line in f:
+                ret.append(LP.process_line(line.rstrip("\n")))
+    return ret
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         sys.exit("usage: {0} config targets".format(sys.argv[0]))

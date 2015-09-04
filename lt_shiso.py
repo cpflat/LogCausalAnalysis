@@ -14,6 +14,7 @@ import optparse
 import numpy
 
 import config
+import fslib
 import lt_common
 
 _logger = logging.getLogger(__name__)
@@ -310,6 +311,22 @@ def edit_distance(m1, m2, sym):
             table[i][j] = min(table[i - 1][j] + 1, table[i][ j - 1] + 1, \
                     table[i - 1][j - 1] + cost)
     return table[-1][-1]
+
+
+def test_ltgen(conf):
+    import logparser
+    lp = logparser.LogParser(conf)
+    ltm = LTManager(conf)
+    if conf.getboolean("general", "src_recur"):
+        l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
+    else:
+        l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
+    for fp in l_fp:
+        with open(fp, 'r') as f:
+            for line in f:
+                dt, host, l_w, l_s = lp.process_line(line.rstrip("\n"))
+                ltm.process_line(l_w, l_s)
+    ltm.dump()
 
 
 def test_make():

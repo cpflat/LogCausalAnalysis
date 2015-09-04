@@ -445,11 +445,19 @@ def db_add(ldb, dt, host, l_w, l_s):
         ldb.add(ltline.ltid, dt, host, l_w)
 
 
-def construct_db(conf, l_fp):
-    _logger.info("log_db task start")
+def construct_db(conf):
+    
+    if conf.getboolean("general", "src_recur"):
+        l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
+    else:
+        l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
     lp = logparser.LogParser(conf)
     ldb = ldb_manager(conf)
     ldb.formatdb()
+
+    start_dt = datetime.datetime.now()
+    _logger.info("log_db task start")
+    
     for fp in l_fp:
         with open(fp, 'r') as f:
             _logger.info("log_db processing {0}".format(fp))
@@ -461,7 +469,9 @@ def construct_db(conf, l_fp):
     ldb.areadb()
     ldb.commit()
     ldb.lt.dump()
-    _logger.info("log_db task done")
+    
+    end_dt = datetime.datetime.now()
+    _logger.info("log_db task done ({0})".format(end_dt - start_dt))
 
 
 def area_db():
@@ -470,24 +480,27 @@ def area_db():
 
 
 if __name__ == "__main__":
-    usage = "usage: {0} [options] file...".format(sys.argv[0])
+    #usage = "usage: {0} [options] file...".format(sys.argv[0])
+    usage = "usage: {0} [options]".format(sys.argv[0])
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
-    op.add_option("-r", action="store_true", dest="recur",
-            default=False, help="search log file recursively")
+    #op.add_option("-r", action="store_true", dest="recur",
+    #        default=False, help="search log file recursively")
     options, args = op.parse_args()
-    if len(args) < 1:
-        sys.exit(usage)
+    #if len(args) < 1:
+    #    sys.exit(usage)
     
     usage = "usage: {0} [options] file...".format(sys.argv[0])
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, ["lt_shiso", "lt_common"])
-    if options.recur:
-        l_file = fslib.recur_dir(args)
-    else:
-        l_file = fslib.rep_dir(args)
-    construct_db(conf, l_file)
+
+    #if options.recur:
+    #    l_file = fslib.recur_dir(args)
+    #else:
+    #    l_file = fslib.rep_dir(args)
+
+    construct_db(conf)
 
 

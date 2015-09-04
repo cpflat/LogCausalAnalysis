@@ -69,6 +69,7 @@ def pc_all_args(conf):
 
 def pc_mthread(l_args, pal=1):
 
+    start_dt = datetime.datetime.now()
     _logger.info("pc_log task start ({0} jobs)".format(len(l_args)))
 
     l_thread = [threading.Thread(name = thread_name(*args),
@@ -87,7 +88,8 @@ def pc_mthread(l_args, pal=1):
         for job in l_job:
             job.join()
 
-    _logger.info("pc_log task done")
+    end_dt = datetime.datetime.now()
+    _logger.info("pc_log task done ({0})".format(end_dt - start_dt))
 
 
 if __name__ == "__main__":

@@ -35,11 +35,18 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
         else:
             return ret
 
+    def set(self, section, name, value):
+        return getattr(self._conf, sys._getframe().f_code.co_name)(
+                section, name, value)
+
     def read(self, fn):
         if not os.path.exists(fn):
             raise IOError
         else:
             return self._conf.read(fn)
+
+    def write(self, fn):
+        return self._conf.write(fn)
 
     def sections(self):
         return getattr(self._conf, sys._getframe().f_code.co_name)()
@@ -220,5 +227,18 @@ def set_common_logging(conf, logger = None, l_logger_name = None):
             temp = logging.getLogger(ln)
             temp.setLevel(lv)
             temp.addHandler(ch)
-    return
+    return ch
+
+
+def release_common_logging(ch, logger = None, l_logger_name = None):
+    if logger is not None:
+        logger.removeHandler(ch)
+    if l_logger_name is not None:
+        for ln in l_logger_name:
+            temp = logging.getLogger(ln)
+            temp.removeHandler(ch)
+
+
+
+
 
