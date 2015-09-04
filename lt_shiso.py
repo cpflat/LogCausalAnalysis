@@ -21,8 +21,6 @@ _logger = logging.getLogger(__name__)
 
 class LTManager(lt_common.LTManager):
     
-    __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    
     def __init__(self, conf, filename = None):
         super(LTManager, self).__init__(conf, filename)
         self.ltgen = None
@@ -60,8 +58,6 @@ class LTManager(lt_common.LTManager):
 
 class LTGenNode():
 
-    __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    
     def __init__(self):
         self.l_child = []
         self.lt = None
@@ -78,8 +74,6 @@ class LTGenNode():
 
 class LTGen():
 
-    __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    
     def __init__(self, table, threshold = 0.9, max_child = 4):
         self.table = table
         self.sym = self.table.sym
@@ -314,26 +308,13 @@ def edit_distance(m1, m2, sym):
 
 
 def test_ltgen(conf):
-    import logparser
-    lp = logparser.LogParser(conf)
     ltm = LTManager(conf)
     if conf.getboolean("general", "src_recur"):
         l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
     else:
         l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
-    for fp in l_fp:
-        with open(fp, 'r') as f:
-            for line in f:
-                dt, host, l_w, l_s = lp.process_line(line.rstrip("\n"))
-                ltm.process_line(l_w, l_s)
+    ltm.process_dataset(conf, l_fp)
     ltm.dump()
-
-
-def test_make():
-    conf = config.open_config("config.conf.default")
-    ltm = LTManager(conf)
-    ltm.process_dataset("test.temp")
-    ltm.show()
 
 
 if __name__ == "__main__":
@@ -346,18 +327,13 @@ if __name__ == "__main__":
     #_logger.addHandler(ch)
     #test_make()
 
-    usage = "usage: {0} [options] file...".format(sys.argv[0])
+    usage = "usage: {0} [options]".format(sys.argv[0])
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
     options, args = op.parse_args()
-    if len(args) < 1:
-        sys.exit(usage)
 
     conf = config.open_config(options.conf)
-    ltm = LTManager(conf)
-    ltm.process_dataset(args)
-    ltm.show()
-
+    test_ltgen(conf)
 

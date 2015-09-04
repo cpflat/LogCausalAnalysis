@@ -171,14 +171,16 @@ class LTManager(object):
         # return ltline
         raise NotImplementedError
 
-    def process_dataset(self, targets):
+    def process_dataset(self, conf, l_fp):
         # for testing to construct log template table
-        for fp in fslib.rep_dir(targets):
+        lp = logparser.LogParser(conf)
+        for fp in l_fp:
             with open(fp, 'r') as f:
+                _logger.info("processing {0}".format(fp))
                 for line in f:
                     line = line.rstrip("\n")
                     _logger.debug("line > {0}".format(line))
-                    dt, host, l_w, l_s = logparser.process_line(line)
+                    dt, host, l_w, l_s = lp.process_line(line)
                     if l_w is None: continue
                     self.process_line(l_w, l_s)
         self.dump()
