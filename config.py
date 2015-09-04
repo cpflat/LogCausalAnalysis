@@ -51,6 +51,9 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
     def sections(self):
         return getattr(self._conf, sys._getframe().f_code.co_name)()
 
+    def options(self, section):
+        return getattr(self._conf, sys._getframe().f_code.co_name)(section)
+
     def get(self, section, name):
         return self._call_method(sys._getframe().f_code.co_name, section, name)
 
@@ -239,6 +242,23 @@ def release_common_logging(ch, logger = None, l_logger_name = None):
             temp.removeHandler(ch)
 
 
+def overwrite_config(conf_fn1, conf_fn2, output):
+    conf1 = open_config(conf_fn1)
+    conf2 = open_config(conf_fn2)
+    for section in conf2.sections():
+        for option in conf2.options(section):
+            value = conf2.get(section, option)
+            conf1.set(section, option, value)
+    with open(output, 'w') as f:
+        conf1.write(f)
 
 
+if __name__ == "__main__":
+    # import old config, merge it with new default config, and output
+    if len(sys.argv) < 3:
+        sys.exit("usage : {0} config output".format(sys.argv[0]))
+    default_conf = DEFAULT_CONFIG_NAME
+    conf = sys.argv[1]
+    output = sys.argv[2]
+    overwrite_config(default_conf, conf, output) 
 
