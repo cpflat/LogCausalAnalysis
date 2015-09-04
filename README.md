@@ -28,7 +28,7 @@ $ cp config.conf.default config.conf
 Then classify dataset and register them with database.
 Classification works with log template generation inside this command.
 
-$ python log_db.py test.temp
+$ python log_db.py
 
 You can see log templates found in log messages with following command.
 
