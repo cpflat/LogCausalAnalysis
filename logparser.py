@@ -136,7 +136,11 @@ class LogParser():
     def pop_header(self, src_line):
 
         def pop_string(line):
-            string, line = line.strip(" ").split(" ", 1)
+            # for debug, temporaly
+            try:
+                string, line = line.strip(" ").split(" ", 1)
+            except ValueError:
+                import pdb; pdb.set_trace()
             return string, line
 
         def str2month(string):
@@ -175,6 +179,8 @@ class LogParser():
         return dt, host, message
 
     def process_line(self, line):
+        if line == "":
+            return None, None, None, None
         dt, host, message = self.pop_header(line)
         if self._is_removed(message):
             return None, None, None, None
