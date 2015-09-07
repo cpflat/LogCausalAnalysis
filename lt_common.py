@@ -20,8 +20,9 @@ class LTLine():
     def __init__(self, ltid, words, style, cnt, sym):
         self.ltid = ltid
         self.words = words
-        self.style = style # None if conf(log_template.sym_ignore) is False
+        self.style = style
         # s[0], w[0], s[1]..., w[n], s[n+1]
+        # style is None if conf(log_template.sym_ignore) is False
         self.cnt = cnt
         self.sym = sym
 

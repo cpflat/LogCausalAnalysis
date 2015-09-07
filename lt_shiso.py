@@ -314,7 +314,6 @@ def test_ltgen(conf):
     else:
         l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
     ltm.process_dataset(conf, l_fp)
-    ltm.dump()
 
 
 if __name__ == "__main__":
