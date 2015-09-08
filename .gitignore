@@ -1,9 +1,5 @@
 
-pcalg.py
-gsq
-gsq/*
-
-config.conf
+*.conf
 *.pyc
 *.pdf
 *.temp
