@@ -83,7 +83,7 @@ class LTGenVA():
 
 
 def test_make():
-    conf = config.open_config("config.conf.default")
+    conf = config.open_config("config.conf.sample")
     ltm = LTManager(conf, "va_learn.temp")
     ltm.process_dataset("test.temp")
     ltm.show()

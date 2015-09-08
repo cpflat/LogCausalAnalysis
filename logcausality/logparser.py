@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# Preprocessing for structuralizing log messages
+
 import sys
+import os
 import re
 import datetime
 
 import fslib
 import config
 
-# Preprocessing for structuralizing log messages
+DEFAULT_SYMDEF = "/".join((os.path.dirname(__file__), "symdef.txt.sample"))
+
 
 class LogParser():
 
@@ -26,6 +30,8 @@ class LogParser():
         self.default_year = conf.getint("database", "default_year")
         self.rmheader_fl = conf.getlist("database", "remove_header_filename")
         self.symdef = conf.get("log_template", "sym_filename")
+        if self.symdef == "":
+            self.symdef = DEFAULT_SYMDEF
         self.sym_ignore = conf.getboolean("log_template", "sym_ignore")
         self.rm_header = []
         if len(self.rmheader_fl) > 0:

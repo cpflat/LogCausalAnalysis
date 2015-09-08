@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import sys
+import os
 import datetime
 import random
 import re
@@ -10,6 +11,7 @@ import config
 
 #SEED = None
 SEED = 3
+CONF = "/".join((os.path.dirname(__file__), "testlog.conf.sample"))
 
 class TestLogGenerator():
 
@@ -157,7 +159,7 @@ class TestLogGenerator():
                         line[1], line[2])) + "\n")
 
 
-def test_make(fn = "testlog.conf", output = None):
+def test_make(fn = CONF, output = None):
     tlg = TestLogGenerator(fn)
     tlg.dump_log(output)
 

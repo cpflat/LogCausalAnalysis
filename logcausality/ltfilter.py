@@ -11,7 +11,6 @@ import log_db
 import timelabel
 from logging import getLogger
 
-_config = config.common_config()
 _logger = getLogger(__name__)
 
 
@@ -63,14 +62,13 @@ class logger():
                 ltid, val, dur, cnt))
 
 
-def mkfilter_self_corr_ltid(ldb, ltid, top_dt, end_dt, l_dur):
+def mkfilter_self_corr_ltid(ldb, ltid, top_dt, end_dt, l_dur, binsize):
     l_dt = [line.dt for line in ldb.generate(ltid=ltid)]
     cnt = len(l_dt)
     if cnt > 0:
         ret = []
         for dur in l_dur:
-            ts = timelabel.TimeSeries(top_dt, end_dt, 
-                    _config.getdur("filter", "corr_bin_size"), 0)
+            ts = timelabel.TimeSeries(top_dt, end_dt, binsize, 0)
             ts.countdata(l_dt)
             c = calc.self_corr(ts.data, dur, len(ts.label))
             ret.append((c, dur))
@@ -141,6 +139,9 @@ if __name__ == "__main__":
     usage = "usage: {0} [options] mode\n".format(sys.argv[0]) + \
             "\tmode : [self-corr, ]"
     op = optparse.OptionParser(usage)
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+            help="configuration file path")
     op.add_option("-f", "--file", action="store", dest="filename",
             type="string", default=None,
             help="validate ltid in given file only")
@@ -153,8 +154,9 @@ if __name__ == "__main__":
     (options, args) = op.parse_args()
     if len(args) == 0: sys.exit(usage)
 
-    top_dt, end_dt = _config.getterm("filter", "term")
-    lfn = _config.get("filter", "log_filename")
+    conf = config.open_config(options.conf)
+    top_dt, end_dt = conf.getterm("filter", "term")
+    lfn = conf.get("filter", "log_filename")
     l_dur = [
             datetime.timedelta(hours=1),
             datetime.timedelta(days=1)
@@ -162,7 +164,7 @@ if __name__ == "__main__":
 
     if args[0] == "self-corr":
         if options.threshold is None:
-            threshold = _config.getfloat("filter", "corr_threshold")
+            threshold = conf.getfloat("filter", "corr_threshold")
         else:
             threshold = options.threshold
 
@@ -172,8 +174,9 @@ if __name__ == "__main__":
                 print i
         elif options.ltid is not None:
             ldb = log_db.ldb_manager()
+            binsize = conf.getdur("filter", "corr_bin_size")
             ret, dur, cnt = mkfilter_self_corr_ltid(ldb, options.ltid,
-                    top_dt, end_dt, l_dur)
+                    top_dt, end_dt, l_dur, binsize)
             print "{0} in {1} (cnt {2})".format(ret, dur, cnt)
         elif options.filename is not None:
             ret = mkfilter_self_corr_file(options.filename, lfn,

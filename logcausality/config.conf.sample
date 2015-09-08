@@ -26,6 +26,7 @@ split_symbol = @@
 # Network area groups of host names
 # For exapmle:
 # area_filename = area_def.txt
+# If empty, no group defined
 area_filename = 
 
 # If no year string in log message, add following year
@@ -46,7 +47,8 @@ remove_header_filename =
 db_filename = lt.dump
 
 # Definition file of symbol strings to split log messages
-sym_filename = symdef.txt
+# If empty, use default rule (symdef.txt.sample)
+sym_filename = 
 
 # Ignore splitting symbol strings in log template generation
 sym_ignore = true
@@ -113,7 +115,8 @@ use_filter =
 [visual]
 
 # Log template label definition
-ltlabel = lt_label.conf
+# If empty, use default configuration (lt_label.conf.sample)
+ltlabel = 
 
 
 [filter]

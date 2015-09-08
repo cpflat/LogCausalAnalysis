@@ -13,7 +13,6 @@ import log_db
 import pc_log
 
 DETAIL_SHOW_LIMIT = 10
-_config = config.common_config()
 
 
 class PCOutput():
@@ -192,8 +191,6 @@ def list_results(conf):
 
 
 if __name__ == "__main__":
-
-    src_dir = _config.get("dag", "default_output_dir")
 
     usage = "usage: %s [options] <filename>\n" % sys.argv[0] + \
             "if no filename given, show abstraction of results"
