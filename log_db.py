@@ -436,7 +436,7 @@ def ldb_manager(conf):
     return LogDBManager(conf)
 
 
-def db_add_line(ldb, lp):
+def db_add_line(ldb, lp, line):
     dt, host, l_w, l_s = lp.process_line(line)
     if l_w is None: return
     ltline = ldb.lt.process_line(l_w, l_s)
@@ -455,7 +455,7 @@ def construct_db(conf, targets, rflag, fflag):
         else:
             l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
     else:
-        if recur:
+        if rflag:
             l_fp = fslib.recur_dir(targets)
         else:
             l_fp = fslib.rep_dir(targets)
@@ -473,7 +473,7 @@ def construct_db(conf, targets, rflag, fflag):
             _logger.info("log_db processing {0}".format(fp))
             for line in f:
                 line = line.rstrip("\n")
-                db_add_line(line)
+                db_add_line(ldb, lp, line)
     ldb.areadb()
     ldb.commit()
     ldb.lt.dump()
@@ -488,13 +488,13 @@ def area_db():
 
 
 if __name__ == "__main__":
-    usage = "usage: {0} [options] <file...>".format(sys.argv[0]) +
-        """
-        with arguments:
-        add log data in given src data files
-        with no arguments :
-        add log data in src data files defined in config
-        """
+    usage = "usage: {0} [options] <file...>".format(sys.argv[0])
+    usage += """
+    with arguments:
+    add log data in given src data files
+    with no arguments :
+    add log data in src data files defined in config
+    """
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
