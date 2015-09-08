@@ -1,0 +1,83 @@
+[main]
+term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
+host_groups = rt, sw, sv
+group_rt = rt0, rt1, rt2
+group_sw = sw0, sw1, sw2, sw3, sw4
+group_sv = sv0, sv1, sv2, sv3, sv4, sv5, sv6, sv7, sv8
+events = cron_hourly, cron_daily, interface_down, restart
+
+
+[event_cron_hourly]
+logs = cron_hourly
+occurrence = hourly
+recurrence = false
+groups = rt, sw
+info = user
+user = root
+
+[log_cron_hourly]
+format = CRON[$pid$]: ($user$) CMD (   cd / && run-parts --report /etc/cron.hourly)
+mode = each
+
+
+[event_cron_daily]
+logs = cron_daily
+occurrence = daily
+recurrence = false
+groups = rt, sw, sv
+info = user
+user = root
+
+[log_cron_daily]
+format = CRON[$pid$]: ($user$) CMD (   cd / && run-parts --report /etc/cron.daily)
+mode = each
+
+
+[event_interface_down]
+logs = interface_down, interface_up, connection_timeout
+occurrence = random
+# frequency : times per day in 1 host
+frequency = 0.1
+recurrence = true
+recur_p = 0.8
+recur_dur_min = 1m
+recur_dur_max = 10m
+groups = rt, sw
+info = ifname
+ifname = eth0, eth1, eth2
+
+[log_interface_down]
+format = Interface $ifname$ went down
+ifnames = eth0, eth1, eth2
+mode = each
+
+[log_interface_up]
+format = Interface $ifname$ came up
+mode = delay_rand
+delay_min = 30s
+delay_max = 1m
+
+[log_connection_timeout]
+format = Connection timeout on interface $ifname$
+ifnames = eth0, eth1, eth2
+mode = drop_rand
+drop_p = 0.7
+
+
+[event_restart]
+logs = restart, connection_failed
+occurrence = random
+frequency = 0.04
+recurrence = false
+groups = sv
+info = 
+
+[log_restart]
+format = System restart
+mode = each
+
+[log_connection_failed]
+format = Connection failed with $host$
+mode = other_host_rand
+groups = sv
+
