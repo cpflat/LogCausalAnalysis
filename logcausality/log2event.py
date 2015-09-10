@@ -18,11 +18,11 @@ class LogEventIDMap():
     def __len__(self):
         return self.eidlen
 
-    def _info(self, gid, line):
-        return (gid, line.host)
+    def _info(self, line):
+        return (line.lt.ltgid, line.host)
 
-    def eid(self, gid, line):
-        info = self._info(gid, line)
+    def eid(self, line):
+        info = self._info(line)
         if self.ermap.has_key(info):
             return self.ermap[info]
         else:
@@ -55,16 +55,14 @@ def log2event(conf, top_dt, end_dt, dur, area):
     if area == "all":
         area = None
 
-    ldb = log_db.ldb_manager(conf)
-    ldb.open_lt()
+    ld = log_db.LogData(conf)
     ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
     evmap = LogEventIDMap()
     edict = {}
-    for line in ldb.generate(None, top_dt, end_dt, None, area):
-        if not ltf.isremoved(line.ltid):
-            ltgid = ldb.lt.ltgroup.get_gid(line.ltid)
+    for line in ld.db.iter_lines(None, None, top_dt, end_dt, None, area):
+        if not ltf.isremoved(line.lt.ltid):
             ev = nodestat.Event(line.dt, 1)
-            eid = evmap.eid(ltgid, line)
+            eid = evmap.eid(line)
             ev.key = line.dt
             ev.val = 1
             if not edict.has_key(eid):

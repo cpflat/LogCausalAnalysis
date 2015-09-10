@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# TODO !!! many functions are out of use due to change of log_db !!!
+
 import sys
 import optparse
 
@@ -11,19 +13,19 @@ import lt_common
 MAX_ARG_VARIETY = 10
 
 
-def show_all(ldb):
-    ldb.lt.show()
+def show_all(ld):
+    ld.show_all_ltgroup()
 
 
-def show_lt(ldb):
-    ldb.lt.show_all_lt()
+def show_lt(ld):
+    ld.show_all_lt()
 
 
 def show_ltg(ldb, gid):
     if gid is None:
-        ldb.lt.show_all_group()
+        ld.show_all_ltgroup()
     else:
-        ldb.lt.show_group(gid)
+        ld.show_ltgroup(gid)
 
 
 def show_sort(ldb):
@@ -139,10 +141,9 @@ if __name__ == "__main__":
     mode = args[0]
     conf = config.open_config(options.conf)
 
-    ldb = log_db.ldb_manager(conf)
-    ldb.open_lt()
+    ld = log_db.LogData(conf)
     if mode == "show":
-        show_all(ldb)
+        show_all(ld)
     elif mode == "show-lt":
         show_lt(ldb)
     elif mode == "show-group":
@@ -150,27 +151,27 @@ if __name__ == "__main__":
             show_ltg(ldb, None)
         else:
             show_ltg(ldb, int(args[1]))
-    elif mode == "show-sort":
-        show_sort(ldb)
-    elif mode == "breakdown":
-        if len(args) <= 1:
-            sys.exit("give me ltid, following \"{0}\"".format(mode))
-        ltid = int(args[1])
-        print breakdown_ltid(ldb, ltid)
-    elif mode == "merge":
-        if len(args) <= 2:
-            sys.exit("give me 2 ltid, following \"{0}\"".format(mode))
-        ltid1 = int(args[1])
-        ltid2 = int(args[2])
-        merge_ltid(ldb, ltid1, ltid2)
-    elif mode == "separate":
-        if len(args) <= 3:
-            sys.exit("give me ltid, variable id and value, "
-                    "following \"{0}\"".format(mode))
-        ltid = int(args[1])
-        vid = int(args[2])
-        val = args[3]
-        separate_ltid(ldb, ltid, vid, val)
+    #elif mode == "show-sort":
+    #    show_sort(ldb)
+    #elif mode == "breakdown":
+    #    if len(args) <= 1:
+    #        sys.exit("give me ltid, following \"{0}\"".format(mode))
+    #    ltid = int(args[1])
+    #    print breakdown_ltid(ldb, ltid)
+    #elif mode == "merge":
+    #    if len(args) <= 2:
+    #        sys.exit("give me 2 ltid, following \"{0}\"".format(mode))
+    #    ltid1 = int(args[1])
+    #    ltid2 = int(args[2])
+    #    merge_ltid(ldb, ltid1, ltid2)
+    #elif mode == "separate":
+    #    if len(args) <= 3:
+    #        sys.exit("give me ltid, variable id and value, "
+    #                "following \"{0}\"".format(mode))
+    #    ltid = int(args[1])
+    #    vid = int(args[2])
+    #    val = args[3]
+    #    separate_ltid(ldb, ltid, vid, val)
         
 
 

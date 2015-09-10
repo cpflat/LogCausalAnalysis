@@ -17,11 +17,11 @@ DETAIL_SHOW_LIMIT = 10
 
 class PCOutput():
 
-    __module__ = os.path.splitext(os.path.basename(__file__))[0]
+    #__module__ = os.path.splitext(os.path.basename(__file__))[0]
 
     def __init__(self, conf):
         self.conf = conf
-        self.ldb = None
+        self.ld = None
     
     def make(self, graph, evmap, top_dt, end_dt, dur, area):
 
@@ -70,10 +70,9 @@ class PCOutput():
             dedges = temp
         return dedges, udedges
 
-    def _init_ldb(self):
-        if self.ldb is None:
-            self.ldb = log_db.ldb_manager(self.conf)
-            self.ldb.open_lt()
+    def _init_ld(self):
+        if self.ld is None:
+            self.ld = log_db.LogData(self.conf)
 
     def _get_fn(self):
         return pc_log.thread_name(self.conf, self.top_dt, self.end_dt,
@@ -83,7 +82,7 @@ class PCOutput():
         ltgid, host = self.evmap.info(eid)
         print("{0}>")
         print("\n ".join(
-            [str(ltline) for ltline in self.ldb.lt.ltgroup[ltgid]]))
+            [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
 
     def _print_edge(self, edge):
         src_ltgid, src_host = self.evmap.info(edge[0])
@@ -96,7 +95,7 @@ class PCOutput():
             ltgid, host = self.evmap.info(eid)
             print("{0}>".format(header))
             print("\n ".join(
-                [str(ltline) for ltline in self.ldb.lt.ltgroup[ltgid]]))
+                [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
             print
     
     def _print_edge_detail(self, edge, limit = None):
@@ -106,21 +105,18 @@ class PCOutput():
             area = self.area
         
         for eid, header in zip(edge, ("src", "dst")):
+            buf = []
+            cnt = 0
             ltgid, host = self.evmap.info(eid)
-            print("{0}>".format(header))
-            for ltline in self.ldb.lt.ltgroup[ltgid]:
-                buf = []
-                cnt = 0
-                for line in self.ldb.generate(ltline.ltid,
-                        self.top_dt, self.end_dt, host, area):
-                    buf.append(line.restore_line())
-                    cnt += 1
-                    if limit is not None and cnt >= limit:
-                        buf.append("...")
-                        break
-                if cnt > 0:
-                    print " " + str(ltline)
-                    print "\n".join(buf)
+            print("{0}> ltgid {1}".format(header, ltgid))
+            for line in self.ld.iter_lines(None, ltgid,
+                    self.top_dt, self.end_dt, host, area):
+                buf.append(line.restore_line())
+                cnt += 1
+                if limit is not None and cnt >= limit:
+                    buf.append("...")
+                    break
+            print "\n".join(buf)
         print
 
     def print_env(self):
@@ -145,7 +141,7 @@ class PCOutput():
 
     def print_result_lt(self):
         self._none_caution()
-        self._init_ldb()
+        self._init_ld()
         print("### directed ###")
         for edge in self.d_edges:
             self._print_edge(edge)
@@ -158,7 +154,7 @@ class PCOutput():
 
     def print_result_detail(self, limit = None):
         self._none_caution()
-        self._init_ldb()
+        self._init_ld()
         print("### directed ###")
         for edge in self.d_edges:
             self._print_edge(edge)

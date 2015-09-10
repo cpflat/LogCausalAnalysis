@@ -9,11 +9,10 @@ import datetime
 import config
 import log_db
 
-def view(conf, ltid, top_dt, end_dt, host, area, oflag):
+def view(conf, ltid, ltgid, top_dt, end_dt, host, area, oflag):
 
-    ldb = log_db.ldb_manager(conf)
-    ldb.open_lt()
-    for e in ldb.generate(ltid, top_dt, end_dt, host, area):
+    ld = log_db.LogData(conf)
+    for e in ld.iter_lines(ltid, ltgid, top_dt, end_dt, host, area):
         if oflag:
             print e.restore_line()
         else:
@@ -29,6 +28,8 @@ if __name__ == "__main__":
     op.add_option("-a", "--area", action="store", dest="area", type="string",
             default=None, help="Host area name")
     op.add_option("-l", "--ltid", action="store", dest="ltid", type="int",
+            default=None, help="Log template identifier")
+    op.add_option("-g", "--ltgid", action="store", dest="ltgid", type="int",
             default=None, help="Log template group identifier")
     op.add_option("-n", "--host", action="store", dest="host", type="string",
             default=None, help="Hostname")
@@ -49,12 +50,12 @@ if __name__ == "__main__":
         end_dt = top_dt + datetime.timedelta(days = 1)
     elif options.month is not None:
         top_dt = datetime.datetime.strptime(options.month, "%Y-%m")
-        end_dt = datetime.datetime.fromtimestamp( \
+        end_dt = datetime.datetime.fromtimestamp(
                 time.mktime((top_dt.year, top_dt.month + 1, 1,
                     0, 0, 0, 0, 0, 0)))
     else:
         top_dt = None; end_dt = None
 
-    view(conf, options.ltid, top_dt, end_dt, options.host, \
+    view(conf, options.ltid, options.ltgid, top_dt, end_dt, options.host,
             options.area, options.oflag)
 

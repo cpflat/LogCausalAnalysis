@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# TODO !!! out of use due to change of log_db / lt_common !!!
+
 import sys
 import os
 import math

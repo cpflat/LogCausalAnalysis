@@ -11,6 +11,7 @@ import sys
 import os
 import logging
 import optparse
+import cPickle as pickle
 import numpy
 
 import config
@@ -19,41 +20,35 @@ import lt_common
 
 _logger = logging.getLogger(__name__)
 
+
 class LTManager(lt_common.LTManager):
-    
-    def __init__(self, conf, filename = None):
-        super(LTManager, self).__init__(conf, filename)
-        self.ltgen = None
-        self.ltgroup = None
+
+    def __init__(self, conf, db, table, reset_db, ltg_alg):
+        super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
+        self._init_ltgen()
+        self.filename = conf.get("log_template_shiso", "cls_tree_filename")
+        if os.path.exists(self.filename) and not reset_db:
+            self.load()
 
     def _init_ltgen(self):
-        self.ltgen = LTGen(self.table,
+        self.ltgen = LTGen(self, self.table,
                 threshold = self.conf.getfloat(
                     "log_template_shiso", "ltgen_threshold"),
                 max_child = self.conf.getint(
                     "log_template_shiso", "ltgen_max_child")
                 )
         
-    def _init_ltgroup(self):
-        self.ltgroup = LTGroupSHISO(self.table,
-                ngram_length = self.conf.getint(
-                    "log_template_shiso", "ltgroup_ngram_length"),
-                th_lookup = self.conf.getfloat(
-                    "log_template_shiso", "ltgroup_th_lookup"),
-                th_distance = self.conf.getfloat(
-                    "log_template_shiso", "ltgroup_th_distance"),
-                mem_ngram = self.conf.getboolean(
-                    "log_template_shiso", "ltgroup_mem_ngram")
-                )
-
     def process_line(self, l_w, l_s):
-        if self.ltgen is None:
-            self._init_ltgen()
-            self._init_ltgroup()
         ltline, added_flag = self.ltgen.process_line(l_w, l_s)
-        if added_flag:
-            self.ltgroup.add(ltline)
         return ltline
+
+    def load(self):
+        with open(self.filename, 'r') as f:
+            self.ltgen.n_root = pickle.load(f)
+
+    def dump(self):
+        with open(self.filename, 'w') as f:
+            pickle.dump(self.ltgen.n_root, f)
 
 
 class LTGenNode():
@@ -74,7 +69,8 @@ class LTGenNode():
 
 class LTGen():
 
-    def __init__(self, table, threshold = 0.9, max_child = 4):
+    def __init__(self, ltm, table, threshold, max_child):
+        self.ltm = ltm
         self.table = table
         self.sym = self.table.sym
         self.n_root = self._new_node()
@@ -84,8 +80,9 @@ class LTGen():
     def _new_node(self, l_w = None, l_s = None):
         n = LTGenNode()
         if l_w is not None:
-            ltid = self.table.add_lt(l_w, l_s)
-            n.lt = self.table[ltid]
+            ltline = self.ltm.add_lt(l_w, l_s)
+            #ltid = self.table.add_lt(l_w, l_s)
+            n.lt = ltline
             #_logger.debug("added as ltid {0}".format(ltid))
         return n
 
@@ -95,19 +92,20 @@ class LTGen():
             for n_child in n_parent:
                 _logger.debug(
                         "comparing with ltid {0}".format(n_child.lt.ltid))
-                nc_lt = n_child.lt.words
+                nc_lt = n_child.lt.ltw
                 sr = self.seq_ratio(nc_lt, l_w)
                 _logger.debug("seq_ratio : {0}".format(sr))
                 if sr >= self.threshold:
                     _logger.debug(
                             "merged with ltid {0}".format(n_child.lt.ltid))
                     new_lt = lt_common.merge_lt(nc_lt, l_w, self.sym)
-                    if not new_lt == nc_lt:
-                        n_child.lt.replace(new_lt, l_s)
+                    if new_lt == nc_lt:
+                        self.ltm.count_lt(n_child.lt.ltid)
+                    else:
+                        self.ltm.replace_and_count_lt(n_child.lt.ltid, new_lt)
                         _logger.debug(
                                 "ltid {0} replaced".format(n_child.lt.ltid))
                         _logger.debug("-> {0}".format(str(n_child.lt)))
-                    n_child.lt.count()
                     return n_child.lt, False
                 else:
                     if self.equal(nc_lt, l_w):
@@ -122,7 +120,7 @@ class LTGen():
                 else:
                     _logger.debug("children : {0}".format(
                             [e.lt.ltid for e in n_parent.l_child]))
-                    l_sim = [(edit_distance(n_child.lt.words, l_w, self.sym),
+                    l_sim = [(edit_distance(n_child.lt.ltw, l_w, self.sym),
                             n_child) for n_child in n_parent]
                     n_parent = max(l_sim, key=lambda x: x[0])[1]
                     _logger.debug("go down to node(ltid {0})".format(
@@ -198,8 +196,9 @@ class LTGroupSHISO(lt_common.LTGroup):
 
     def __init__(self, table, ngram_length = 3,
             th_lookup = 0.3, th_distance = 0.85, mem_ngram = True):
-        super(LTGroupSHISO, self).__init__(table)
-        self.sym = self.table.sym
+        super(LTGroupSHISO, self).__init__()
+        self.table = table
+        self.sym = table.sym
         #self.d_group = {} # key : groupid, val : [ltline, ...]
         #self.d_rgroup = {} # key : ltid, val : groupid
         self.ngram_length = ngram_length
@@ -217,7 +216,7 @@ class LTGroupSHISO(lt_common.LTGroup):
         l_cnt = [0 for i in self.table]
         l_ng1 = self._get_ngram(lt_new)
         for ng in l_ng1:
-            for lt_temp, l_ng2 in self._lookup_ngram(ng, lt_new.ltid):
+            for lt_temp, l_ng2 in self._lookup_ngram(ng):
                 l_cnt[lt_temp.ltid] += 1
                 r = 2.0 * l_cnt[lt_temp.ltid] / (len(l_ng1) + len(l_ng2)) 
                 if r > r_max:
@@ -228,9 +227,9 @@ class LTGroupSHISO(lt_common.LTGroup):
         if r_max > self.th_lookup:
             assert lt_max is not None, "bad threshold for lt group lookup"
             _logger.debug("lt_max ltid : {0}".format(lt_max.ltid))
-            ltw2 = lt_max.words
-            d = 2.0 * edit_distance(lt_new.words, lt_max.words, self.sym) / \
-                    (len(lt_new.words) + len(lt_max.words))
+            ltw2 = lt_max.ltw
+            d = 2.0 * edit_distance(lt_new.ltw, lt_max.ltw, self.sym) / \
+                    (len(lt_new.ltw) + len(lt_max.ltw))
             _logger.debug("edit distance ratio : {0}".format(d))
             if d < self.th_distance:
                 gid = self._mk_group(lt_new, lt_max)
@@ -271,15 +270,15 @@ class LTGroupSHISO(lt_common.LTGroup):
         if self.mem_ngram:
             if not self.d_ngram.has_key(ltline.ltid):
                 self.d_ngram[ltline.ltid] = \
-                        ngram(ltline.words, self.ngram_length)
+                        ngram(ltline.ltw, self.ngram_length)
             return self.d_ngram[ltline.ltid]
         else:
-            return ngram(ltline.words, self.ngram_length)
+            return ngram(ltline.ltw, self.ngram_length)
 
-    def _lookup_ngram(self, ng, ltid):
+    def _lookup_ngram(self, ng):
         ret = []
         for ltline in self.table:
-            if ng in self._get_ngram(ltline) and not ltline.ltid == ltid:
+            if ng in self._get_ngram(ltline):
                 ret.append((ltline, ng))
         return ret
 

@@ -2,6 +2,7 @@
 [general]
 
 # Source log data path
+# Less priority than command option of log_db
 src_path = test.temp, test2.temp
 
 # Search source path recursively
@@ -9,7 +10,7 @@ src_path = test.temp, test2.temp
 src_recur = false
 
 # Processing log output path (not dataset but log of this system)
-# If blank, output log on stdout
+# If blank, output log on stderr
 info_log = auto.log
 
 
@@ -43,22 +44,33 @@ remove_header_filename =
 
 [log_template]
 
-# Object data of found log templates
-db_filename = lt.dump
+# 1st step algorithms / methods to generate log templates
+# [shiso, ] are available
+lt_alg = shiso
+
+# 2nd step algorithms / methods
+# especially for classifying log templates with different length
+# [shiso, none] are available
+# (none : with no grouping)
+ltgroup_alg = shiso
 
 # Definition file of symbol strings to split log messages
 # If empty, use default rule (symdef.txt.sample)
 sym_filename = 
 
 # Ignore splitting symbol strings in log template generation
+# In many cases this option enables speeding up in exchange for precision
 sym_ignore = true
 
 # Symbol string to abstract variable strings in log templates
-# that will not appear in raw log messages
+# that must not appear in raw log messages
 variable_symbol = **
 
 
 [log_template_shiso]
+
+# Classifying tree data of Search Phase
+cls_tree_filename = shiso.dump
 
 # Threshold for SeqRatio in Search Phase
 ltgen_threshold = 0.9
