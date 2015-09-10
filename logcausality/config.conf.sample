@@ -60,7 +60,7 @@ sym_filename =
 
 # Ignore splitting symbol strings in log template generation
 # In many cases this option enables speeding up in exchange for precision
-sym_ignore = true
+sym_ignore = false
 
 # Symbol string to abstract variable strings in log templates
 # that must not appear in raw log messages
