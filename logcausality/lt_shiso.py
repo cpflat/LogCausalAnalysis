@@ -5,6 +5,10 @@
 A log template generation algorithm proposed in [1].
 [1] Masayoshi Mizutani. Incremental Mining of System Log Format.
 in IEEE 10th International Conference on Services Computing, pp. 595–602, 2013.
+
+After editing log templates manually (with lt_edit),
+SHISO do not work correctly.
+Do NOT edit log templates manually if you still have unprocessed log data.
 """
 
 import sys

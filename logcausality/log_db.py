@@ -29,11 +29,17 @@ class LogMessage():
         return " ".join((str(self.dt), self.host, str(self.lt.ltid),\
                 str(self.l_w)))
 
-    def restore_str(self):
-        return self.lt.restore_words(self.l_w)
+    def var(self):
+        return self.lt.var(self.l_w)
+
+    def restore_message(self):
+        # restore original log message without header
+        return self.lt.restore_message(self.l_w)
 
     def restore_line(self):
-        return " ".join((str(self.dt), str(self.host), self.restore_str()))
+        # restore original log message with header (dt, host)
+        return " ".join((str(self.dt), str(self.host),
+                self.restore_message()))
 
 
 class LogData():
@@ -50,7 +56,7 @@ class LogData():
         lt_alg = self.conf.get("log_template", "lt_alg")
         ltg_alg = self.conf.get("log_template", "ltgroup_alg")
         assert lt_alg in ("shiso", "va")
-        # ltg_alg : in lt_common.LTManager._init_ltgroup
+        # ltg_alg : used in lt_common.LTManager._init_ltgroup
         if lt_alg == "shiso":
             import lt_shiso
             self.ltm = lt_shiso.LTManager(self.conf, self.db, self.table,
@@ -60,8 +66,9 @@ class LogData():
             #import lt_va
             #lt_shiso.LTManager(self.conf, )
 
-    def iter_lines(self, ltid, ltgid, top_dt, end_dt, host, area):
-        return self.db.iter_lines(ltid, ltgid, top_dt, end_dt, host, area)
+    def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
+            end_dt = None, host = None, area = None):
+        return self.db.iter_lines(lid, ltid, ltgid, top_dt, end_dt, host, area)
 
     def iter_lt(self):
         for ltline in self.table:
@@ -74,14 +81,14 @@ class LogData():
         return [self.table[ltid] for ltid in self.db.get_ltg_members(ltgid)]
 
     @staticmethod
-    def _str_ltline(line):
-        return " ".join((str(line.ltid), str(line),
-                "({0})".format(line.cnt)))
+    def _str_ltline(ltline):
+        return " ".join((str(ltline.ltid), "({0})".format(ltline.ltgid),
+                str(ltline), "({0})".format(ltline.cnt)))
 
     def show_all_lt(self):
         for ltline in self.table:
             print self._str_ltline(ltline)
-    
+
     def show_all_ltgroup(self):
         if self.db.len_ltg() == 0:
             self.show_all_lt()
@@ -100,6 +107,14 @@ class LogData():
             buf.append(self._str_ltline(ltline))
         print "[ltgroup {0} ({1}, {2})]".format(gid, length, cnt)
         print "\n".join(buf)
+
+    def add_line(ltid, dt, host, l_w):
+        self.db.add_line(ltid, dt, host, l_w)
+
+    def commit_db(self):
+        self.db.commit()
+        if self.ltm is not None:
+            self.ltm.dump()
 
 
 class LogDB():
@@ -201,9 +216,10 @@ class LogDB():
         }
         self.connect.execute(sql, sqlv)
 
-    def iter_lines(self, ltid = None, ltgid = None, top_dt = None,
+    def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):
         d_cond = {}
+        if lid is not None: d_cond["lid"] = lid
         if ltid is not None: d_cond["ltid"] = ltid
         if ltgid is not None: d_cond["ltgid"] = ltgid
         if top_dt is not None: d_cond["top_dt"] = top_dt
@@ -222,6 +238,24 @@ class LogDB():
             else:
                 l_w = row[4].split(self.splitter)
             yield LogMessage(lid, self.table[ltid], dt, host, l_w)
+
+    def iter_words(self, lid = None, ltid = None, ltgid = None, top_dt = None,
+            end_dt = None, host = None, area = None):
+        d_cond = {}
+        if lid is not None: d_cond["lid"] = lid
+        if ltid is not None: d_cond["ltid"] = ltid
+        if ltgid is not None: d_cond["ltgid"] = ltgid
+        if top_dt is not None: d_cond["top_dt"] = top_dt
+        if end_dt is not None: d_cond["end_dt"] = end_dt
+        if host is not None: d_cond["host"] = host
+        if area is not None: d_cond["area"] = area
+        if len(d_cond) == 0:
+            raise ValueError("More than 1 argument should NOT be None")
+        for row in self._select_log(d_cond):
+            if row[4] == "":
+                yield []
+            else:
+                yield row[4].split(self.splitter)
 
     def _select_log(self, d_cond):
         # d_cond = {column : value, ...}
@@ -251,15 +285,16 @@ class LogDB():
         cursor.execute(sql, d_cond)
         return cursor
 
-    def _update_log(self, d_cond, d_update):
+    def update_log(self, d_cond, d_update):
         # updating rows in table db (NOT allow editing lt / ltg / area)
         if len(d_cond) == 0:
             raise ValueError("called update with empty condition")
 
         sql_header = "update log set"
+        l_buf = []
         for k, v in d_update.iteritems():
             assert k in ("ltid", "top_dt", "end_dt", "host")
-            l_buf.append("log.{0} = \'{1}\'".format(k, v))
+            l_buf.append("{0} = \'{1}\'".format(k, v))
         sql_update = ", ".join(l_buf)
         sqlc = []
         for k, v in d_cond.iteritems():
@@ -329,6 +364,17 @@ class LogDB():
         sql = " ".join((sql_header, sql_update, sql_cond))
         cursor = self.connect.cursor()
         cursor.execute(sql, sqlv)
+
+    def remove_lt(self, ltid):
+        # remove from lt
+        sql = "delete from lt where ltid = :ltid"
+        sqlv = {"ltid" : ltid}
+        self.connect.execute(sql, sqlv)
+
+        # remove from ltg
+        sql = "delete from ltg where ltid = :ltid"
+        sqlv = {"ltid" : ltid}
+        self.connect.execute(sql, sqlv)
 
     def _init_lttable(self):
         sql = "select lt.ltid, ltg.ltgid, lt.ltw, lt.lts, lt.count " + \
@@ -434,9 +480,8 @@ def process_files(conf, targets, rflag, fflag):
                     _logger.warning("Log template not found " + \
                             "for message [{0}]".format(line))
                 else:
-                    ld.db.add_line(ltline.ltid, dt, host, l_w)
-    ld.db.commit()
-    ld.ltm.dump()
+                    ld.add_line(ltline.ltid, dt, host, l_w)
+    ld.commit_db()
     
     end_dt = datetime.datetime.now()
     _logger.info("log_db task done ({0})".format(end_dt - start_dt))

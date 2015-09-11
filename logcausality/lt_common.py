@@ -10,10 +10,11 @@ class LTManager(object):
     def __init__(self, conf, db, table, reset_db, ltg_alg):
         self.reset_db = reset_db
         self.conf = conf
+        self.sym = conf.get("log_template", "variable_symbol")
+
         self.db = db # log_db.LogDB
         self.table = table # LTTable
         self.ltgroup = self._init_ltgroup(ltg_alg) # LTGroup
-        self.filename = conf.get("log_template", "db_filename")
 
     def _init_ltgroup(self, ltg_alg):
         assert ltg_alg in ("shiso", "none")
@@ -40,10 +41,10 @@ class LTManager(object):
         # if ltline is None, it means lt not found in pre-defined table
         raise NotImplementedError
 
-    def add_lt(self, l_w, l_s):
+    def add_lt(self, l_w, l_s, cnt = 1):
         # add new lt to db and table
         ltid = self.table.next_ltid()
-        ltline = LogTemplate(ltid, None, l_w, l_s, 1)
+        ltline = LogTemplate(ltid, None, l_w, l_s, cnt, self.sym)
         ltgid = self.ltgroup.add(ltline)
         ltline.ltgid = ltgid
         self.table.add_lt(ltline)
@@ -62,6 +63,10 @@ class LTManager(object):
     def count_lt(self, ltid):
         cnt = self.table[ltid].count()
         self.db.update_lt(ltid, None, None, cnt)
+
+    def remove_lt(self, ltid):
+        self.table.remove_lt(ltid)
+        self.db.remove_lt(ltid)
 
     def load(self):
         pass
@@ -101,26 +106,37 @@ class LTTable():
     
     def restore_lt(self, ltid, ltgid, ltw, lts, count):
         assert not self.ltdict.has_key(ltid)
-        self.ltdict[ltid] = LogTemplate(ltid, ltgid, ltw, lts, count)
+        self.ltdict[ltid] = LogTemplate(ltid, ltgid, ltw, lts, count, self.sym)
 
     def add_lt(self, ltline):
         assert not self.ltdict.has_key(ltline.ltid)
         self.ltdict[ltline.ltid] = ltline
 
+    def remove_lt(self, ltid):
+        self.ltdict.pop(ltid)
+
 
 class LogTemplate():
 
-    def __init__(self, ltid, ltgid, ltw, lts, count):
+    def __init__(self, ltid, ltgid, ltw, lts, count, sym):
         self.ltid = ltid
         self.ltgid = ltgid
         self.ltw = ltw
         self.lts = lts
         self.cnt = count
+        self.sym = sym
 
     def __str__(self):
-        return self.restore_words(self.ltw)
+        return self.restore_message(self.ltw)
 
-    def restore_words(self, l_w):
+    def var(self, l_w):
+        return [w_org for w_org, w_lt in zip(l_w, self.ltw)
+                if w_lt == self.sym]
+
+    def var_location(self):
+        return [i for i, w_lt in enumerate(self.ltw) if w_lt == self.sym]
+
+    def restore_message(self, l_w):
         if self.lts is None:
             return "".join(l_w)
         else:
