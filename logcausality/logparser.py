@@ -185,6 +185,7 @@ class LogParser():
         return dt, host, message
 
     def process_line(self, line):
+        line = line.rstrip("\n")
         if line == "":
             return None, None, None, None
         dt, host, message = self.pop_header(line)

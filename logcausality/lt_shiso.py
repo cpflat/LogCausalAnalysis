@@ -310,32 +310,32 @@ def edit_distance(m1, m2, sym):
     return table[-1][-1]
 
 
-def test_ltgen(conf):
-    ltm = LTManager(conf)
-    if conf.getboolean("general", "src_recur"):
-        l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
-    else:
-        l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
-    ltm.process_dataset(conf, l_fp)
-
-
-if __name__ == "__main__":
-    #logger_super = logging.getLogger("lt_common")
-    #ch = logging.StreamHandler()
-    #ch.setLevel(logging.DEBUG)
-    #logger_super.setLevel(logging.DEBUG)
-    #logger_super.addHandler(ch)
-    #_logger.setLevel(logging.DEBUG)
-    #_logger.addHandler(ch)
-    #test_make()
-
-    usage = "usage: {0} [options]".format(sys.argv[0])
-    op = optparse.OptionParser(usage)
-    op.add_option("-c", "--config", action="store",
-            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
-            help="configuration file path")
-    options, args = op.parse_args()
-
-    conf = config.open_config(options.conf)
-    test_ltgen(conf)
+#def test_ltgen(conf):
+#    ltm = LTManager(conf)
+#    if conf.getboolean("general", "src_recur"):
+#        l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
+#    else:
+#        l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
+#    ltm.process_dataset(conf, l_fp)
+#
+#
+#if __name__ == "__main__":
+#    #logger_super = logging.getLogger("lt_common")
+#    #ch = logging.StreamHandler()
+#    #ch.setLevel(logging.DEBUG)
+#    #logger_super.setLevel(logging.DEBUG)
+#    #logger_super.addHandler(ch)
+#    #_logger.setLevel(logging.DEBUG)
+#    #_logger.addHandler(ch)
+#    #test_make()
+#
+#    usage = "usage: {0} [options]".format(sys.argv[0])
+#    op = optparse.OptionParser(usage)
+#    op.add_option("-c", "--config", action="store",
+#            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+#            help="configuration file path")
+#    options, args = op.parse_args()
+#
+#    conf = config.open_config(options.conf)
+#    test_ltgen(conf)
 

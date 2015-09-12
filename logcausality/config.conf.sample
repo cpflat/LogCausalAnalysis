@@ -45,7 +45,7 @@ remove_header_filename =
 [log_template]
 
 # 1st step algorithms / methods to generate log templates
-# [shiso, ] are available
+# [shiso, va] are available
 lt_alg = shiso
 
 # 2nd step algorithms / methods
@@ -67,9 +67,33 @@ sym_ignore = false
 variable_symbol = **
 
 
+[log_template_va]
+
+# Source data of frequency dictionary
+# Aiming to use past log data (before source of DB) as training data
+# If empty, use source data of DB (defined in config, not command line option!)
+src_path = 
+
+# Incremental update of frequency dictionary
+# If source data of frequency dictionary is equal to that of DB construction,
+# Avoid double count of frequency with this option being false
+incre_update = false
+
+# Output filename of frequency dictionary and search tree
+output_filename = va.dump
+
+# Algorithm to decide frequency threshold
+# [median, ] is available
+threshold_mode = median
+
+# Threshold value
+# If mode is median, threshold means ratio of description words to all words
+threshold = 0.6
+
+
 [log_template_shiso]
 
-# Classifying tree data of Search Phase
+# Output filename of classifying tree data of Search Phase
 cls_tree_filename = shiso.dump
 
 # Threshold for SeqRatio in Search Phase

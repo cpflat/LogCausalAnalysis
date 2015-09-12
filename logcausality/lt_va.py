@@ -1,60 +1,80 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# TODO !!! out of use due to change of log_db / lt_common !!!
-
 import sys
 import os
 import math
+import cPickle as pickle
 
 import config
 import fslib
 import lt_common
-import logheader
-import logsplitter
+import logparser
 
 
 class LTManager(lt_common.LTManager):
 
-    __module__ = os.path.splitext(os.path.basename(__file__))[0]
-
-    def __init__(self, conf, past_targets, filename = None):
-        super(LTManager, self).__init__(conf, filename)
-        self.ltgen = LTGenVA(past_targets, self.sym)
+    def __init__(self, conf, db, table, reset_db, ltg_alg):
+        super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
+        
+        self.src_fn = self.conf.get("log_template_va", "src_path")
+        if self.src_fn == "":
+            self.src_fn = conf.get("general", "src_path")
+        self.filename = conf.get("log_template_va", "output_filename")
+        self.ltgen = LTGenVA(self.sym,
+                update_flag = conf.get("log_template_va", "incre_update"),
+                th_mode = conf.get("log_template_va", "threshold_mode"),
+                threshold = conf.getfloat("log_template_va", "threshold"))
         self.searchtree = lt_common.LTSearchTree(self.sym)
+
+        if os.path.exists(self.filename) and not reset_db:
+            self.load()
 
     def process_line(self, l_w, l_s):
         ltw = self.ltgen.process_line(l_w)
         ltid = self.searchtree.search(ltw)
         if ltid is None:
-            ltid = self.table.add_lt(ltw, l_s)
-            self.searchtree.add(ltid, ltw)
+            ltline = self.add_lt(l_w, l_s)
+            self.searchtree.add(ltline.ltid, ltw)
         else:
-            self.table.count_lt(ltid)
-        return self.table[ltid]
+            self.count_lt(ltid)
+            ltline = self.table[ltid]
+        return ltline
+
+    def load(self):
+        with open(self.filename, 'r') as f:
+            self.ltgen.d_w, self.searchtree = pickle.load(f)
+
+    def dump(self):
+        with open(self.filename, 'w') as f:
+            obj = (self.ltgen.d_w, self.searchtree)
+            pickle.dump(obj, f)
 
 
 class LTGenVA():
 
-    __module__ = os.path.splitext(os.path.basename(__file__))[0]
-    
-    def __init__(self, past_targets, sym, th_mode = "median"):
+    def __init__(self, sym, update_flag, th_mode, threshold):
         self.sym = sym
+        self.update_flag = update_flag
         self.th_mode = th_mode
+        self.threshold = threshold
         self.d_w = {}
-        for fp in fslib.rep_dir(past_targets):
+        
+    def mk_dict(self, src_path):
+        for fp in fslib.rep_dir(src_path):
             with open(fp, 'r') as f:
                 for line in f:
-                    message, info = logheader.split_header(line.strip("\n"))
-                    if message is None: continue
-                    l_w, l_s = logsplitter.split(message)
+                    dt, host, l_w, l_s = logparser.process_line(line)
+                    if l_w is None: continue
                     self._count_line(l_w)
 
     def _th(self, l_cnt):
         if self.th_mode == "median":
             seq = sorted(l_cnt, reverse=True)
-            num = int(math.ceil(1.0 * len(l_cnt) / 2))
+            num = int(math.ceil(1.0 * self.threshold * len(l_cnt) ))
             return seq[num - 1]
+        else:
+            raise ValueError()
 
     def _count_line(self, l_w):
         for w in l_w:
@@ -79,19 +99,9 @@ class LTGenVA():
         return ltw
 
     def process_line(self, l_w):
-        # retrun format
-        self._count_line(l_w)
+        # return format
+        if self.update_flag:
+            self._count_line(l_w)
         return self._make_lt(l_w)
-
-
-def test_make():
-    conf = config.open_config("config.conf.sample")
-    ltm = LTManager(conf, "va_learn.temp")
-    ltm.process_dataset("test.temp")
-    ltm.show()
-
-
-if __name__ == "__main__":
-    test_make()
 
 

@@ -62,9 +62,9 @@ class LogData():
             self.ltm = lt_shiso.LTManager(self.conf, self.db, self.table,
                     self.reset_db, ltg_alg)
         elif lt_alg == "va":
-            raise NotImplementedError
-            #import lt_va
-            #lt_shiso.LTManager(self.conf, )
+            import lt_va
+            self.ltm = lt_va.LTManager(self.conf, self.db, self.table,
+                    self.reset_db, ltg_alg)
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):
@@ -108,7 +108,7 @@ class LogData():
         print "[ltgroup {0} ({1}, {2})]".format(gid, length, cnt)
         print "\n".join(buf)
 
-    def add_line(ltid, dt, host, l_w):
+    def add_line(self, ltid, dt, host, l_w):
         self.db.add_line(ltid, dt, host, l_w)
 
     def commit_db(self):
@@ -472,7 +472,6 @@ def process_files(conf, targets, rflag, fflag):
         with open(fp, 'r') as f:
             _logger.info("log_db processing {0}".format(fp))
             for line in f:
-                line = line.rstrip("\n")
                 dt, host, l_w, l_s = lp.process_line(line)
                 if l_w is None: return
                 ltline = ld.ltm.process_line(l_w, l_s)
