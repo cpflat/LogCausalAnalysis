@@ -55,7 +55,6 @@ class LogData():
     def set_ltm(self):
         lt_alg = self.conf.get("log_template", "lt_alg")
         ltg_alg = self.conf.get("log_template", "ltgroup_alg")
-        assert lt_alg in ("shiso", "va")
         # ltg_alg : used in lt_common.LTManager._init_ltgroup
         if lt_alg == "shiso":
             import lt_shiso
@@ -65,6 +64,12 @@ class LogData():
             import lt_va
             self.ltm = lt_va.LTManager(self.conf, self.db, self.table,
                     self.reset_db, ltg_alg)
+        elif lt_alg == "import":
+            import lt_import
+            self.ltm = lt_import.LTManager(self.conf, self.db, self.table,
+                    self.reset_db, ltg_alg)
+        else:
+            raise ValueError("lt_alg({0}) invalid".format(lt_alg))
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):

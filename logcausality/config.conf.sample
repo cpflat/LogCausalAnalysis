@@ -3,7 +3,7 @@
 
 # Source log data path
 # Less priority than command option of log_db
-src_path = test.temp, test2.temp
+src_path = test.temp
 
 # Search source path recursively
 # If false, only search right under the given directory
@@ -54,6 +54,10 @@ lt_alg = shiso
 # (none : with no grouping)
 ltgroup_alg = shiso
 
+# Output filename of internal data for log template generation
+# Do NOT share among multiple log template generation algorithms
+indata_filename = lt.dump
+
 # Definition file of symbol strings to split log messages
 # If empty, use default rule (symdef.txt.sample)
 sym_filename = 
@@ -67,6 +71,17 @@ sym_ignore = false
 variable_symbol = **
 
 
+[log_template_import]
+
+# Log template definition file path
+def_path = 
+
+# Log template definition file style
+# [plain] is available
+# plain : without headers(datetime and host)
+mode = plain
+
+
 [log_template_va]
 
 # Source data of frequency dictionary
@@ -78,9 +93,6 @@ src_path =
 # If source data of frequency dictionary is equal to that of DB construction,
 # Avoid double count of frequency with this option being false
 incre_update = false
-
-# Output filename of frequency dictionary and search tree
-output_filename = va.dump
 
 # Algorithm to decide frequency threshold
 # [median, ] is available

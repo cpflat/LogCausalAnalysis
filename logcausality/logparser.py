@@ -30,6 +30,7 @@ class LogParser():
         self.default_year = conf.getint("database", "default_year")
         self.rmheader_fl = conf.getlist("database", "remove_header_filename")
         self.symdef = conf.get("log_template", "sym_filename")
+        self.varsym = conf.get("log_template", "variable_symbol")
         if self.symdef == "":
             self.symdef = DEFAULT_SYMDEF
         self.sym_ignore = conf.getboolean("log_template", "sym_ignore")
@@ -80,6 +81,18 @@ class LogParser():
         for cnt, c in enumerate(string):
             if c in self.spl:
                 return string[0:cnt], string[cnt], string[cnt+1:]
+        # partition if string have variable string symbol
+        # only for Non-symbol-ignoring mode
+        if self.varsym in string:
+            ind_s = string.find(self.varsym)
+            ind_e = ind_s + len(self.varsym)
+            if string == self.varsym:
+                return string, None, None
+            elif ind_s == 0:
+                # top of string is equal to self.varsym
+                return string[0:ind_e], "", string[ind_e:]
+            else:
+                return string[0:ind_s], "", string[ind_s:]
         # partition in reversed order if string is not one variable
         for cnt in reversed(range(len(string))):
             if string[cnt] in self.cspl:

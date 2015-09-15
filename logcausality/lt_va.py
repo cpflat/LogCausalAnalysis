@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import sys
-import os
 import math
 import cPickle as pickle
 
@@ -15,24 +14,28 @@ import logparser
 class LTManager(lt_common.LTManager):
 
     def __init__(self, conf, db, table, reset_db, ltg_alg):
+        self.searchtree = None
+
         super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
         
         self.src_fn = self.conf.get("log_template_va", "src_path")
         if self.src_fn == "":
             self.src_fn = conf.get("general", "src_path")
-        self.filename = conf.get("log_template_va", "output_filename")
-        self.ltgen = LTGenVA(self.sym,
-                update_flag = conf.get("log_template_va", "incre_update"),
-                th_mode = conf.get("log_template_va", "threshold_mode"),
-                threshold = conf.getfloat("log_template_va", "threshold"))
-        self.searchtree = lt_common.LTSearchTree(self.sym)
 
-        if os.path.exists(self.filename) and not reset_db:
-            self.load()
+        self._init_ltgen()
+        if self.searchtree is None:
+            self.searchtree = lt_common.LTSearchTree(self.sym)
+
+    def _init_ltgen(self):
+        if self.ltgen is None:
+            self.ltgen = LTGenVA(self.sym,
+                update_flag = self.conf.get("log_template_va", "incre_update"),
+                th_mode = self.conf.get("log_template_va", "threshold_mode"),
+                threshold = self.conf.getfloat("log_template_va", "threshold"))
 
     def process_line(self, l_w, l_s):
-        ltw = self.ltgen.process_line(l_w)
-        ltid = self.searchtree.search(ltw)
+        #ltw = self.ltgen.process_line(l_w)
+        ltid = self.searchtree.search(l_w)
         if ltid is None:
             ltline = self.add_lt(l_w, l_s)
             self.searchtree.add(ltline.ltid, ltw)
@@ -42,13 +45,13 @@ class LTManager(lt_common.LTManager):
         return ltline
 
     def load(self):
-        with open(self.filename, 'r') as f:
-            self.ltgen.d_w, self.searchtree = pickle.load(f)
+        if self.ltgen is None:
+            self._init_ltgen()
+        self.ltgen.d_w, self.searchtree = self._load_pickle()
 
     def dump(self):
-        with open(self.filename, 'w') as f:
-            obj = (self.ltgen.d_w, self.searchtree)
-            pickle.dump(obj, f)
+        obj = (self.ltgen.d_w, self.searchtree)
+        self._dump_pickle(obj)
 
 
 class LTGenVA():

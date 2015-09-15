@@ -12,7 +12,6 @@ Do NOT edit log templates manually if you still have unprocessed log data.
 """
 
 import sys
-import os
 import logging
 import optparse
 import cPickle as pickle
@@ -30,29 +29,28 @@ class LTManager(lt_common.LTManager):
     def __init__(self, conf, db, table, reset_db, ltg_alg):
         super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
         self._init_ltgen()
-        self.filename = conf.get("log_template_shiso", "cls_tree_filename")
-        if os.path.exists(self.filename) and not reset_db:
-            self.load()
 
     def _init_ltgen(self):
-        self.ltgen = LTGen(self, self.table,
-                threshold = self.conf.getfloat(
-                    "log_template_shiso", "ltgen_threshold"),
-                max_child = self.conf.getint(
-                    "log_template_shiso", "ltgen_max_child")
-                )
+        if self.ltgen is None:
+            self.ltgen = LTGen(self, self.table,
+                    threshold = self.conf.getfloat(
+                        "log_template_shiso", "ltgen_threshold"),
+                    max_child = self.conf.getint(
+                        "log_template_shiso", "ltgen_max_child")
+                    )
         
     def process_line(self, l_w, l_s):
         ltline, added_flag = self.ltgen.process_line(l_w, l_s)
         return ltline
 
     def load(self):
-        with open(self.filename, 'r') as f:
-            self.ltgen.n_root = pickle.load(f)
+        if self.ltgen is None:
+            self._init_ltgen()
+        self.ltgen.n_root = self._load_pickle()
 
     def dump(self):
-        with open(self.filename, 'w') as f:
-            pickle.dump(self.ltgen.n_root, f)
+        obj = self.ltgen.n_root
+        self._dump_pickle(obj)
 
 
 class LTGenNode():

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import cPickle as pickle
 
 
@@ -11,13 +12,16 @@ class LTManager(object):
         self.reset_db = reset_db
         self.conf = conf
         self.sym = conf.get("log_template", "variable_symbol")
+        self.filename = conf.get("log_template", "indata_filename")
 
         self.db = db # log_db.LogDB
         self.table = table # LTTable
         self.ltgroup = self._init_ltgroup(ltg_alg) # LTGroup
 
+        if os.path.exists(self.filename) and not reset_db:
+            self.load()
+
     def _init_ltgroup(self, ltg_alg):
-        assert ltg_alg in ("shiso", "none")
         if ltg_alg == "shiso":
             import lt_shiso
             ltgroup = lt_shiso.LTGroupSHISO(self.table,
@@ -32,12 +36,14 @@ class LTManager(object):
                     )
         elif ltg_alg == "none":
             ltgroup = LTGroup()
+        else:
+            raise ValueError("ltgroup_alg({0}) invalid".format(ltg_alg))
         if not self.reset_db:
             ltgroup.restore_ltg(self.db, self.table)
         return ltgroup
 
     def process_line(self, l_w, l_s):
-        # return ltline
+        # return ltline object
         # if ltline is None, it means lt not found in pre-defined table
         raise NotImplementedError
 
@@ -73,6 +79,14 @@ class LTManager(object):
 
     def dump(self):
         pass
+
+    def _load_pickle(self):
+        with open(self.filename, 'r') as f:
+            return pickle.load(f)
+
+    def _dump_pickle(self, obj):
+        with open(self.filename, 'w') as f:
+            pickle.dump(obj, f)
 
 
 class LTTable():
@@ -285,12 +299,12 @@ class LTSearchTreeNode():
         self.parent = parent # for reverse search to remove
         self.word = word
 
-    def child(self, word):
+    def child(self, word = None):
         if word is None:
             # wildcard
             return self.wild
         elif self.windex.has_key(word):
-            return self.windex(word)
+            return self.windex[word]
         else:
             return None
 
