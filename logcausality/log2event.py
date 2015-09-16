@@ -38,6 +38,9 @@ class LogEventIDMap():
     def info(self, eid):
         return self.emap[eid]
 
+    def get_eid(self, info):
+        return self.ermap[info]
+
     def rearrange(self, l_eid):
         import copy
         assert len(l_eid) == self.eidlen
@@ -59,7 +62,7 @@ def log2event(conf, top_dt, end_dt, dur, area):
     ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
     evmap = LogEventIDMap()
     edict = {}
-    for line in ld.db.iter_lines(None, None, top_dt, end_dt, None, area):
+    for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area):
         if not ltf.isremoved(line.lt.ltid):
             ev = nodestat.Event(line.dt, 1)
             eid = evmap.eid(line)

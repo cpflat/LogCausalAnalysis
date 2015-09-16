@@ -6,13 +6,12 @@ import os
 import datetime
 import optparse
 import cPickle as pickle
+import networkx as nx
 
 import fslib
 import config
 import log_db
 import pc_log
-
-DETAIL_SHOW_LIMIT = 10
 
 
 class PCOutput():
@@ -27,8 +26,7 @@ class PCOutput():
 
         self.dirname = self.conf.get("dag", "output_dir")
         self.graph = graph
-        self.d_edges, self.ud_edges = self._init_edges()
-        
+        #self.d_edges, self.ud_edges = self._init_edges()
         self.evmap = evmap  # log2event.LogEventIDMap
         self.top_dt = top_dt
         self.end_dt = end_dt
@@ -54,10 +52,12 @@ class PCOutput():
         if self.graph is None:
             raise ValueError("use make() or load() before showing")
 
-    def _init_edges(self):
+    def _separate_edges(self, graph = None):
+        if graph is None:
+            graph = self.graph
         temp = []
         udedges = []
-        for edge in self.graph.edges():
+        for edge in graph.edges():
             for cnt, temp_edge in enumerate(temp):
                 if edge[0] == temp_edge[1] and edge[1] == temp_edge[0]:
                     temp.pop(cnt)
@@ -94,7 +94,7 @@ class PCOutput():
         for eid, header in zip(edge, ("src", "dst")):
             ltgid, host = self.evmap.info(eid)
             print("{0}>".format(header))
-            print("\n ".join(
+            print("\n".join(
                 [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
             print
     
@@ -105,18 +105,10 @@ class PCOutput():
             area = self.area
         
         for eid, header in zip(edge, ("src", "dst")):
-            buf = []
-            cnt = 0
             ltgid, host = self.evmap.info(eid)
             print("{0}> ltgid {1}".format(header, ltgid))
-            for line in self.ld.iter_lines(None, ltgid,
-                    self.top_dt, self.end_dt, host, area):
-                buf.append(line.restore_line())
-                cnt += 1
-                if limit is not None and cnt >= limit:
-                    buf.append("...")
-                    break
-            print "\n".join(buf)
+            self.ld.show_log_repr(limit, None, ltgid,
+                    self.top_dt, self.end_dt, host, area)
         print
 
     def print_env(self):
@@ -131,48 +123,79 @@ class PCOutput():
         print("events : {0}".format(len(self.evmap)))
         print
 
-    def print_result(self):
+    def print_result(self, graph = None):
+        if graph is None:
+            graph = self.graph
         self._none_caution()
-        for edge in self.d_edges:
-            self._print_edge(edge)
-        for edge in self.ud_edges:
-            self._print_edge(edge)
+        for edges in self._separate_edges(graph): # directed, undirected
+            for edge in edges:
+                self._print_edge(edge)
         print
 
-    def print_result_lt(self):
-        self._none_caution()
-        self._init_ld()
-        print("### directed ###")
-        for edge in self.d_edges:
-            self._print_edge(edge)
-            self._print_edge_lt(edge)
-        print
-        print("### undirected ###")
-        for edge in self.ud_edges:
-            self._print_edge(edge)
-            self._print_edge_lt(edge)
-
-    def print_result_detail(self, limit = None):
+    def print_result_lt(self, graph = None):
+        if graph is None:
+            graph = self.graph
         self._none_caution()
         self._init_ld()
-        print("### directed ###")
-        for edge in self.d_edges:
-            self._print_edge(edge)
-            self._print_edge_detail(edge, limit)
-        print
-        print("### undirected ###")
-        for edge in self.ud_edges:
-            self._print_edge(edge)
-            self._print_edge_detail(edge, limit)
+        for edges, label in zip(self._separate_edges(graph),
+                ("directed", "undirected")):
+            print("### {0} ###").format(label)
+            for edge in edges:
+                self._print_edge(edge)
+                self._print_edge_lt(edge)
+            print
 
-    def show_graph(self, fn):
-        import networkx as nx
-        g = nx.to_agraph(self.graph)
+    def print_result_detail(self, graph = None, limit = None):
+        if graph is None:
+            graph = self.graph
+        self._none_caution()
+        self._init_ld()
+        for edges, label in zip(self._separate_edges(graph),
+                ("directed", "undirected")):
+            print("### {0} ###").format(label)
+            for edge in edges:
+                self._print_edge(edge)
+                self._print_edge_detail(edge, limit)
+            print
+
+    def _node_info(self, node):
+        return self.evmap.info(node)
+
+    def _edge_info(self, edge):
+        return tuple(self._node_info(node) for node in edge)
+
+    def _node_id(self, info):
+        # info : (ltgid, host)
+        return self.evmap.get_eid(info)
+
+    def _edge_id(self, t_info):
+        # t_info : (src_info, dst_info)
+        return tuple(self._node_id(info) for info in t_info)
+
+    def relabel_graph(self, graph = None):
+        if graph is None:
+            graph = self.graph
+        mapping = {}
+        for node in graph.nodes():
+            ltgid, host = self._node_info()
+            mapping[node] = "{0}, {1}".format(ltgid, host)
+        return nx.relabel_nodes(self.graph, mapping, copy=True)
+
+    def show_graph(self, fn, eflag):
+        if eflag:
+            graph = graph_no_orphan(self.graph)
+        else:
+            graph = self.graph
+        rgraph = self.relabel_graph(graph)
+        g = nx.to_agraph(rgraph)
         g.draw(fn, prog='circo')
-        for node in self.graph.nodes():
-            ltid, host = self.evmap.info(node)
-            print "Node {0} : LtID {1} , Host {2}".format(node, ltid, host)
         print ">", fn
+
+
+def graph_no_orphan(src):
+    g = nx.DiGraph()
+    g.add_edges_from([edge for edge in src.edges()])
+    return g
 
 
 def list_results(conf):
@@ -186,31 +209,92 @@ def list_results(conf):
                 str(len(output.graph.edges())), fp))
 
 
+def show_result(conf, result, graph, dflag, limit):
+    result.print_env() 
+    result.print_result(graph)
+    if dflag:
+        result.print_result_detail(graph, limit)
+    else:
+        result.print_result_lt(graph)
+
+
+def common_edge_graph(conf, r1, r2):
+    g = nx.DiGraph()
+    g1_edges = [r1._edge_info(edge) for edge in r1.graph.edges()]
+    g2_edges = [r2._edge_info(edge) for edge in r2.graph.edges()]
+    g.add_edges_from([r1._edge_id(edge) for edge in g1_edges
+            if edge in g2_edges])
+    return g # graph for r1
+
+
+def diff_edge_graph(conf, r1, r2):
+    g = nx.DiGraph()
+    g1_edges = [r1._edge_info(edge) for edge in r1.graph.edges()]
+    g2_edges = [r2._edge_info(edge) for edge in r2.graph.edges()]
+    g.add_edges_from([r1._edge_id(edge) for edge in g1_edges
+            if not edge in g2_edges])
+    return g # graph for r1
+
+
 if __name__ == "__main__":
 
-    usage = "usage: %s [options] <filename>\n" % sys.argv[0] + \
-            "if no filename given, show abstraction of results"
+    usage = """
+usage: {0} [options] args...
+args:
+ show-all : show abstraction of series of results
+ show RESULT : show information of result DAG recorded in RESULT
+ show-defail RESULT : show information of result DAG
+                      with representative source log data
+ graph RESULT GRAPH : output graph pdf as GRAPH
+ common RESULT1 RESULT2 : show detail of edges in RESULT1
+                        which appear in RESULT2
+ diff RESULT1 RESULT2 : show detail of edges in RESULT1
+                        which do not appear in RESULT2
+    """.format(sys.argv[0]).strip()
+
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
-    op.add_option("-g", action="store", dest="graph_fn", type="string",
-            default=None, help="output graph view")
-    op.add_option("-l", action="store_true", dest="detail",
-            default=False, help="output examples of log events")
+    op.add_option("-d", "--detail", action="store_true",
+            dest="dflag", default=False,
+            help="Show representative source log data")
+    op.add_option("-e", "--edge", action="store_true",
+            dest="eflag", default=False,
+            help="Draw only nodes with adjacent edge")
+    op.add_option("-l", "--limit", action="store",
+            dest="show_limit", type="int", default=10,
+            help="Limitation rows to show source log data")
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
-    if len(args) == 0:
+    mode = args.pop(0)
+    if mode == "show-all":
         list_results(conf)
-    else:
+    elif mode == "show":
+        if len(args) < 1:
+            sys.exit("give me filename of pc result object")
+        result = PCOutput(conf).load(args[0])
+        show_result(conf, result, None, options.dflag, options.show_limit)
+    elif mode == "graph": 
+        if len(args) < 2:
+            sys.exit("give me filename of pc result object, " + \
+                    "and output filename of graph pdf")
         output = PCOutput(conf).load(args[0])
-        output.print_env() 
-        output.print_result() 
-        if options.detail:
-            output.print_result_detail(DETAIL_SHOW_LIMIT)
-        else:
-            output.print_result_lt()
-        if options.graph_fn:
-            output.show_graph(options.graph_fn)
+        output.show_graph(args[1], options.eflag)
+    elif mode == "common":
+        if len(args) < 2:
+            sys.exit("give me 2 filenames of pc result object")
+        r1 = PCOutput(conf).load(args[0])
+        r2 = PCOutput(conf).load(args[1])
+        graph = common_edge_graph(conf, r1, r2)
+        show_result(conf, r1, graph, options.dflag, options.show_limit)
+    elif mode == "diff":
+        if len(args) < 2:
+            sys.exit("give me 2 filenames of pc result object")
+        r1 = PCOutput(conf).load(args[0])
+        r2 = PCOutput(conf).load(args[1])
+        graph = diff_edge_graph(conf, r1, r2)
+        show_result(conf, r1, graph, options.dflag, options.show_limit)
+
 

@@ -15,6 +15,7 @@ class LTManager(lt_common.LTManager):
 
     def __init__(self, conf, db, table, reset_db, ltg_alg):
         self.searchtree = None
+        self.ltgen = None
 
         super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
         

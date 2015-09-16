@@ -73,8 +73,33 @@ class LogData():
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):
-        return self.db.iter_lines(lid, ltid, ltgid, top_dt, end_dt, host, area)
+        return self.db.iter_lines(lid = lid, ltid = ltid, ltgid = ltgid,
+                top_dt = top_dt, end_dt = end_dt, host = host, area = area)
 
+    def show_log_repr(self, limit = None, ltid = None, ltgid = None,
+            top_dt = None, end_dt = None, host = None, area = None):
+
+        buf = []
+        cnt = 0
+        limit_flag = False
+        for line in self.iter_lines(lid = None, ltid = ltid, ltgid = ltgid,
+                top_dt = top_dt, end_dt = end_dt, host = host, area = area):
+            if limit is not None and cnt >= limit:
+                limit_flag = True
+            else:
+                buf.append(line.restore_line())
+            cnt += 1
+        else:
+            length = cnt
+        if limit_flag:
+            buf.append("... ({0})".format(length))
+        else:
+            buf.append("({0})".format(length))
+        print "\n".join(buf)
+
+    def whole_term(self):
+        return self.db.whole_term()
+        
     def iter_lt(self):
         for ltline in self.table:
             yield ltline
@@ -315,6 +340,19 @@ class LogDB():
         sql = " ".join((sql_header, sql_update, "where", sql_cond))
         cursor = self.connect.cursor()
         cursor.execute(sql, d_cond)
+
+    def whole_term(self):
+        sql = "select dt from log"
+        cursor = self.connect.cursor()
+        cursor.execute(sql)
+        s = set()
+        for row in cursor:
+            dt = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
+            s.add(dt.date())
+        l_dt = [datetime.datetime.combine(d, datetime.time()) for d in s]
+        l_dt.sort(reverse = False)
+        term_start = l_dt[0]
+        return l_dt[0], l_dt[-1] + datetime.timedelta(days = 1)
 
     def add_lt(self, ltline):
         # add to lt

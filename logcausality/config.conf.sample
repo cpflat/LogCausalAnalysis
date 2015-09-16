@@ -105,9 +105,6 @@ threshold = 0.6
 
 [log_template_shiso]
 
-# Output filename of classifying tree data of Search Phase
-cls_tree_filename = shiso.dump
-
 # Threshold for SeqRatio in Search Phase
 ltgen_threshold = 0.9
 

@@ -55,6 +55,10 @@ def thread_name(conf, top_dt, end_dt, dur, area):
 def pc_all_args(conf):
     w_top_dt, w_end_dt = conf.getterm("dag", "whole_term")
     term = conf.getdur("dag", "unit_term")
+    if term is None:
+        import log_db
+        ld = log_db.LogData(conf)
+        term = ld.while_term()
     diff = conf.getdur("dag", "unit_diff")
     dur = conf.getdur("dag", "stat_bin")
     l_args = []

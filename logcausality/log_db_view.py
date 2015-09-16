@@ -12,7 +12,8 @@ import log_db
 def view(conf, ltid, ltgid, top_dt, end_dt, host, area, oflag):
 
     ld = log_db.LogData(conf)
-    for e in ld.iter_lines(ltid, ltgid, top_dt, end_dt, host, area):
+    for e in ld.iter_lines(ltid = ltid, ltgid = ltgid, top_dt = top_dt,
+            end_dt = end_dt, host = host, area = area):
         if oflag:
             print e.restore_line()
         else:

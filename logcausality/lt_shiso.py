@@ -27,7 +27,9 @@ _logger = logging.getLogger(__name__)
 class LTManager(lt_common.LTManager):
 
     def __init__(self, conf, db, table, reset_db, ltg_alg):
+        self.ltgen = None
         super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
+        
         self._init_ltgen()
 
     def _init_ltgen(self):
