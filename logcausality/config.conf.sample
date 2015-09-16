@@ -128,7 +128,10 @@ ltgroup_mem_ngram = true
 
 # Target term of log messages to construct DAG
 # Divided into unit terms by "default_term" before processing
-whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
+# If empty, set whole days including all log data in DB
+# For example:
+# whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
+whole_term = 
 
 # Target areas of DAG construction
 # If "all" given, 

@@ -19,7 +19,7 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
                 dict_type = dict_type, allow_no_value = allow_no_value)
         self._noopt = noopterror
 
-    def _no_option(self, err):
+    def _no_option(self, err = None):
         if self._noopt:
             raise err
         else:
@@ -82,8 +82,11 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
         except ConfigParser.NoOptionError as err:
             return self._no_option(err)
         else:
-            return [e.strip() for e in ret.split(",")
-                    if not e.strip() == ""]
+            if ret == "":
+                return self._no_option()
+            else:
+                return [e.strip() for e in ret.split(",")
+                        if not e.strip() == ""]
 
     def getdt(self, section, name):
         try:
@@ -91,8 +94,11 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
         except ConfigParser.NoOptionError as err:
             return self._no_option(err)
         else:
-            return datetime.datetime.strptime(ret.strip(),
-                    "%Y-%m-%d %H:%M:%S")
+            if ret == "":
+                return self._no_option()
+            else:
+                return datetime.datetime.strptime(ret.strip(),
+                        "%Y-%m-%d %H:%M:%S")
 
     def getterm(self, section, name):
         try:
@@ -100,8 +106,11 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
         except ConfigParser.NoOptionError as err:
             return self._no_option(err)
         else:
-            return tuple(datetime.datetime.strptime(e.strip(),
-                    "%Y-%m-%d %H:%M:%S") for e in ret.split(","))
+            if ret == "":
+                return self._no_option()
+            else:
+                return tuple(datetime.datetime.strptime(e.strip(),
+                        "%Y-%m-%d %H:%M:%S") for e in ret.split(","))
 
     def getdur(self, section, name):
         try:
@@ -109,7 +118,10 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
         except ConfigParser.NoOptionError as err:
             return self._no_option(err)
         else:
-            return str2dur(ret)
+            if ret == "":
+                return self._no_option()
+            else:
+                return str2dur(ret)
 
 
 class GroupDef():
