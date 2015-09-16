@@ -351,7 +351,6 @@ class LogDB():
             s.add(dt.date())
         l_dt = [datetime.datetime.combine(d, datetime.time()) for d in s]
         l_dt.sort(reverse = False)
-        term_start = l_dt[0]
         return l_dt[0], l_dt[-1] + datetime.timedelta(days = 1)
 
     def add_lt(self, ltline):

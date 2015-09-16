@@ -16,8 +16,6 @@ import pc_log
 
 class PCOutput():
 
-    #__module__ = os.path.splitext(os.path.basename(__file__))[0]
-
     def __init__(self, conf):
         self.conf = conf
         self.ld = None
@@ -26,7 +24,6 @@ class PCOutput():
 
         self.dirname = self.conf.get("dag", "output_dir")
         self.graph = graph
-        #self.d_edges, self.ud_edges = self._init_edges()
         self.evmap = evmap  # log2event.LogEventIDMap
         self.top_dt = top_dt
         self.end_dt = end_dt
@@ -241,15 +238,15 @@ if __name__ == "__main__":
     usage = """
 usage: {0} [options] args...
 args:
- show-all : show abstraction of series of results
- show RESULT : show information of result DAG recorded in RESULT
- show-defail RESULT : show information of result DAG
-                      with representative source log data
- graph RESULT GRAPH : output graph pdf as GRAPH
- common RESULT1 RESULT2 : show detail of edges in RESULT1
-                        which appear in RESULT2
- diff RESULT1 RESULT2 : show detail of edges in RESULT1
-                        which do not appear in RESULT2
+  show-all : show abstraction of series of results
+  show RESULT : show information of result DAG recorded in RESULT
+  show-defail RESULT : show information of result DAG
+                       with representative source log data
+  graph RESULT GRAPH : output graph pdf as GRAPH
+  common RESULT1 RESULT2 : show detail of edges in RESULT1
+                           which appear in RESULT2
+  diff RESULT1 RESULT2 : show detail of edges in RESULT1
+                         which do not appear in RESULT2
     """.format(sys.argv[0]).strip()
 
     op = optparse.OptionParser(usage)

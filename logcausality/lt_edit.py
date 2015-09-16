@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# TODO !!! many functions are out of use due to change of log_db !!!
-
 import sys
 import optparse
 
@@ -36,7 +34,7 @@ def show_sort(ld):
     print "\n".join(buf)
 
 
-def breakdown_ltid(ld, ltid):
+def breakdown_ltid(ld, ltid, limit):
     d_args = {}
     for line in ld.iter_lines(ltid = ltid):
         for vid, arg in enumerate(line.var()):
@@ -50,8 +48,8 @@ def breakdown_ltid(ld, ltid):
         buf.append("Variable {0} (word location : {1})".format(vid, loc))
         items = sorted(d_args[vid].items(), key=lambda x: x[1], reverse=True)
         var_variety = len(d_args[vid].keys())
-        if var_variety > MAX_ARG_VARIETY:
-            for item in items[:MAX_ARG_VARIETY]:
+        if var_variety > limit:
+            for item in items[:limit]:
                 buf.append("{0} : {1}".format(item[0], item[1]))
             buf.append("... {0} kinds of variable".format(var_variety))
         else:
@@ -137,11 +135,26 @@ def separate_ltid(ld, ltid, vid, value, sym):
 
 
 if __name__ == "__main__":
-    usage = "usage: %s [options] mode" % sys.argv[0]
+    
+    usage = """
+usage: {0} [options] args...
+args:
+  show : show all ltgroups
+  show-lt : show all log template without grouping
+  show-group LTGID : show log template group which has given LTGID
+  breakdown LTID : show variables appeared in log instances of given LTID
+  merge LTID1 LTID2 : merge log data with LTID1 and LTID2
+  separate LTID VID VALUE : make new log template with log data
+                            that have given variable VALUE in place VID
+    """.format(sys.argv[0]).strip()
+    
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file")
+    op.add_option("-l", "--limit", action="store",
+            dest="show_limit", type="int", default=10,
+            help="Limitation rows to show source log data")
     (options, args) = op.parse_args()
     if len(args) == 0:
         sys.exit(usage)
@@ -164,7 +177,7 @@ if __name__ == "__main__":
         if len(args) <= 1:
             sys.exit("give me ltid, following \"{0}\"".format(mode))
         ltid = int(args[1])
-        print breakdown_ltid(ld, ltid)
+        print breakdown_ltid(ld, ltid, options.show_limit)
     elif mode == "merge":
         if len(args) <= 2:
             sys.exit("give me 2 ltid, following \"{0}\"".format(mode))
