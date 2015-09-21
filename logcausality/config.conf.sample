@@ -167,19 +167,24 @@ use_filter =
 ltlabel = 
 
 
-[filter]
+[filter_self_corr]
 # Options for constructing filters to remove regular log messages
 # by calculating self-correlation of each log events
 
 # Calculated self-correlation values
-log_filename = ltfilter.log
+indata_filename = ltfilter.dump
 
 # Target term to calculate self-correlation
-term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
+# If empty, set whole days including all log data in DB
+term = 
+
+# Time lag to calculate self-correlation
+dur = 1h, 1d
 
 # Bin size of log event frequency data
-corr_bin_size = 10s
+bin_size = 10s
 
 # Threshold of self-correlation to make filters
-corr_threshold = 0.9
+threshold = 0.9
+
 

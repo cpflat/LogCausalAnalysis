@@ -4,14 +4,15 @@
 import sys
 import os
 import datetime
+import logging
+import cPickle as pickle
 
 import config
 import calc
 import log_db
 import timelabel
-from logging import getLogger
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class IDFilter():
@@ -31,7 +32,7 @@ class IDFilter():
                 self._exception_notfound(def_fn)
 
     def _exception_notfound(self, def_fn):
-        _logger.warning("Filter definition file not found".format(fn))
+        _logger.warning("Filter definition file {0} not found".format(fn))
 
     def _open_def(self, fn):
         with open(fn, 'r') as f:
@@ -48,144 +49,120 @@ class IDFilter():
         return nid in self.fids
 
 
-class logger():
+class CalculateSelfCorr():
 
-    def __init__(self, log_fn):
-        self.fn = log_fn
-        with open(self.fn, "a") as f:
-            f.write("\n")
-            f.write("#{0}\n".format(datetime.datetime.today()))
+    def __init__(self, conf, fflag):
+        self.ld = log_db.LogData(conf)
+        self.filename = conf.get("filter_self_corr", "indata_filename")
+        w_term = conf.getterm("filter_self_corr", "term")
+        if w_term is None:
+            self.top_dt, self.end_dt = self.ld.whole_term()
+        else:
+            self.top_dt, self.end_dt = w_term
+        self.l_dur = [config.str2dur(str_dur) for str_dur
+                in conf.getlist("filter_self_corr", "dur")]
+        self.binsize = conf.getdur("filter_self_corr", "bin_size")
+        self.th = conf.getfloat("filter_self_corr", "threshold")
 
-    def add(self, ltid, cnt, dur, val):
-        with open(self.fn, "a") as f:
-            f.write("ltid {0} : {1} in {2} (cnt {3})\n".format(
-                ltid, val, dur, cnt))
+        self.d_result = {}
+        self.d_info = {}
+
+        self.fflag = fflag
+        if self.loaded():
+            self.load()
+
+    def loaded(self):
+        return os.path.exists(self.filename) and not self.fflag
+
+    def _add_result(self, val, ltgid, dur, cnt):
+        self.d_result[(ltgid, dur)] = val
+        self.d_info[ltgid] = cnt
+
+    def calc_self_corr(self, ltgid):
+        l_dt = [line.dt for line in self.ld.iter_lines(ltgid = ltgid,
+                top_dt = self.top_dt, end_dt = self.end_dt)]
+        cnt = len(l_dt)
+        if cnt > 0:
+            for dur in self.l_dur:
+                ts = timelabel.TimeSeries(self.top_dt, self.end_dt,
+                        self.binsize, 0)
+                ts.countdata(l_dt)
+                c = calc.self_corr(ts.data, dur, len(ts.label))
+                self._add_result(c, ltgid, dur, cnt)
+        else:
+            _logger.info("no data for ltgid {0}".format(ltgid))
+
+    def calc_all(self):
+        for ltgid in self.ld.iter_ltgid():
+            _logger.info("calculating ltgid {0}".format(ltgid))
+            self.calc_self_corr(ltgid)
+        self.dump()
+
+    def show_result(self):
+        buf = []
+        for k, val in sorted(self.d_result.items(), key = lambda x: x[0][0]):
+            ltgid, dur = k
+            cnt = self.d_info[ltgid]
+            buf.append("ltgid {0} : {1} in {2} (cnt {3})".format(
+                ltgid, val, dur, cnt))
+        return "\n".join(buf)
+
+    def show_filtered(self, threshold = None):
+        if threshold is None:
+            threshold = self.th
+        ret = set()
+        for k, val in self.d_result.items():
+            ltgid, dur = k
+            if val > threshold:
+                ret.add(ltgid)
+        for ltgid in ret:
+            print ltgid
+
+    def load(self):
+        with open(self.filename, 'r') as f:
+            self.d_result, self.d_info = pickle.load(f)
+
+    def dump(self):
+        with open(self.filename, 'w') as f:
+            obj = self.d_result, self.d_info
+            pickle.dump(obj, f)
 
 
-def mkfilter_self_corr_ltid(ldb, ltid, top_dt, end_dt, l_dur, binsize):
-    l_dt = [line.dt for line in ldb.generate(ltid=ltid)]
-    cnt = len(l_dt)
-    if cnt > 0:
-        ret = []
-        for dur in l_dur:
-            ts = timelabel.TimeSeries(top_dt, end_dt, binsize, 0)
-            ts.countdata(l_dt)
-            c = calc.self_corr(ts.data, dur, len(ts.label))
-            ret.append((c, dur))
-        c, dur = max(ret)
-        return c, dur, cnt
+def mkfilter_self_corr(conf, fflag, threshold = None):
+    sc = CalculateSelfCorr(conf, fflag)
+    if sc.loaded():
+        pass
     else:
-        return None, None, cnt
+        sc.calc_all()
+    print sc.show_filtered(threshold)
 
 
-def mkfilter_self_corr_file(fn, lfn, top_dt, end_dt, l_dur, threshold):
-    ret = []
-    lg = logger(lfn)
-    ldb = log_db.ldb_manager()
-    ldb.open_lt()
-    with open(fn, "r") as f:
-        for line in f:
-            if line == "\n": continue
-            ltid = int(line.rstrip("\n"))
-            for dur in l_dur:
-                c, dur, cnt = mkfilter_self_corr_ltid(ldb, ltid, 
-                        top_dt, end_dt, dur)
-            lg.add(ltid, cnt, dur, c)
-            if c is None:
-                pass
-            elif c > threshold:
-                ret.append(ltid)
-    return ret
-
-
-def mkfilter_self_corr(lfn, top_dt, end_dt, l_dur, threshold):
-    ret = []
-    lg = logger(lfn)
-    ldb = log_db.ldb_manager()
-    for ltline in ldb.lt:
-        ltid = ltline.ltid
-        c, dur, cnt = mkfilter_self_corr_ltid(ldb, ltid, top_dt, end_dt, l_dur)
-        lg.add(ltid, cnt, dur, c)
-        if c is None:
-            pass
-        elif c > threshold:
-            ret.append(ltid)
-    return ret
-
-
-def mkfilter_log(lfn, threshold):
-    ret = []
-    with open(lfn, "r") as f:
-        for line in f:
-            if line == "\n":
-                pass
-            elif line[0] == "#":
-                pass
-            else:
-                ltid = int(line.split(" ")[1])
-                try:
-                    val = float(line.split(" ")[3])
-                except ValueError:
-                    continue
-                else:
-                    if val >= threshold:
-                        ret.append(ltid)
-    return ret
+def show_self_corr(conf):
+    sc = CalculateSelfCorr(conf, False)
+    if sc.loaded():
+        print sc.show_result()
 
 
 if __name__ == "__main__":
     
     import optparse
-    usage = "usage: {0} [options] mode\n".format(sys.argv[0]) + \
-            "\tmode : [self-corr, ]"
+    usage = "usage: {0} [options] mode".format(sys.argv[0])
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
-    op.add_option("-f", "--file", action="store", dest="filename",
-            type="string", default=None,
-            help="validate ltid in given file only")
-    op.add_option("-i", "--ltid", action="store", dest="ltid", type="int",
-            default=None, help="validate given ltid only")
-    op.add_option("-l", "--log", action="store_true", dest="lflag",
-            default=False, help="reconstruct filter file from log")
+    op.add_option("-f", action="store_true", dest="fflag",
+            default=False, help="format indata and recalculate")
     op.add_option("-t", "--threshold", action="store", dest="threshold",
             type="float", default=None, help="Threshold")
     (options, args) = op.parse_args()
     if len(args) == 0: sys.exit(usage)
 
     conf = config.open_config(options.conf)
-    top_dt, end_dt = conf.getterm("filter", "term")
-    lfn = conf.get("filter", "log_filename")
-    l_dur = [
-            datetime.timedelta(hours=1),
-            datetime.timedelta(days=1)
-    ]
+    config.set_common_logging(conf, _logger)
 
     if args[0] == "self-corr":
-        if options.threshold is None:
-            threshold = conf.getfloat("filter", "corr_threshold")
-        else:
-            threshold = options.threshold
-
-        if options.lflag:
-            ret = mkfilter_log(lfn, threshold)
-            for i in ret:
-                print i
-        elif options.ltid is not None:
-            ldb = log_db.ldb_manager()
-            binsize = conf.getdur("filter", "corr_bin_size")
-            ret, dur, cnt = mkfilter_self_corr_ltid(ldb, options.ltid,
-                    top_dt, end_dt, l_dur, binsize)
-            print "{0} in {1} (cnt {2})".format(ret, dur, cnt)
-        elif options.filename is not None:
-            ret = mkfilter_self_corr_file(options.filename, lfn,
-                    top_dt, end_dt, l_dur, threshold)
-            for i in ret:
-                print i
-        else:
-            _logger.info("No options given, process all data in DB")
-            ret = mkfilter_self_corr(lfn, top_dt, end_dt, l_dur, threshold)
-            for i in ret:
-                print i
+        mkfilter_self_corr(conf, options.fflag, options.threshold)
+    elif args[0] == "show-self-corr":
+        show_self_corr(conf) 
 
