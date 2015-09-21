@@ -35,7 +35,7 @@ class LogParser():
             self.symdef = DEFAULT_SYMDEF
         self.sym_ignore = conf.getboolean("log_template", "sym_ignore")
         self.rm_header = []
-        if len(self.rmheader_fl) > 0:
+        if self.rmheader_fl is not None and len(self.rmheader_fl) > 0:
             self._init_remove_header(self.rmheader_fl)
         self._init_splitter()
 

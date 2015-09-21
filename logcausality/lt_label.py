@@ -32,12 +32,14 @@ class LTLabel():
                 self.groups.append(sec[len(self.group_header):])
             elif sec[:len(self.label_header)] == self.label_header:
                 self.labels.append(sec[len(self.label_header):])
-        self.d_group = {}
-        # TODO reversed dict
+
+        self.d_group = {} # key : group, val : [label, ...]
+        self.d_rgroup = {} # key : label, val : [group, ...]
         for group in self.groups:
             section = self.group_header + group
             for label in self.conf.gettuple(section, "members"):
                 self.d_group.setdefault(group, []).append(label)
+                self.d_rgroup.setdefault(label, []).append(group)
         self.rules = []
         for label in self.labels:
             section = self.label_header + label

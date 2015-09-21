@@ -8,8 +8,6 @@ import config
 import log_db
 import lt_common
 
-MAX_ARG_VARIETY = 10
-
 
 def show_all(ld):
     print ld.show_all_ltgroup()
