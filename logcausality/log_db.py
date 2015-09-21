@@ -107,6 +107,9 @@ class LogData():
     def lt(self, ltid):
         return self.table[ltid]
 
+    def iter_ltgid(self):
+        return self.db.iter_ltgid()
+
     def ltg_members(self, ltgid):
         return [self.table[ltid] for ltid in self.db.get_ltg_members(ltgid)]
 
@@ -116,15 +119,19 @@ class LogData():
                 str(ltline), "({0})".format(ltline.cnt)))
 
     def show_all_lt(self):
+        buf = []
         for ltline in self.table:
-            print self._str_ltline(ltline)
+            buf.append(self._str_ltline(ltline))
+        return "\n".join(buf)
 
     def show_all_ltgroup(self):
         if self.db.len_ltg() == 0:
             self.show_all_lt()
         else:
+            buf = []
             for ltgid in self.db.iter_ltgid():
-                self.show_ltgroup(ltgid)
+                buf.append(self.show_ltgroup(ltgid))
+            return "\n".join(buf)
 
     def show_ltgroup(self, gid):
         buf = []
@@ -135,8 +142,8 @@ class LogData():
             ltline = self.table[ltid]
             cnt += ltline.cnt
             buf.append(self._str_ltline(ltline))
-        print "[ltgroup {0} ({1}, {2})]".format(gid, length, cnt)
-        print "\n".join(buf)
+        buf = ["[ltgroup {0} ({1}, {2})]".format(gid, length, cnt)] + buf
+        return "\n".join(buf)
 
     def add_line(self, ltid, dt, host, l_w):
         self.db.add_line(ltid, dt, host, l_w)

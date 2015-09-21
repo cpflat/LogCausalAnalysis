@@ -12,18 +12,18 @@ MAX_ARG_VARIETY = 10
 
 
 def show_all(ld):
-    ld.show_all_ltgroup()
+    print ld.show_all_ltgroup()
 
 
 def show_lt(ld):
-    ld.show_all_lt()
+    print ld.show_all_lt()
 
 
 def show_ltg(ld, gid):
     if gid is None:
-        ld.show_all_ltgroup()
+        print ld.show_all_ltgroup()
     else:
-        ld.show_ltgroup(gid)
+        print ld.show_ltgroup(gid)
 
 
 def show_sort(ld):

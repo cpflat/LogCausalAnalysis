@@ -172,10 +172,21 @@ class PCOutput():
     def relabel_graph(self, graph = None):
         if graph is None:
             graph = self.graph
+        import lt_label
+        ltconf_path = self.conf.get("visual", "ltlabel")
+        if ltconf_path == "":
+            ltconf_path = lt_label.DEFAULT_LABEL_CONF
+        ll = lt_label.LTLabel(ltconf_path)
+        self._init_ld()
+        
         mapping = {}
         for node in graph.nodes():
-            ltgid, host = self._node_info()
-            mapping[node] = "{0}, {1}".format(ltgid, host)
+            ltgid, host = self._node_info(node)
+            label = ll.get_ltg_label(ltgid, self.ld.ltg_members(ltgid))
+            if label is None:
+                mapping[node] = "{0}, {1}".format(ltgid, host)
+            else:
+                mapping[node] = "{0}({1}), {2}".format(ltgid, label, host)
         return nx.relabel_nodes(self.graph, mapping, copy=True)
 
     def show_graph(self, fn, eflag):
