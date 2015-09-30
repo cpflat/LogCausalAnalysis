@@ -2,7 +2,7 @@
 members = user, remote, syslog
 
 [group_l7]
-members = dns, dhcp, snmp, ntp, syslog
+members = dns, dhcp, snmp, ntp, smtp, syslog
 
 
 [label_boot]
@@ -13,16 +13,27 @@ reboot_word = reboot
 reboot_rule = in_ord
 
 [label_user]
-rules = su, sudo
+rules = su, sudo, login
 su_word = su
 su_rule = equal
 sudo_word = sudo
 sudo_rule = equal
+login_word = login
+login_rule = equal
 
 [label_remote]
 rules = sshd
 sshd_word = sshd
 sshd_rule = equal
+
+[label_cron]
+rules = cmd, cron, anacron
+cmd_word = CMD
+cmd_rule = equal
+cron_word = CRON
+cron_rule = equal
+anacron_word = anacron
+anacron_rule = equal
 
 [label_dns]
 rules = named, dns
@@ -42,14 +53,25 @@ snmpd_word = snmpd
 snmpd_rule = equal
 
 [label_ntp]
-rules = ntpd
+rules = ntpd, ntpdate
 ntpd_word = ntpd
 ntpd_rule = equal
+ntpdate_word = ntpdate
+ntpdate_rule = equal
+
+[label_smtp]
+rules = postfix, smtpd
+postfix_word = postfix
+postfix_rule = in_ord
+smtpd_word = smtpd
+smtpd_rule = equal
 
 [label_syslog]
-rules = syslogd, newsyslog, rotate
+rules = syslogd, rsyslogd, newsyslog, rotate
 syslogd_word = syslogd
 syslogd_rule = equal
+rsyslogd_word = rsyslogd
+rsyslogd_rule = equal
 newsyslog_word = newsyslog
 newsyslog_rule = equal
 rotate_word = last, message, repeated

@@ -4,6 +4,7 @@
 import sys
 import os
 import datetime
+import logging
 import optparse
 import cPickle as pickle
 import networkx as nx
@@ -12,6 +13,8 @@ import fslib
 import config
 import log_db
 import pc_log
+
+_logger = logging.getLogger(__name__)
 
 
 class PCOutput():
@@ -161,6 +164,9 @@ class PCOutput():
     def _edge_info(self, edge):
         return tuple(self._node_info(node) for node in edge)
 
+    def _has_node(self, info):
+        return self.evmap.ermap.has_key(info)
+
     def _node_id(self, info):
         # info : (ltgid, host)
         return self.evmap.get_eid(info)
@@ -200,11 +206,73 @@ class PCOutput():
         print ">", fn
 
 
+# functions for graph
+
 def graph_no_orphan(src):
     g = nx.DiGraph()
     g.add_edges_from([edge for edge in src.edges()])
     return g
 
+
+def graph_edit_distance(r1, r2, ig_direction = False):
+    # ignore orphan nodes, only see edges
+
+    g1_edges = [r1._edge_info(edge) for edge in r1.graph.edges()]
+    g2_edges = [r2._edge_info(edge) for edge in r2.graph.edges()]
+
+    l_edit = []
+    # counting "add edges only in g2"
+    l_edit = l_edit + [edge for edge in g2_edges if not edge in g1_edges]
+    # counting "remove edges only in g1"
+    l_edit = l_edit + [edge for edge in g1_edges if not edge in g2_edges]
+
+    # get combination in l_edit
+    s = set()
+    for edit in l_edit:
+        for e in s:
+            if edit[0] == e[1] and edit[1] == e[0]:
+                break
+        else:
+            s.add(edit)
+
+    def get_direction(r, edge):
+        # edge : edge_info
+        if (not r._has_node(edge[0])) or (not r._has_node(edge[1])):
+            return "none"
+        src_node = r._node_id(edge[0])
+        dst_node = r._node_id(edge[1])
+        if (src_node, dst_node) in r.graph.edges():
+            if (dst_node, src_node) in r.graph.edges():
+                return "both"
+            else:
+                return "src_to_dst"
+        elif (dst_node, src_node) in r.graph.edges():
+            return "dst_to_src"
+        else:
+            return "none"
+
+    if ig_direction:
+        # count only if either graph is "none"
+        ret = 0
+        for edge in s:
+            d1 = get_direction(r1, edge)
+            d2 = get_direction(r2, edge)
+            if "none" in (d1, d2):
+                ret += 1
+    else:
+        ret = len(s)
+
+    _logger.info("calculating edit distance between {0} and {1}".format(
+            r1.filename, r2.filename))
+    for edge in s:
+        _logger.info("{0}, {1} : {2} -> {3}".format(edge[0], edge[1], 
+                get_direction(r1, edge), get_direction(r2, edge)))
+    _logger.info("edit distance : {0}".format(ret))
+
+    return ret
+
+
+# functions for visualization
 
 def list_results(conf):
     src_dir = conf.get("dag", "output_dir")
@@ -244,6 +312,42 @@ def diff_edge_graph(conf, r1, r2):
     return g # graph for r1
 
 
+def cluster_edit_distance(conf, threshold, ig_direction = False):
+    src_dir = conf.get("dag", "output_dir")
+    l_cluster = []
+    for fp in fslib.rep_dir(src_dir):
+        new_result = PCOutput(conf).load(fp)
+        min_ed = None
+        l_min_cid = []
+        for cid, l_result in enumerate(l_cluster):
+            for result in l_result:
+                ed = graph_edit_distance(new_result, result,
+                        ig_direction = False)
+                _logger.info("edit_distance between {0} and {1} : {2}".format(
+                        new_result.filename, result.filename, ed))
+                if ed <= threshold:
+                    if min_ed is None:
+                        min_ed = ed
+                        l_min_cid = [cid]
+                    elif ed < min_ed:
+                        min_ed = ed
+                        l_min_cid = [cid]
+                    elif ed == min_ed:
+                        l_min_cid.append(cid)
+
+        if min_ed is None:
+            l_cluster.append([new_result])
+        else:
+            d_temp = {}
+            for cid in l_min_cid:
+                d_temp[cid] = d_temp.get(cid, 0) + 1
+            c = sorted(d_temp.items(), key=lambda x: x[1], reverse = True)[0]
+            l_cluster[c].append(new_result) 
+
+    print l_cluster
+
+
+
 if __name__ == "__main__":
 
     usage = """
@@ -276,6 +380,7 @@ args:
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
+    config.set_common_logging(conf, _logger)
     mode = args.pop(0)
     if mode == "show-all":
         list_results(conf)
@@ -304,5 +409,14 @@ args:
         r2 = PCOutput(conf).load(args[1])
         graph = diff_edge_graph(conf, r1, r2)
         show_result(conf, r1, graph, options.dflag, options.show_limit)
-
+    elif mode == "edit-distance":
+        if len(args) < 2:
+            sys.exit("give me 2 filenames of pc result object")
+        r1 = PCOutput(conf).load(args[0])
+        r2 = PCOutput(conf).load(args[1])
+        print graph_edit_distance(r1, r2)
+    elif mode == "cluster-edit-distance":
+        threshold = 3
+        ig_direction = True
+        cluster_edit_distance(conf, threshold, ig_direction)
 
