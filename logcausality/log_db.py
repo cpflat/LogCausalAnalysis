@@ -522,7 +522,7 @@ def process_files(conf, targets, rflag, fflag):
             _logger.info("log_db processing {0}".format(fp))
             for line in f:
                 dt, host, l_w, l_s = lp.process_line(line)
-                if l_w is None: return
+                if l_w is None: continue
                 ltline = ld.ltm.process_line(l_w, l_s)
                 if ltline is None:
                     _logger.warning("Log template not found " + \
