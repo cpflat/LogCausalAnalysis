@@ -163,7 +163,10 @@ class LogParser():
                 return line, ""
 
         def str2month(string):
-            return self.month_name.index(string) + 1
+            if not string in self.month_name:
+                return None
+            else:
+                return self.month_name.index(string) + 1
 
         line = src_line
 
@@ -185,6 +188,8 @@ class LogParser():
             else:
                 year = self._set_year()
                 month = str2month(string)
+            if month is None:
+                return None, None, None
             day_str, line = pop_string(line)
             day = int(day_str)
             time_str, line = pop_string(line)
@@ -202,7 +207,7 @@ class LogParser():
         if line == "":
             return None, None, None, None
         dt, host, message = self.pop_header(line)
-        if message == "":
+        if message is None or message == "":
             return None, None, None, None
         elif self._is_removed(message):
             return None, None, None, None
