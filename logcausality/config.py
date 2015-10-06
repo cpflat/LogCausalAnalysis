@@ -42,7 +42,7 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
 
     def read(self, fn):
         if not os.path.exists(fn):
-            raise IOError
+            raise IOError("{0} not found".format(fn))
         else:
             return self._conf.read(fn)
 

@@ -188,3 +188,21 @@ bin_size = 10s
 threshold = 0.9
 
 
+[cluster_graph]
+
+# Definition of distance calculation method
+# [ed, mcs] is available
+# ed : graph edit distance
+# mcs : size ratio of maximum common subgraph
+dist_method = ed
+
+# Ignore direction of edge in graph or not
+ig_direction = true
+
+# Criterion of threshold to generate flat cluster from hierarchy cluster
+# [maxclust, distance, etc...]
+th_criterion = maxclust
+
+# Threshold (float value) to generate flat cluster from hierarchy cluster
+th = 10.0
+

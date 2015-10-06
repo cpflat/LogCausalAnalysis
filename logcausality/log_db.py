@@ -535,7 +535,6 @@ def process_files(conf, targets, rflag, fflag):
     _logger.info("log_db task done ({0})".format(end_dt - start_dt))
 
 
-
 if __name__ == "__main__":
     usage = "usage: {0} [options] <file...>".format(sys.argv[0])
     usage += """

@@ -4,15 +4,13 @@
 import sys
 import os
 import datetime
+import itertools
 import logging
-import optparse
 import cPickle as pickle
 import networkx as nx
 
 import fslib
 import config
-import log_db
-import pc_log
 
 _logger = logging.getLogger(__name__)
 
@@ -38,9 +36,12 @@ class PCOutput():
 
     def load(self, fn = None):
         if not fn: fn = self.filename
+        # do not use old configuration
+        c = self.conf
         with open(fn, 'r') as f:
             d = pickle.load(f)
         self.__dict__.update(d)
+        self.conf = c
         return self
 
     def dump(self, fn = None):
@@ -72,9 +73,11 @@ class PCOutput():
 
     def _init_ld(self):
         if self.ld is None:
+            import log_db
             self.ld = log_db.LogData(self.conf)
 
     def _get_fn(self):
+        import pc_log
         return pc_log.thread_name(self.conf, self.top_dt, self.end_dt,
                 self.dur, self.area)
 
@@ -93,7 +96,7 @@ class PCOutput():
     def _print_edge_lt(self, edge):
         for eid, header in zip(edge, ("src", "dst")):
             ltgid, host = self.evmap.info(eid)
-            print("{0}>".format(header))
+            print("{0}> ltgid {1} (host {2})".format(header, ltgid, host))
             print("\n".join(
                 [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
             print
@@ -106,7 +109,7 @@ class PCOutput():
         
         for eid, header in zip(edge, ("src", "dst")):
             ltgid, host = self.evmap.info(eid)
-            print("{0}> ltgid {1}".format(header, ltgid))
+            print("{0}> ltgid {1} (host {2})".format(header, ltgid, host))
             self.ld.show_log_repr(limit, None, ltgid,
                     self.top_dt, self.end_dt, host, area)
         print
@@ -214,6 +217,35 @@ def graph_no_orphan(src):
     return g
 
 
+def mcs_size_ratio(r1, r2, ig_direction):
+    mcs = maximum_common_subgraph(r1, r2, ig_direction)
+    _logger.info("mcs size : {0} ({1}, {2})".format(len(mcs.edges()),
+            r1.filename, r2.filename))
+    ret = 2.0 * len(mcs.edges()) / \
+            (len(r1.graph.edges()) + len(r2.graph.edges()))
+    #ret = 1.0 / len(mcs.edges())
+    return ret
+
+
+def maximum_common_subgraph(r1, r2, ig_direction = False):
+    
+    g1_edges = [r1._edge_info(edge) for edge in r1.graph.edges()]
+    g2_edges = [r2._edge_info(edge) for edge in r2.graph.edges()]
+
+    if ig_direction:
+        g = nx.Graph()
+        for edge in g1_edges:
+            if edge in g2_edges or (edge[1], edge[0]) in g2_edges:
+                g.add_edge(r1._node_id(edge[0]), r2._node_id(edge[1]))
+        return nx.DiGraph(g)
+    else:
+        g = nx.DiGraph()
+        for edge in g1_edges:
+            if edge in g2_edges:
+                g.add_edge(edge[0], edge[1])
+        return g
+
+
 def graph_edit_distance(r1, r2, ig_direction = False):
     # ignore orphan nodes, only see edges
 
@@ -253,20 +285,20 @@ def graph_edit_distance(r1, r2, ig_direction = False):
 
     if ig_direction:
         # count only if either graph is "none"
-        ret = 0
+        ret = 0.0
         for edge in s:
             d1 = get_direction(r1, edge)
             d2 = get_direction(r2, edge)
             if "none" in (d1, d2):
-                ret += 1
+                ret += 1.0
     else:
         ret = len(s)
 
-    _logger.info("calculating edit distance between {0} and {1}".format(
-            r1.filename, r2.filename))
-    for edge in s:
-        _logger.info("{0}, {1} : {2} -> {3}".format(edge[0], edge[1], 
-                get_direction(r1, edge), get_direction(r2, edge)))
+    #_logger.info("calculating edit distance between {0} and {1}".format(
+    #        r1.filename, r2.filename))
+    #for edge in s:
+    #    _logger.info("{0}, {1} : {2} -> {3}".format(edge[0], edge[1], 
+    #            get_direction(r1, edge), get_direction(r2, edge)))
     _logger.info("edit distance : {0}".format(ret))
 
     return ret
@@ -312,44 +344,42 @@ def diff_edge_graph(conf, r1, r2):
     return g # graph for r1
 
 
-def cluster_edit_distance(conf, threshold, ig_direction = False):
+def cluster_results(conf):
+    method = conf.get("cluster_graph", "dist_method")
+    ig_direction = conf.getboolean("cluster_graph", "ig_direction")
+    th_crit = conf.get("cluster_graph", "th_criterion")
+    th = conf.getfloat("cluster_graph", "th")
+    
     src_dir = conf.get("dag", "output_dir")
-    l_cluster = []
-    for fp in fslib.rep_dir(src_dir):
-        new_result = PCOutput(conf).load(fp)
-        min_ed = None
-        l_min_cid = []
-        for cid, l_result in enumerate(l_cluster):
-            for result in l_result:
-                ed = graph_edit_distance(new_result, result,
-                        ig_direction = False)
-                _logger.info("edit_distance between {0} and {1} : {2}".format(
-                        new_result.filename, result.filename, ed))
-                if ed <= threshold:
-                    if min_ed is None:
-                        min_ed = ed
-                        l_min_cid = [cid]
-                    elif ed < min_ed:
-                        min_ed = ed
-                        l_min_cid = [cid]
-                    elif ed == min_ed:
-                        l_min_cid.append(cid)
+    l_result = [PCOutput(conf).load(fp) for fp in fslib.rep_dir(src_dir)]
 
-        if min_ed is None:
-            l_cluster.append([new_result])
-        else:
-            d_temp = {}
-            for cid in l_min_cid:
-                d_temp[cid] = d_temp.get(cid, 0) + 1
-            c = sorted(d_temp.items(), key=lambda x: x[1], reverse = True)[0]
-            l_cluster[c].append(new_result) 
+    l_dist = []
+    for r1, r2 in itertools.combinations(l_result, 2):
+        if method == "ed":
+            dist = graph_edit_distance(r1, r2, ig_direction)
+        elif method == "mcs":
+            dist = mcs_size_ratio(r1, r2, ig_direction)
+        l_dist.append(dist)
+    
+    import scipy.cluster.hierarchy as hcls
+    z = hcls.linkage(l_dist, method = 'single')
+    hcls.dendrogram(z)
+    import matplotlib.pyplot as plt
+    plt.savefig('temp.pdf')
 
-    print l_cluster
-
+    fc = hcls.fcluster(z, th, criterion = th_crit)
+    cdict = {}
+    for c, r in zip(fc, l_result):
+        cdict.setdefault(c, []).append(r)
+    for cid, l_result in sorted(cdict.items(), key = lambda x: x[0]):
+        print "[cluster {0}]".format(cid)
+        for r in l_result:
+            print r.filename
 
 
 if __name__ == "__main__":
 
+    import optparse
     usage = """
 usage: {0} [options] args...
 args:
@@ -415,8 +445,10 @@ args:
         r1 = PCOutput(conf).load(args[0])
         r2 = PCOutput(conf).load(args[1])
         print graph_edit_distance(r1, r2)
-    elif mode == "cluster-edit-distance":
-        threshold = 3
-        ig_direction = True
-        cluster_edit_distance(conf, threshold, ig_direction)
+    elif mode == "cluster":
+        #method = conf.get("cluster_graph", "dist_method")
+        #ig_direction = conf.getboolean("cluster_graph", "ig_direction")
+        #th_crit = conf.get("cluster_graph", "th_criterion")
+        #th = conf.getfloat("cluster_graph", "th")
+        cluster_results(conf)
 
