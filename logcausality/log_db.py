@@ -382,6 +382,9 @@ class LogDB():
         }
         self.connect.execute(sql, sqlv)
 
+        self.add_ltg(ltline.ltid, ltline.ltgid)
+
+    def add_ltg(self, ltid, ltgid):
         # add to ltg
         sql = u"""
             insert into ltg (ltid, ltgid) values (
@@ -390,8 +393,8 @@ class LogDB():
             );
         """
         sqlv = {
-            "ltid" : ltline.ltid,
-            "ltgid" : ltline.ltgid,
+            "ltid" : ltid,
+            "ltgid" : ltgid,
             }
         self.connect.execute(sql, sqlv)
 
@@ -470,6 +473,10 @@ class LogDB():
         cursor.execute(sql)
         return [row[0] for row in cursor]
 
+    def reset_ltg(self):
+        sql = "delete from ltg"
+        self.connect.execute(sql)
+
     def _areadb(self):
         areadict = config.GroupDef(self.areafn)
         try:
@@ -535,6 +542,21 @@ def process_files(conf, targets, rflag, fflag):
     _logger.info("log_db task done ({0})".format(end_dt - start_dt))
 
 
+def remake_ltgroup(conf):
+    lp = logparser.LogParser(conf)
+    ld = LogData(conf)
+    ld.set_ltm()
+    
+    start_dt = datetime.datetime.now()
+    _logger.info("log_db remake_ltg task start")
+    
+    ld.ltm.remake_ltg()
+    ld.commit_db()
+    
+    end_dt = datetime.datetime.now()
+    _logger.info("log_db remake_ltg task done ({0})".format(end_dt - start_dt))
+
+
 if __name__ == "__main__":
     usage = "usage: {0} [options] <file...>".format(sys.argv[0])
     usage += """
@@ -551,12 +573,17 @@ if __name__ == "__main__":
             default=False, help="format db and reconstruct")
     op.add_option("-r", action="store_true", dest="recur",
             default=False, help="search log file recursively")
+    op.add_option("-g", "--group", action="store_true", dest="gflag",
+            default=False, help="search log file recursively")
     options, args = op.parse_args()
     
     conf = config.open_config(options.conf)
-    config.set_common_logging(conf, _logger, ["lt_common", ])
+    config.set_common_logging(conf, _logger, ["lt_common", "lt_shiso"])
 
-    process_files(conf, args, options.recur, options.format)
+    if options.gflag:
+        remake_ltgroup(conf)
+    else:
+        process_files(conf, args, options.recur, options.format)
 
 
 

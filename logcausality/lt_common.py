@@ -74,6 +74,17 @@ class LTManager(object):
         self.table.remove_lt(ltid)
         self.db.remove_lt(ltid)
 
+    def remake_ltg(self):
+        self.db.reset_ltg()
+        self.ltgroup.init_dict()
+        for ltline in self.table:
+            ltline.ltgid = None
+        
+        for ltline in self.table:
+            ltgid = self.ltgroup.add(ltline)
+            ltline.ltgid = ltgid
+            self.db.add_ltg(ltline.ltid, ltgid)
+
     def load(self):
         pass
 
@@ -175,6 +186,9 @@ class LTGroup(object):
     # (ltgid is always same as ltid)
 
     def __init__(self):
+        self.init_dict()
+
+    def init_dict(self):
         self.d_group = {} # key : groupid, val : [ltline, ...]
         self.d_rgroup = {} # key : ltid, val : groupid
 
