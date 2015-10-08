@@ -53,24 +53,6 @@ class PCOutput():
         if self.graph is None:
             raise ValueError("use make() or load() before showing")
 
-    def _separate_edges(self, graph = None):
-        if graph is None:
-            graph = self.graph
-        temp = []
-        udedges = []
-        for edge in graph.edges():
-            for cnt, temp_edge in enumerate(temp):
-                if edge[0] == temp_edge[1] and edge[1] == temp_edge[0]:
-                    temp.pop(cnt)
-                    udedges.append((min(edge[0], edge[1]),
-                            max(edge[0], edge[1])))
-                    break
-            else:
-                temp.append(edge)
-        else:
-            dedges = temp
-        return dedges, udedges
-
     def _init_ld(self):
         if self.ld is None:
             import log_db
@@ -80,6 +62,9 @@ class PCOutput():
         import pc_log
         return pc_log.thread_name(self.conf, self.top_dt, self.end_dt,
                 self.dur, self.area)
+
+    def result_fn(self):
+        return self.filename.rpartition("/")[-1]
 
     def _print_lt(self, eid, header = "lt"):
         ltgid, host = self.evmap.info(eid)
@@ -162,21 +147,61 @@ class PCOutput():
             print
 
     def _node_info(self, node):
+        # return labeled information of given node
         return self.evmap.info(node)
 
     def _edge_info(self, edge):
+        # return labeled information of given edge
         return tuple(self._node_info(node) for node in edge)
 
     def _has_node(self, info):
         return self.evmap.ermap.has_key(info)
 
     def _node_id(self, info):
+        # return node id of given labeled information
         # info : (ltgid, host)
         return self.evmap.get_eid(info)
 
     def _edge_id(self, t_info):
+        # return numbered edge of given labeled information
         # t_info : (src_info, dst_info)
         return tuple(self._node_id(info) for info in t_info)
+
+    def _separate_edges(self, graph = None):
+        # separate directed edges and undirected edges
+        if graph is None:
+            graph = self.graph
+        temp = []
+        udedges = []
+        for edge in graph.edges():
+            for cnt, temp_edge in enumerate(temp):
+                if edge[0] == temp_edge[1] and edge[1] == temp_edge[0]:
+                    temp.pop(cnt)
+                    udedges.append((min(edge[0], edge[1]),
+                            max(edge[0], edge[1])))
+                    break
+            else:
+                temp.append(edge)
+        else:
+            dedges = temp
+        return dedges, udedges
+
+    def _edge_across_host(self, l_edge = None, rest = False):
+        if l_edge is None:
+            l_edge = self.graph.edges()
+        l_same = []
+        l_diff = []
+        for edge in l_edge:
+            src_ltgid, src_host = self._node_info(edge[0])
+            dst_ltgid, dst_host = self._node_info(edge[1])
+            if src_host == dst_host:
+                l_same.append(edge)
+            else:
+                l_diff.append(edge)
+        if rest:
+            return l_same, l_diff
+        else:
+            return l_diff
 
     def relabel_graph(self, graph = None):
         if graph is None:
@@ -304,6 +329,31 @@ def graph_edit_distance(r1, r2, ig_direction = False):
     return ret
 
 
+def graph_network(graph):
+    
+    l_net = []
+    d_rnet = {}
+    for node in graph.nodes():
+        l_net.append([node])
+        d_rnet[node] = len(l_net) - 1
+
+    for edge in graph.edges():
+        src_node, dst_node = edge
+        if d_rnet[src_node] == d_rnet[dst_node]:
+            pass
+        else:
+            # remove network with dst, save as temp,
+            # and add to network with src
+            src_netid = d_rnet[src_node]
+            dst_netid = d_rnet[dst_node]
+            l_net[src_netid] += l_net[dst_netid][:]
+            l_net[dst_netid] = []
+
+    ret = [net for net in l_net if len(net) >= 1]
+    ret.sort(key = lambda x: len(x), reverse = True)
+    return ret
+
+
 # functions for visualization
 
 def list_results(conf):
@@ -311,10 +361,59 @@ def list_results(conf):
  
     print "datetime\t\tarea\tnodes\tedges\tfilepath"
     for fp in fslib.rep_dir(src_dir):
-        output = PCOutput(conf).load(fp)
-        print "\t".join((str(output.top_dt), output.area,
-                str(len(output.graph.nodes())),
-                str(len(output.graph.edges())), fp))
+        r = PCOutput(conf).load(fp)
+        print "\t".join((str(r.top_dt), r.area,
+                str(len(r.graph.nodes())),
+                str(len(r.graph.edges())), r.result_fn))
+
+
+def list_detailed_results(conf):
+    src_dir = conf.get("dag", "output_dir")
+
+    splitter = ","
+    print splitter.join(["dt", "area", "node", "edge",
+            "edge_oh", "d_edge", "d_edge_oh", "fn"])
+    for fp in fslib.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        row = []
+        row.append(str(r.top_dt))
+        row.append(str(r.area))
+        row.append(str(len(r.graph.nodes())))
+        row.append(str(len(r.graph.edges())))
+        row.append(str(len(r._edge_across_host())))
+        dedges, udedges = r._separate_edges()
+        row.append(str(len(dedges)))
+        row.append(str(len(r._edge_across_host(dedges))))
+        row.append(r.result_fn())
+        print ",".join(row)
+
+
+def list_netsize(conf):
+    src_dir = conf.get("dag", "output_dir")
+    for fp in fslib.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        d_size = {}
+        for net in graph_network(r.graph):
+            d_size[len(net)] = d_size.get(len(net), 0) + 1
+        buf = []
+        for size, cnt in sorted(d_size.items(), reverse = True):
+            if cnt == 1:
+                buf.append(str(size))
+            else:
+                buf.append("{0}x{1}".format(size, cnt))
+
+        print "{0} : {1}".format(r.result_fn(), ", ".join(buf))
+
+
+def whole_netsize(conf):
+    src_dir = conf.get("dag", "output_dir")
+    d_size = {}
+    for fp in fslib.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        for net in graph_network(r.graph):
+            d_size[len(net)] = d_size.get(len(net), 0) + 1
+    for size, cnt in d_size.items():
+        print size, cnt
 
 
 def show_result(conf, result, graph, dflag, limit):
@@ -414,6 +513,12 @@ args:
     mode = args.pop(0)
     if mode == "show-all":
         list_results(conf)
+    elif mode == "show-all-detail":
+        list_detailed_results(conf)
+    elif mode == "show-all-netsize":
+        list_netsize(conf)
+    elif mode == "show-whole-netsize":
+        whole_netsize(conf)
     elif mode == "show":
         if len(args) < 1:
             sys.exit("give me filename of pc result object")
@@ -446,9 +551,5 @@ args:
         r2 = PCOutput(conf).load(args[1])
         print graph_edit_distance(r1, r2)
     elif mode == "cluster":
-        #method = conf.get("cluster_graph", "dist_method")
-        #ig_direction = conf.getboolean("cluster_graph", "ig_direction")
-        #th_crit = conf.get("cluster_graph", "th_criterion")
-        #th = conf.getfloat("cluster_graph", "th")
         cluster_results(conf)
 
