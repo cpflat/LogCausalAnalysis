@@ -77,13 +77,15 @@ class LTManager(object):
     def remake_ltg(self):
         self.db.reset_ltg()
         self.ltgroup.init_dict()
-        for ltline in self.table:
-            ltline.ltgid = None
-        
-        for ltline in self.table:
+        temp_table = self.table
+        self.ltgroup.table = LTTable(self.sym)
+
+        for ltline in temp_table:
             ltgid = self.ltgroup.add(ltline)
             ltline.ltgid = ltgid
+            self.ltgroup.table.add_lt(ltline)
             self.db.add_ltg(ltline.ltid, ltgid)
+        assert self.ltgroup.table.ltdict == temp_table.ltdict
 
     def load(self):
         pass
