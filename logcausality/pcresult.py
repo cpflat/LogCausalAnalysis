@@ -21,6 +21,7 @@ class PCOutput():
     def __init__(self, conf):
         self.conf = conf
         self.ld = None
+        self.ll = None
     
     def make(self, graph, evmap, top_dt, end_dt, dur, area):
 
@@ -59,6 +60,19 @@ class PCOutput():
             import log_db
             self.ld = log_db.LogData(self.conf)
 
+    def _init_ll(self):
+        if self.ll is None:
+            import lt_label
+            ltconf_path = self.conf.get("visual", "ltlabel")
+            if ltconf_path == "":
+                ltconf_path = lt_label.DEFAULT_LABEL_CONF
+            self.ll = lt_label.LTLabel(ltconf_path)
+
+    def _label_ltg(self, ltgid):
+        self._init_ld()
+        self._init_ll()
+        return self.ll.get_ltg_label(ltgid, self.ld.ltg_members(ltgid))
+
     def _get_fn(self):
         import pc_log
         return pc_log.thread_name(self.conf, self.top_dt, self.end_dt,
@@ -76,13 +90,15 @@ class PCOutput():
     def _print_edge(self, edge):
         src_ltgid, src_host = self.evmap.info(edge[0])
         dst_ltgid, dst_host = self.evmap.info(edge[1])
-        print("{0}({1}) -> {2}({3})".format(src_ltgid, src_host, \
-                dst_ltgid, dst_host)) 
-
+        print("{0} [{1}] ({2}) -> {3}[{4}] ({3})".format(
+                src_ltgid, self._label_ltg(src_ltgid), src_host, 
+                dst_ltgid, self._label_ltg(dst_ltgid), dst_host))
+    
     def _print_edge_lt(self, edge):
         for eid, header in zip(edge, ("src", "dst")):
             ltgid, host = self.evmap.info(eid)
-            print("{0}> ltgid {1} (host {2})".format(header, ltgid, host))
+            print("{0}> ltgid {1} [label {2}] (host {3})".format(
+                    header, ltgid, self._label_ltg(ltgid), host))
             print("\n".join(
                 [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
             print
@@ -193,8 +209,9 @@ class PCOutput():
         l_same = []
         l_diff = []
         for edge in l_edge:
-            src_ltgid, src_host = self._node_info(edge[0])
-            dst_ltgid, dst_host = self._node_info(edge[1])
+            src_node, dst_node = edge
+            src_ltgid, src_host = self._node_info(src_node)
+            dst_ltgid, dst_host = self._node_info(dst_node)
             if src_host == dst_host:
                 l_same.append(edge)
             else:
@@ -208,22 +225,14 @@ class PCOutput():
         if l_edge is None:
             l_edge = self.graph.edges()
         
-        ltconf_path = self.conf.get("visual", "ltlabel")
-        if ltconf_path == "":
-            ltconf_path = lt_label.DEFAULT_LABEL_CONF
-        ll = lt_label.LTLabel(ltconf_path)
-        self._init_ld()
-
         l_same = []
         l_diff = []
         for edge in l_edge:
             src_node, dst_node = edge
             src_ltgid, src_host = self._node_info(src_node)
-            src_label = ll.get_ltg_label(src_ltgid,
-                    self.ld.ltg_members(src_ltgid))
+            src_label = self._label_ltg(src_ltgid)
             dst_ltgid, dst_host = self._node_info(dst_node)
-            dst_label = ll.get_ltg_label(dst_ltgid,
-                    self.ld.ltg_members(dst_ltgid))
+            dst_label = self._label_ltg(dst_ltgid)
             if src_label == dst_label:
                 l_same.append(edge)
             else:
@@ -236,27 +245,22 @@ class PCOutput():
     def relabel_graph(self, graph = None):
         if graph is None:
             graph = self.graph
-        ltconf_path = self.conf.get("visual", "ltlabel")
-        if ltconf_path == "":
-            ltconf_path = lt_label.DEFAULT_LABEL_CONF
-        ll = lt_label.LTLabel(ltconf_path)
-        self._init_ld()
 
         mapping = {}
         for node in graph.nodes():
             ltgid, host = self._node_info(node)
-            label = ll.get_ltg_label(ltgid, self.ld.ltg_members(ltgid))
+            label = self._label_ltg(ltgid)
             if label is None:
                 mapping[node] = "{0}, {1}".format(ltgid, host)
             else:
                 mapping[node] = "{0}({1}), {2}".format(ltgid, label, host)
-        return nx.relabel_nodes(self.graph, mapping, copy=True)
+        return nx.relabel_nodes(graph, mapping, copy=True)
 
-    def show_graph(self, fn, eflag):
-        if eflag:
-            graph = graph_no_orphan(self.graph)
-        else:
+    def show_graph(self, fn, graph = None, eflag = False):
+        if graph is None:
             graph = self.graph
+        if eflag:
+            graph = graph_no_orphan(graph)
         rgraph = self.relabel_graph(graph)
         g = nx.to_agraph(rgraph)
         g.draw(fn, prog='circo')
@@ -523,7 +527,7 @@ args:
   show RESULT : show information of result DAG recorded in RESULT
   show-defail RESULT : show information of result DAG
                        with representative source log data
-  graph RESULT GRAPH : output graph pdf as GRAPH
+#  graph RESULT GRAPH : output graph pdf as GRAPH
   common RESULT1 RESULT2 : show detail of edges in RESULT1
                            which appear in RESULT2
   diff RESULT1 RESULT2 : show detail of edges in RESULT1
@@ -540,6 +544,9 @@ args:
     op.add_option("-e", "--edge", action="store_true",
             dest="eflag", default=False,
             help="Draw only nodes with adjacent edge")
+    op.add_option("-g", "--graph", action="store",
+            dest="graph_fn", type="string", default=None,
+            help="output graph pdf")
     op.add_option("-l", "--limit", action="store",
             dest="show_limit", type="int", default=10,
             help="Limitation rows to show source log data")
@@ -561,12 +568,8 @@ args:
             sys.exit("give me filename of pc result object")
         result = PCOutput(conf).load(args[0])
         show_result(conf, result, None, options.dflag, options.show_limit)
-    elif mode == "graph": 
-        if len(args) < 2:
-            sys.exit("give me filename of pc result object, " + \
-                    "and output filename of graph pdf")
-        output = PCOutput(conf).load(args[0])
-        output.show_graph(args[1], options.eflag)
+        if options.graph_fn is not None:
+            result.show_graph(options.graph_fn, None, options.eflag)
     elif mode == "common":
         if len(args) < 2:
             sys.exit("give me 2 filenames of pc result object")
@@ -574,6 +577,8 @@ args:
         r2 = PCOutput(conf).load(args[1])
         graph = common_edge_graph(conf, r1, r2)
         show_result(conf, r1, graph, options.dflag, options.show_limit)
+        if options.graph_fn is not None:
+            r1.show_graph(options.graph_fn, graph, options.eflag)
     elif mode == "diff":
         if len(args) < 2:
             sys.exit("give me 2 filenames of pc result object")
@@ -581,12 +586,16 @@ args:
         r2 = PCOutput(conf).load(args[1])
         graph = diff_edge_graph(conf, r1, r2)
         show_result(conf, r1, graph, options.dflag, options.show_limit)
+        if options.graph_fn is not None:
+            r1.show_graph(options.graph_fn, graph, options.eflag)
     elif mode == "diff-label":
         if len(args) < 1:
             sys.exit("give me filename of pc result object")
         result = PCOutput(conf).load(args[0])
         graph = diff_label_graph(conf, result)
         show_result(conf, result, graph, options.dflag, options.show_limit)
+        if options.graph_fn is not None:
+            result.show_graph(options.graph_fn, graph, options.eflag)
     elif mode == "edit-distance":
         if len(args) < 2:
             sys.exit("give me 2 filenames of pc result object")
