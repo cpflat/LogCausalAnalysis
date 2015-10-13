@@ -476,7 +476,7 @@ def diff_label_graph(conf, r):
     g = nx.DiGraph()
     diff_edges = r._edge_across_label(l_edge = None, rest = False)
     for edge in diff_edges:
-        g.add_edge(edge)
+        g.add_edge(edge[0], edge[1])
     return g
 
 
