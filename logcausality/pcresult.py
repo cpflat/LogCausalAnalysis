@@ -11,6 +11,7 @@ import networkx as nx
 
 import fslib
 import config
+import lt_label
 
 _logger = logging.getLogger(__name__)
 
@@ -203,16 +204,44 @@ class PCOutput():
         else:
             return l_diff
 
-    def relabel_graph(self, graph = None):
-        if graph is None:
-            graph = self.graph
-        import lt_label
+    def _edge_across_label(self, l_edge = None, rest = False):
+        if l_edge is None:
+            l_edge = self.graph.edges()
+        
         ltconf_path = self.conf.get("visual", "ltlabel")
         if ltconf_path == "":
             ltconf_path = lt_label.DEFAULT_LABEL_CONF
         ll = lt_label.LTLabel(ltconf_path)
         self._init_ld()
-        
+
+        l_same = []
+        l_diff = []
+        for edge in l_edge:
+            src_node, dst_node = edge
+            src_ltgid, src_host = self._node_info(src_node)
+            src_label = ll.get_ltg_label(src_ltgid,
+                    self.ld.ltg_members(src_ltgid))
+            dst_ltgid, dst_host = self._node_info(dst_node)
+            dst_label = ll.get_ltg_label(dst_ltgid,
+                    self.ld.ltg_members(dst_ltgid))
+            if src_label == dst_label:
+                l_same.append(edge)
+            else:
+                l_diff.append(edge)
+        if rest:
+            return l_same, l_diff
+        else:
+            return l_diff
+
+    def relabel_graph(self, graph = None):
+        if graph is None:
+            graph = self.graph
+        ltconf_path = self.conf.get("visual", "ltlabel")
+        if ltconf_path == "":
+            ltconf_path = lt_label.DEFAULT_LABEL_CONF
+        ll = lt_label.LTLabel(ltconf_path)
+        self._init_ld()
+
         mapping = {}
         for node in graph.nodes():
             ltgid, host = self._node_info(node)
@@ -443,6 +472,14 @@ def diff_edge_graph(conf, r1, r2):
     return g # graph for r1
 
 
+def diff_label_graph(conf, r):
+    g = nx.DiGraph()
+    diff_edges = r._edge_across_label(l_edge = None, rest = False)
+    for edge in diff_edges:
+        g.add_edge(edge)
+    return g
+
+
 def cluster_results(conf):
     method = conf.get("cluster_graph", "dist_method")
     ig_direction = conf.getboolean("cluster_graph", "ig_direction")
@@ -544,6 +581,12 @@ args:
         r2 = PCOutput(conf).load(args[1])
         graph = diff_edge_graph(conf, r1, r2)
         show_result(conf, r1, graph, options.dflag, options.show_limit)
+    elif mode == "diff-label":
+        if len(args) < 1:
+            sys.exit("give me filename of pc result object")
+        result = PCOutput(conf).load(args[0])
+        graph = diff_label_graph(conf, result)
+        show_result(conf, result, graph, options.dflag, options.show_limit)
     elif mode == "edit-distance":
         if len(args) < 2:
             sys.exit("give me 2 filenames of pc result object")

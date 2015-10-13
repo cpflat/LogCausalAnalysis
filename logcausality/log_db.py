@@ -6,7 +6,6 @@ import os
 import datetime
 import sqlite3
 import logging
-import optparse
 
 import config
 import fslib
@@ -558,13 +557,16 @@ def remake_ltgroup(conf):
 
 
 if __name__ == "__main__":
-    usage = "usage: {0} [options] <file...>".format(sys.argv[0])
-    usage += """
-    with arguments:
+
+    import optparse
+    usage = """
+usage: {0} [options] <file...>
+  with arguments:
     add log data in given src data files
-    with no arguments :
+  with no arguments :
     add log data in src data files defined in config
-    """
+    """.strip().format(sys.argv[0])
+
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
@@ -574,9 +576,9 @@ if __name__ == "__main__":
     op.add_option("-r", action="store_true", dest="recur",
             default=False, help="search log file recursively")
     op.add_option("-g", "--group", action="store_true", dest="gflag",
-            default=False, help="search log file recursively")
+            default=False, help="remake ltgroup for existing log templates")
     options, args = op.parse_args()
-    
+
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, ["lt_common", "lt_shiso"])
 
