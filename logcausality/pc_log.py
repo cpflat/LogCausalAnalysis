@@ -22,9 +22,10 @@ def pc_log(conf, top_dt, end_dt, dur, area):
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
 
     edict, evmap = log2event.log2event(conf, top_dt, end_dt, dur, area)
-    
-    threshold = conf.getfloat("dag", "threshold")
+    _logger.info("{0} events found in given term of log data")    
+
     if len(edict) > 2:
+        threshold = conf.getfloat("dag", "threshold")
         graph = pc_input.pc(edict, threshold)
     else:
         _logger.info("insufficient events({0}), return empty dag".format(\

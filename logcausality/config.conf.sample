@@ -197,6 +197,7 @@ threshold = 0.9
 dist_method = ed
 
 # Ignore direction of edge in graph or not
+# when calculating distance of graphs
 ig_direction = true
 
 # Criterion of threshold to generate flat cluster from hierarchy cluster

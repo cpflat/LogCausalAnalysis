@@ -519,21 +519,25 @@ def cluster_results(conf):
 
 if __name__ == "__main__":
 
-    import optparse
     usage = """
 usage: {0} [options] args...
 args:
   show-all : show abstraction of series of results
+  show-all-detail : show detailed abstraction
+  show-all-netsize : show values about network size that
+                     every node have a path to others in same network
+  show-whole-netsize : show sum of network size in all results
   show RESULT : show information of result DAG recorded in RESULT
-  show-defail RESULT : show information of result DAG
-                       with representative source log data
-#  graph RESULT GRAPH : output graph pdf as GRAPH
-  common RESULT1 RESULT2 : show detail of edges in RESULT1
+  common RESULT1 RESULT2 : show details of edges in RESULT1
                            which appear in RESULT2
-  diff RESULT1 RESULT2 : show detail of edges in RESULT1
+  diff RESULT1 RESULT2 : show details of edges in RESULT1
                          which do not appear in RESULT2
+  edit-distance RESULT1 RESULT2 : show graph edit distance value
+                                  between RESULT1 and RESULT2
+  cluster : test cluster analysis to make group of results
     """.format(sys.argv[0]).strip()
 
+    import optparse
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
