@@ -277,8 +277,6 @@ def graph_no_orphan(src):
 
 def mcs_size_ratio(r1, r2, ig_direction):
     mcs = maximum_common_subgraph(r1, r2, ig_direction)
-    _logger.info("mcs size : {0} ({1}, {2})".format(len(mcs.edges()),
-            r1.filename, r2.filename))
     ret = 2.0 * len(mcs.edges()) / \
             (len(r1.graph.edges()) + len(r2.graph.edges()))
     #ret = 1.0 / len(mcs.edges())
@@ -340,6 +338,7 @@ def graph_edit_distance(r1, r2, ig_direction = False):
             return "dst_to_src"
         else:
             return "none"
+    pass
 
     if ig_direction:
         # count only if either graph is "none"
@@ -351,13 +350,6 @@ def graph_edit_distance(r1, r2, ig_direction = False):
                 ret += 1.0
     else:
         ret = len(s)
-
-    #_logger.info("calculating edit distance between {0} and {1}".format(
-    #        r1.filename, r2.filename))
-    #for edge in s:
-    #    _logger.info("{0}, {1} : {2} -> {3}".format(edge[0], edge[1], 
-    #            get_direction(r1, edge), get_direction(r2, edge)))
-    _logger.info("edit distance : {0}".format(ret))
 
     return ret
 
@@ -484,6 +476,120 @@ def diff_label_graph(conf, r):
     return g
 
 
+def whole_common_edge(conf, ig_host = False):
+    # Ignore direction of edges
+
+    def equal_edge(edge1, edge2, ig_host):
+        src_info1, dst_info1 = edge1
+        src_info2, dst_info2 = edge2
+        if ig_host:
+            src_ltgid1, src_host1 = src_info1
+            dst_ltgid1, dst_host1 = dst_info1
+            src_ltgid2, src_host2 = src_info2
+            dst_ltgid2, dst_host2 = dst_info2
+            if (src_ltgid1, dst_ltgid1) == (src_ltgid2, dst_ltgid2):
+                return True
+            elif (src_ltgid1, dst_ltgid1) == (dst_ltgid2, src_ltgid2):
+                return True
+            else:
+                return False
+        else:
+            if (src_info1, dst_info1) == (src_info2, dst_info2):
+                return True
+            elif (src_info1, dst_info1) == (dst_info2, src_info2):
+                return True
+            else:
+                return False
+    pass
+
+    src_dir = conf.get("dag", "output_dir")
+    l_cedge = []
+    d_cnt = {}
+    targets = fslib.rep_dir(src_dir)
+    print("{0} results processed".format(len(targets)))
+    for fp in targets:
+        r = PCOutput(conf).load(fp)
+        g = nx.Graph(r.graph)
+        for edge in g.edges():
+            new_cedge = r._edge_info(edge)
+            for cedge_id, cedge in enumerate(l_cedge):
+                if equal_edge(new_cedge, cedge, ig_host):
+                    assert d_cnt.has_key(cedge_id)
+                    d_cnt[cedge_id] += 1
+                    break
+            else:
+                l_cedge.append(new_cedge)
+                d_cnt[len(l_cedge) - 1] = 1
+
+    for cedge_id, cnt in sorted(d_cnt.items(), key = lambda x: x[1],
+            reverse = True):
+        src_info, dst_info = l_cedge[cedge_id]
+        src_ltgid, src_host = src_info
+        dst_ltgid, dst_host = dst_info
+        if ig_host:
+            print("{0} results : {1} [{2}], {3} [{4}]".format(
+                    cnt, src_ltgid, r._label_ltg(src_ltgid),
+                    dst_ltgid, r._label_ltg(dst_ltgid)))
+        else:
+            print("{0} results : {1} [{2}] ({3}), {4} [{5}] ({6})".format(
+                    cnt, src_ltgid, r._label_ltg(src_ltgid), src_host,
+                    dst_ltgid, r._label_ltg(dst_ltgid), dst_host))
+
+    print
+    print
+
+    import matplotlib.pyplot as plt
+    plt.hist(d_cnt.values(), bins = max(d_cnt.values()))
+    plt.yscale("log")
+    plt.xlabel("edges")
+    plt.ylabel("frequency")
+    #plt.show()
+    plt.savefig("temp.pdf")
+    print("common edge histogram output")
+    print("> temp.pdf")
+
+
+def node_event_frequency(conf, r):
+    d_cnt = {} # key : node_info, val : counts (appearance in edge)
+    d_efreq = {} # key : node_info, val : event_frequency
+    r._init_ld()
+    g = nx.Graph(r.graph)
+    for line in r.ld.iter_lines(top_dt = r.top_dt, 
+            end_dt = r.end_dt, area = r.area):
+        for node in g.nodes():
+            node_info = r._node_info(node)
+            ltgid, host = node_info
+            if line.lt.ltgid == ltgid and line.host == host:
+                d_efreq[node_info] = d_efreq.get(node_info, 0) + 1
+                break
+        else:
+            print("not found")
+            pass
+
+    for edge in g.edges():
+        for node in edge:
+            node_info = r._node_info(node)
+            d_cnt[node_info] = d_cnt.get(node_info, 0) + 1
+
+    x = []
+    y = []
+    for node_info, efreq in d_efreq.iteritems():
+        if d_cnt.has_key(node_info):
+            x.append(d_cnt[node_info])
+        else:
+            x.append(0)
+        y.append(efreq)
+
+    import matplotlib.pyplot as plt
+    plt.scatter(x, y)
+    plt.yscale("log")
+    plt.xlabel("appearance in edge")
+    plt.ylabel("event frequency")
+    plt.savefig("temp.pdf")
+    print("plot event frequency and node appearance in edges")
+    print("> temp.pdf")
+
+
 def cluster_results(conf):
     method = conf.get("cluster_graph", "dist_method")
     ig_direction = conf.getboolean("cluster_graph", "ig_direction")
@@ -497,8 +603,12 @@ def cluster_results(conf):
     for r1, r2 in itertools.combinations(l_result, 2):
         if method == "ed":
             dist = graph_edit_distance(r1, r2, ig_direction)
+            _logger.info("edit distance : {0} ({1}, {2})".format(dist,
+                    r1._get_fn(), r2._get_fn()))
         elif method == "mcs":
             dist = mcs_size_ratio(r1, r2, ig_direction)
+            _logger.info("mcs size : {0} ({1}, {2})".format(dist,
+                    r1._get_fn(), r2._get_fn()))
         l_dist.append(dist)
     
     import scipy.cluster.hierarchy as hcls
@@ -522,19 +632,24 @@ if __name__ == "__main__":
     usage = """
 usage: {0} [options] args...
 args:
-  show-all : show abstraction of series of results
+  show-all : show abstraction of the series of results
   show-all-detail : show detailed abstraction
-  show-all-netsize : show values about network size that
-                     every node have a path to others in same network
-  show-whole-netsize : show sum of network size in all results
+  all-netsize : show values about network size that
+                every node have a path to others in same network
+  whole-netsize : show sum of network size in all results
+  whole-common-edge : show edges that is commonly appear in multiple results
+  cluster : test cluster analysis to make group of results
+  
   show RESULT : show information of result DAG recorded in RESULT
   common RESULT1 RESULT2 : show details of edges in RESULT1
-                           which appear in RESULT2
+                           that appear in RESULT2
   diff RESULT1 RESULT2 : show details of edges in RESULT1
-                         which do not appear in RESULT2
+                         that do not appear in RESULT2
+  diff-label RESULT : show details of edges in RESULT
+                      that is across different label of log template group
+  node-event-freq RESULT : plot event frequency and node appearance in edges
   edit-distance RESULT1 RESULT2 : show graph edit distance value
                                   between RESULT1 and RESULT2
-  cluster : test cluster analysis to make group of results
     """.format(sys.argv[0]).strip()
 
     import optparse
@@ -563,10 +678,14 @@ args:
         list_results(conf)
     elif mode == "show-all-detail":
         list_detailed_results(conf)
-    elif mode == "show-all-netsize":
+    elif mode == "all-netsize":
         list_netsize(conf)
-    elif mode == "show-whole-netsize":
+    elif mode == "whole-netsize":
         whole_netsize(conf)
+    elif mode == "whole-common-edge":
+        whole_common_edge(conf, False)
+    elif mode == "whole-common-edge-ignore-host":
+        whole_common_edge(conf, True)
     elif mode == "show":
         if len(args) < 1:
             sys.exit("give me filename of pc result object")
@@ -600,6 +719,11 @@ args:
         show_result(conf, result, graph, options.dflag, options.show_limit)
         if options.graph_fn is not None:
             result.show_graph(options.graph_fn, graph, options.eflag)
+    elif mode == "node-event-freq":
+        if len(args) < 1:
+            sys.exit("give me filename of pc result object")
+        result = PCOutput(conf).load(args[0])
+        node_event_frequency(conf, result)
     elif mode == "edit-distance":
         if len(args) < 2:
             sys.exit("give me 2 filenames of pc result object")
@@ -608,4 +732,7 @@ args:
         print graph_edit_distance(r1, r2)
     elif mode == "cluster":
         cluster_results(conf)
+    else:
+        print "invalid argument"
+        sys.exit(usage)
 

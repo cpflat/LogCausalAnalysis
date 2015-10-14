@@ -72,6 +72,8 @@ class LogData():
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):
+        if area == "all":
+            area = None
         return self.db.iter_lines(lid = lid, ltid = ltid, ltgid = ltgid,
                 top_dt = top_dt, end_dt = end_dt, host = host, area = area)
 
