@@ -4,7 +4,6 @@
 import sys
 import time
 import datetime
-import optparse
 import threading
 import logging
 
@@ -101,7 +100,9 @@ def pc_mthread(l_args, pal=1):
 
 
 if __name__ == "__main__":
-    usage = "usage: %s [options]" % sys.argv[0]
+    
+    usage = "usage: {0} [options]".format(sys.argv[0])
+    import optparse
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,

@@ -167,7 +167,7 @@ class LogTemplate():
         if self.lts is None:
             return "".join(l_w)
         else:
-            return "".join([s + w for w, s in zip(l_w, self.lts)])
+            return "".join([s + w for w, s in zip(l_w + [""], self.lts)])
     
     def count(self):
         self.cnt += 1

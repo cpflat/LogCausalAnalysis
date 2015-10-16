@@ -126,6 +126,14 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser):
 
 class GroupDef():
 
+    """
+    Define grouping by external text
+    Rules:
+        description after # in a line will be recognized as comment
+        line "[GROUP_NAME]" will change group to set
+        other lines add elements in group set with GROUP_NAME line
+    """
+
     def __init__(self, fn, default_val = None):
         self.gdict = {}
         self.rgdict = {}

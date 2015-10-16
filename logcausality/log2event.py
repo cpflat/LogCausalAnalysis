@@ -61,7 +61,7 @@ def log2event(conf, top_dt, end_dt, dur, area):
     ld = log_db.LogData(conf)
     ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
     evmap = LogEventIDMap()
-    edict = {}
+    edict = {} # key : eid, val : nodestat.EventSequence
     for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area):
         if not ltf.isremoved(line.lt.ltid):
             ev = nodestat.Event(line.dt, 1)
