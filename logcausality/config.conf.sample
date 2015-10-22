@@ -134,7 +134,7 @@ ltgroup_mem_ngram = true
 whole_term = 
 
 # Target areas of DAG construction
-# If "all" given, 
+# If "all" given, use whole hosts as 1 area named "all"
 # For example:
 # area = core, area1, area2, area3
 area = all

@@ -149,6 +149,9 @@ class LogData():
     def add_line(self, ltid, dt, host, l_w):
         self.db.add_line(ltid, dt, host, l_w)
 
+    def update_area(self):
+        self.db._areadb()
+
     def commit_db(self):
         self.db.commit()
         if self.ltm is not None:
@@ -556,6 +559,13 @@ def remake_ltgroup(conf):
     
     end_dt = datetime.datetime.now()
     _logger.info("log_db remake_ltg task done ({0})".format(end_dt - start_dt))
+
+
+def remake_area(conf):
+    lp = logparser.LogParser(conf)
+    ld = LogData(conf)
+    ld.update_area()
+    ld.commit_db()
 
 
 if __name__ == "__main__":
