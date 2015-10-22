@@ -145,7 +145,7 @@ class GroupDef():
 
     def open_def(self, fn):
         group = None
-        with open(fn, 'r'):
+        with open(fn, 'r') as f:
             for line in f:
                 # ignore after comment sygnal
                 line = line.strip().partition("#")[0]
