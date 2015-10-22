@@ -389,7 +389,7 @@ def list_results(conf):
         r = PCOutput(conf).load(fp)
         print "\t".join((str(r.top_dt), r.area,
                 str(len(r.graph.nodes())),
-                str(len(r.graph.edges())), r.result_fn))
+                str(len(r.graph.edges())), r.result_fn()))
 
 
 def list_detailed_results(conf):
