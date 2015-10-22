@@ -153,7 +153,7 @@ class GroupDef():
                     continue
                 elif line[0] == "#":
                     continue
-                elif line[0] == "[" and line[1] == "]":
+                elif line[0] == "[" and line[-1] == "]":
                     group = line[1:].strip("[]")
                 else:
                     if group is None:

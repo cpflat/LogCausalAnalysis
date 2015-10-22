@@ -225,7 +225,8 @@ class LogDB():
         # init table area
         sql = u"""
             create table area (
-                host text primary key,
+                defid integer primary key autoincrement not null,
+                host text,
                 area text
             );
         """
@@ -478,10 +479,24 @@ class LogDB():
         return [row[0] for row in cursor]
 
     def reset_ltg(self):
-        sql = "delete from ltg"
+        sql = "delete from ltg;"
         self.connect.execute(sql)
 
     def _areadb(self):
+        sql = "delete from area;"
+        self.connect.execute(sql)
+        sql = "drop table area;"
+        self.connect.execute(sql)
+        
+        sql = u"""
+            create table area (
+                defid integer primary key autoincrement not null,
+                host text,
+                area text
+            );
+        """
+        self.connect.execute(sql)
+        
         areadict = config.GroupDef(self.areafn)
         try:
             sql = u"""
@@ -580,6 +595,8 @@ usage: {0} [options] <file...>
     """.strip().format(sys.argv[0])
 
     op = optparse.OptionParser(usage)
+    op.add_option("-a", "--area", action="store_true", dest="aflag",
+            default=False, help="remake area definition")
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
@@ -594,7 +611,9 @@ usage: {0} [options] <file...>
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, ["lt_common", "lt_shiso"])
 
-    if options.gflag:
+    if options.aflag:
+        remake_area(conf)
+    elif options.gflag:
         remake_ltgroup(conf)
     else:
         process_files(conf, args, options.recur, options.format)
