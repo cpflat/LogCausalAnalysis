@@ -232,12 +232,33 @@ class LogDB():
         """
         self.connect.execute(sql)
 
-        # init index
+        self._init_index()
+
+    def _init_index(self):
         sql = u"""
             create index log_index on log(ltid, dt, host);
         """
-        self.connect.execute(sql)
+        try:
+            self.connect.execute(sql)
+        except sqlite3.OperationalError:
+            pass
 
+        sql = u"""
+            create index ltg_index on ltg(ltgid);
+        """
+        try:
+            self.connect.execute(sql)
+        except sqlite3.OperationalError:
+            pass
+        
+        sql = u"""
+            create index area_index on ltg(area);
+        """
+        try:
+            self.connect.execute(sql)
+        except sqlite3.OperationalError:
+            pass
+    
     def commit(self):
         self.connect.commit()
     
@@ -304,28 +325,64 @@ class LogDB():
         if len(d_cond) == 0:
             raise ValueError("called select with empty condition")
 
-        sql_header = """
-            select log.lid, log.ltid, log.dt, log.host, log.words from log
-            left outer join ltg on log.ltid == ltg.ltid
-        """
-        if "area" in d_cond.keys():
-            sql_header += " left outer join area on log.host == area.host"
+        sql_header = "select lid, ltid, dt, host, words from log"
         sqlc = []
-        for k, v in d_cond.iteritems():
-            if k in ("lid", "ltid", "host"):
-                sqlc.append("log.{0} = :{0}".format(k))
-            elif k == "top_dt":
+        if d_cond.has_key("lid"):
+            sqlc.append("lid = :lid")
+        else:
+            if d_cond.has_key("ltid"):
+                sqlc.append("ltid = :ltid")
+            else:
+                if d_cond.has_key("ltgid"):
+                    sqlc.append("""
+                        ltid in (
+                            select ltid
+                            from ltg
+                            where ltgid = :ltgid
+                        )
+                        """)
+            if d_cond.has_key("top_dt"):
                 sqlc.append("log.dt >= :top_dt")
-            elif k == "end_dt":
+            if d_cond.has_key("end_dt"):
                 sqlc.append("log.dt < :end_dt")
-            elif k == "ltgid":
-                sqlc.append("ltg.ltgid = :ltgid")
-            elif k == "area":
-                sqlc.append("area.area = :area")
+            if d_cond.has_key("host"):
+                sqlc.append("host = :host")
+            else:
+                if d_cond.has_key("area"):
+                    sqlc.append("""
+                        host in (
+                            select host
+                            from area
+                            where area = :area
+                        )
+                        """)
         sql = " ".join((sql_header, "where", " and ".join(sqlc)))
         cursor = self.connect.cursor()
         cursor.execute(sql, d_cond)
         return cursor
+
+        #sql_header = """
+        #    select log.lid, log.ltid, log.dt, log.host, log.words from log
+        #    left outer join ltg on log.ltid == ltg.ltid
+        #"""
+        #if "area" in d_cond.keys():
+        #    sql_header += " left outer join area on log.host == area.host"
+        #sqlc = []
+        #for k, v in d_cond.iteritems():
+        #    if k in ("lid", "ltid", "host"):
+        #        sqlc.append("log.{0} = :{0}".format(k))
+        #    elif k == "top_dt":
+        #        sqlc.append("log.dt >= :top_dt")
+        #    elif k == "end_dt":
+        #        sqlc.append("log.dt < :end_dt")
+        #    elif k == "ltgid":
+        #        sqlc.append("ltg.ltgid = :ltgid")
+        #    elif k == "area":
+        #        sqlc.append("area.area = :area")
+        #sql = " ".join((sql_header, "where", " and ".join(sqlc)))
+        #cursor = self.connect.cursor()
+        #cursor.execute(sql, d_cond)
+        #return cursor
 
     def update_log(self, d_cond, d_update):
         # updating rows in table db (NOT allow editing lt / ltg / area)
@@ -483,11 +540,12 @@ class LogDB():
         self.connect.execute(sql)
 
     def _areadb(self):
+
+        # remake area table for compatibility
         sql = "delete from area;"
         self.connect.execute(sql)
         sql = "drop table area;"
         self.connect.execute(sql)
-        
         sql = u"""
             create table area (
                 defid integer primary key autoincrement not null,
@@ -561,6 +619,14 @@ def process_files(conf, targets, rflag, fflag):
     _logger.info("log_db task done ({0})".format(end_dt - start_dt))
 
 
+def migrate(conf):
+    lp = logparser.LogParser(conf)
+    ld = LogData(conf)
+    ld.db._init_index()
+    ld.update_area()
+    ld.commit_db()
+    
+
 def remake_ltgroup(conf):
     lp = logparser.LogParser(conf)
     ld = LogData(conf)
@@ -602,6 +668,8 @@ usage: {0} [options] <file...>
             help="configuration file path")
     op.add_option("-f", action="store_true", dest="format",
             default=False, help="format db and reconstruct")
+    op.add_option("-m", action="store_true", dest="migrate",
+            default=False, help="change existing db into recent version")
     op.add_option("-r", action="store_true", dest="recur",
             default=False, help="search log file recursively")
     op.add_option("-g", "--group", action="store_true", dest="gflag",
@@ -615,6 +683,8 @@ usage: {0} [options] <file...>
         remake_area(conf)
     elif options.gflag:
         remake_ltgroup(conf)
+    elif options.migrate:
+        migrate(conf)
     else:
         process_files(conf, args, options.recur, options.format)
 
