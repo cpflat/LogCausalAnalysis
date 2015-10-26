@@ -21,7 +21,9 @@ def view(conf, ltid, ltgid, top_dt, end_dt, host, area, oflag):
 
 
 if __name__ == "__main__":
-    usage = "usage: %s [options]" % sys.argv[0]
+
+    usage = "usage: {0} [options]".format(sys.argv[0])
+    import optparse
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,

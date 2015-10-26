@@ -114,6 +114,9 @@ class LogData():
     def ltg_members(self, ltgid):
         return [self.table[ltid] for ltid in self.db.get_ltg_members(ltgid)]
 
+    def host_area(self, host):
+        return self.db.host_area(host)
+
     @staticmethod
     def _str_ltline(ltline):
         return " ".join((str(ltline.ltid), "({0})".format(ltline.ltgid),
@@ -542,6 +545,7 @@ class LogDB():
     def _areadb(self):
 
         # remake area table for compatibility
+        # to be removed
         sql = "delete from area;"
         self.connect.execute(sql)
         sql = "drop table area;"
@@ -554,8 +558,6 @@ class LogDB():
             );
         """
         self.connect.execute(sql)
-        
-        areadict = config.GroupDef(self.areafn)
         try:
             sql = u"""
                 create table area (
@@ -565,8 +567,15 @@ class LogDB():
                 );
             """
             self.connect.execute(sql)
+            sql = u"""
+                create index area_index on ltg(area);
+            """
+            self.connect.execute(sql)
         except sqlite3.OperationalError:
             pass
+
+        # add definitions for area table
+        areadict = config.GroupDef(self.areafn)
         for area, host in areadict.iter_def():
             sql = u"""
                 insert into area (host, area) values (
@@ -581,6 +590,14 @@ class LogDB():
             self.connect.execute(sql, sqlv) 
         self.connect.commit()
 
+    def host_area(self, host):
+        cursor = self.connect.cursor()
+        sql = u"""
+            select area from area where host = :host
+        """
+        sqlv = {"host" : host}
+        cursor.execute(sql, sqlv)
+        return [row[0] for row in cursor]
 
 def process_files(conf, targets, rflag, fflag):
     if len(targets) == 0:

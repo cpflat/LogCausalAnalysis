@@ -34,7 +34,7 @@ class PCOutput():
         self.area = area
         self.threshold = self.conf.getfloat("dag", "threshold")
         
-        self.filename = self._get_fn()
+        self.filename = self.get_fn()
 
     def load(self, fn = None):
         if not fn: fn = self.filename
@@ -73,7 +73,7 @@ class PCOutput():
         self._init_ll()
         return self.ll.get_ltg_label(ltgid, self.ld.ltg_members(ltgid))
 
-    def _get_fn(self):
+    def get_fn(self):
         import pc_log
         return pc_log.thread_name(self.conf, self.top_dt, self.end_dt,
                 self.dur, self.area)
@@ -604,11 +604,11 @@ def cluster_results(conf):
         if method == "ed":
             dist = graph_edit_distance(r1, r2, ig_direction)
             _logger.info("edit distance : {0} ({1}, {2})".format(dist,
-                    r1._get_fn(), r2._get_fn()))
+                    r1.get_fn(), r2.get_fn()))
         elif method == "mcs":
             dist = mcs_size_ratio(r1, r2, ig_direction)
             _logger.info("mcs size : {0} ({1}, {2})".format(dist,
-                    r1._get_fn(), r2._get_fn()))
+                    r1.get_fn(), r2.get_fn()))
         l_dist.append(dist)
     
     import scipy.cluster.hierarchy as hcls
@@ -673,6 +673,8 @@ args:
 
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger)
+    if len(args) == 0:
+        sys.exit(usage)
     mode = args.pop(0)
     if mode == "show-all":
         list_results(conf)
