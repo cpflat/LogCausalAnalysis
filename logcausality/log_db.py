@@ -677,6 +677,12 @@ usage: {0} [options] <file...>
     add log data in src data files defined in config
     """.strip().format(sys.argv[0])
 
+    gflag_help = """
+Remake ltgroup for existing log template.
+If using this option with existing db,
+ltgroups will be different from that with incremental processing.
+    """.strip()
+
     op = optparse.OptionParser(usage)
     op.add_option("-a", "--area", action="store_true", dest="aflag",
             default=False, help="remake area definition")
@@ -690,7 +696,7 @@ usage: {0} [options] <file...>
     op.add_option("-r", action="store_true", dest="recur",
             default=False, help="search log file recursively")
     op.add_option("-g", "--group", action="store_true", dest="gflag",
-            default=False, help="remake ltgroup for existing log templates")
+            default=False, help=gflag_help)
     options, args = op.parse_args()
 
     conf = config.open_config(options.conf)

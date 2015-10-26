@@ -90,7 +90,7 @@ class PCOutput():
     def _print_edge(self, edge):
         src_ltgid, src_host = self.evmap.info(edge[0])
         dst_ltgid, dst_host = self.evmap.info(edge[1])
-        print("{0} [{1}] ({2}) -> {3}[{4}] ({3})".format(
+        print("{0} [{1}] ({2}) -> {3}[{4}] ({5})".format(
                 src_ltgid, self._label_ltg(src_ltgid), src_host, 
                 dst_ltgid, self._label_ltg(dst_ltgid), dst_host))
     
