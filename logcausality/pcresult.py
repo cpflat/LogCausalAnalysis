@@ -380,6 +380,17 @@ def graph_network(graph):
     return ret
 
 
+# function for results
+
+def result_areas(conf):
+    s_area = set()
+    src_dir = conf.get("dag", "output_dir")
+    for fp in fslib.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        s.area.add(r.area)
+    return list(s_area)
+
+
 # functions for visualization
 
 def list_results(conf):

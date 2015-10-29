@@ -134,13 +134,10 @@ class GroupDef():
         other lines add elements in group set with GROUP_NAME line
     """
 
-    def __init__(self, fn, default_val = None,
-            opt_all = False, opt_each = False):
+    def __init__(self, fn, default_val = None):
         self.gdict = {}
         self.rgdict = {}
         self.default = default_val
-        self.opt_all = opt_all
-        self.opt_each = opt_each
         if fn is None or fn == "":
             pass
         else:
