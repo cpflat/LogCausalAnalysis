@@ -387,7 +387,7 @@ def result_areas(conf):
     src_dir = conf.get("dag", "output_dir")
     for fp in fslib.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
-        s.area.add(r.area)
+        s_area.add(r.area)
     return list(s_area)
 
 
