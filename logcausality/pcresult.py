@@ -105,6 +105,8 @@ class PCOutput():
     def _print_edge_detail(self, edge, limit = None):
         if self.area == "all":
             area = None
+        elif self.area[:5] == "host_":
+            area = None
         else:
             area = self.area
         

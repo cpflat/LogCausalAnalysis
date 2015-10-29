@@ -100,7 +100,10 @@ class LogData():
 
     def whole_term(self):
         return self.db.whole_term()
-        
+
+    def whole_host(self, top_dt = None, end_dt = None):
+        return self.db.whole_host(top_dt = top_dt, end_dt = end_dt)
+
     def iter_lt(self):
         for ltline in self.table:
             yield ltline
@@ -424,6 +427,23 @@ class LogDB():
         l_dt = [datetime.datetime.combine(d, datetime.time()) for d in s]
         l_dt.sort(reverse = False)
         return l_dt[0], l_dt[-1] + datetime.timedelta(days = 1)
+
+    def whole_host(self, top_dt = None, end_dt = None):
+        sql = "select distinct host from log"
+        sqlc = []
+        sqlv = {}
+        if top_dt is not None:
+            sqlc.append("log.dt >= :top_dt")
+            sqlv["top_dt"] = top_dt
+        if end_dt is not None:
+            sqlc.append("log.dt < :end_dt")
+            sqlv["end_dt"] = end_dt
+        if len(sqlc) > 0:
+            sql_cond = " and ".join(sqlc)
+            sql = " ".join((sql, "where", sql_cond))
+        cursor = self.connect.cursor()
+        cursor.execute(sql, sqlv)
+        return [row[0] for row in cursor]
 
     def add_lt(self, ltline):
         # add to lt

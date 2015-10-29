@@ -62,7 +62,16 @@ def log2event(conf, top_dt, end_dt, dur, area):
     ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
     evmap = LogEventIDMap()
     edict = {} # key : eid, val : nodestat.EventSequence
-    for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area):
+
+    if area == "all":
+        iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt)
+    elif area[:5] == "host_":
+        host = area[5:]
+        iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, host = host)
+    else:
+        iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
+
+    for line in iterobj:
         if not ltf.isremoved(line.lt.ltid):
             ev = nodestat.Event(line.dt, 1)
             eid = evmap.eid(line)

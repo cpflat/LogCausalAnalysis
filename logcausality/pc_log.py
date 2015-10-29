@@ -9,6 +9,7 @@ import logging
 
 import config
 import fslib
+import log_db
 import log2event
 import pc_input 
 import pcresult
@@ -54,24 +55,44 @@ def thread_name(conf, top_dt, end_dt, dur, area):
 
 
 def pc_all_args(conf):
+    ld = log_db.LogData(conf)
+    
     w_term = conf.getterm("dag", "whole_term")
     if w_term is None:
-        import log_db
-        ld = log_db.LogData(conf)
         w_top_dt, w_end_dt = ld.whole_term()
     else:
         w_top_dt, w_end_dt = w_term
     term = conf.getdur("dag", "unit_term")
     diff = conf.getdur("dag", "unit_diff")
     dur = conf.getdur("dag", "stat_bin")
+
     l_args = []
-    for area in conf.gettuple("dag", "area"):
-        top_dt = w_top_dt
-        while top_dt < w_end_dt:
-            end_dt = top_dt + term
+    top_dt = w_top_dt
+    while top_dt < w_end_dt:
+        end_dt = top_dt + term
+        l_area = conf.getlist("dag", "area")
+        if "each" in l_area:
+            l_area.pop(l_area.index("each"))
+            l_area += ["host_" + host for host
+                    in ld.whole_host(top_dt, end_dt)]
+        for area in l_area:
             l_args.append((conf, top_dt, end_dt, dur, area))
-            top_dt = top_dt + diff
+        top_dt = top_dt + diff
     return l_args
+
+    #l_args = []
+    #l_area = conf.getlist("dag", "area")
+    #if "each" in l_area:
+    #    l_area.pop(l_area.index("each"))
+    #    l_area += ["host_" + host for host
+    #            in ld.whole_host(top_dt, end_dt)]
+    #for area in l_area:
+    #    top_dt = w_top_dt
+    #    while top_dt < w_end_dt:
+    #        end_dt = top_dt + term
+    #    l_args.append((conf, top_dt, end_dt, dur, area))
+    #    top_dt = top_dt + diff
+    #return l_args
 
 
 def pc_mthread(l_args, pal=1):
