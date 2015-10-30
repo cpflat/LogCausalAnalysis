@@ -55,9 +55,6 @@ class LogEventIDMap():
 
 
 def log2event(conf, top_dt, end_dt, dur, area):
-    if area == "all":
-        area = None
-
     ld = log_db.LogData(conf)
     ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
     evmap = LogEventIDMap()
