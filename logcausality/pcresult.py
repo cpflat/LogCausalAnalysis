@@ -395,10 +395,14 @@ def result_areas(conf):
 
 def list_results(conf):
     src_dir = conf.get("dag", "output_dir")
- 
-    print "datetime\t\tarea\tnodes\tedges\tfilepath"
+    l_result = []
     for fp in fslib.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
+        l_result.append((r.area, r))
+    l_result.sort(key = lambda x: x[0])
+
+    print "datetime\t\tarea\tnodes\tedges\tfilepath"
+    for r in l_result:
         print "\t".join((str(r.top_dt), r.area,
                 str(len(r.graph.nodes())),
                 str(len(r.graph.edges())), r.result_fn()))

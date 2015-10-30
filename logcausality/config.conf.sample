@@ -135,6 +135,7 @@ whole_term =
 
 # Target areas of DAG construction
 # If "all" given, use whole hosts as 1 area named "all"
+# If "each" given, define each host as 1 area named with hostname
 # For example:
 # area = core, area1, area2, area3
 area = all

@@ -264,12 +264,14 @@ def release_common_logging(ch, logger = None, l_logger_name = None):
 
 
 def overwrite_config(conf_fn1, conf_fn2, output):
-    conf1 = open_config(conf_fn1)
-    conf2 = open_config(conf_fn2)
+    conf1 = open_config(conf_fn1) # conf1 as basis
+    conf2 = open_config(conf_fn2) # overwrite with conf2
     for section in conf2.sections():
-        for option in conf2.options(section):
-            value = conf2.get(section, option)
-            conf1.set(section, option, value)
+        if section in conf1.sections():
+            for option in conf2.options(section):
+                value = conf2.get(section, option)
+                if option in conf1.options(section):
+                    conf1.set(section, option, value)
     with open(output, 'w') as f:
         conf1.write(f)
 
