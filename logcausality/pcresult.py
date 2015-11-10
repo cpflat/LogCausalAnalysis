@@ -6,6 +6,7 @@ import os
 import datetime
 import logging
 import cPickle as pickle
+import numpy as np
 import networkx as nx
 
 import fslib
@@ -268,7 +269,97 @@ class PCOutput():
         print ">", fn
 
 
+class EdgeTFIDF():
+
+    def __init__(self, l_result):
+        self.d_doc = {} # key : cedge, val : the dataset where the cedge found
+        self.l_result = [(rid, r) for rid, r in enumerate(l_result)]
+
+        for rid, r in self.l_result:
+            for edge in r.graph.edges():
+                cedge = r._edge_info(edge)
+                self._add_cedge(cedge, rid)
+
+    def _add_cedge(self, cedge, rid):
+        src_info, dst_info = cedge
+        if self.d_doc.has_key((src_info, dst_info)):
+            key = (src_info, dst_info)
+            self.d_doc[key].add(rid)
+        elif self.d_doc.has_key((dst_info, src_info)):
+            key = (dst_info, src_info)
+            self.d_doc[key].add(rid)
+        else:
+            key = (src_info, dst_info)
+            self.d_doc[key] = set([rid])
+
+    def _docs_with_cedge(self, cedge):
+        src_info, dst_info = cedge
+        if self.d_doc.has_key((src_info, dst_info)):
+            key = (src_info, dst_info)
+            return self.d_doc[key]
+        elif self.d_doc.has_key((dst_info, src_info)):
+            key = (dst_info, src_info)
+            return self.d_doc[key]
+        else:
+            return set()
+
+    def _rid(self, r):
+        for rid, temp_r in self.l_result:
+            if temp_r.filename == r.filename:
+                return rid
+        else:
+            raise ValueError(
+                    "{0} not given for initialization of EdgeTFIDF".format(
+                        r.filename))
+
+    def tf(self, cedge, r):
+        rid = self._rid(r)
+        if rid in self._docs_with_cedge(cedge):
+            return 1.0
+        else:
+            return 0.0
+
+    def idf(self, cedge, r):
+        doc_size = len(self.l_result)
+        doc_with_cedge = len(self._docs_with_cedge(cedge))
+        if doc_with_cedge == 0:
+            import pdb; pdb.set_trace()
+        return np.log2(1.0 * doc_size / doc_with_cedge)
+
+    def tfidf(self, cedge, r):
+        return self.tf(cedge, r) * self.idf(cedge, r)
+
+    def weight(self, w, doc):
+        return self.tfidf(w, doc)
+
+
 # functions for graph
+
+
+def equal_edge(self, cedge1, cedge2, ig_host = False):
+    # return True if the adjacent nodes of cedge1 is same as that of cedge2
+    # If ig_host is True, ignore difference of hosts
+    src_info1, dst_info1 = cedge1
+    src_info2, dst_info2 = cedge2
+    if ig_host:
+        src_ltgid1, src_host1 = src_info1
+        dst_ltgid1, dst_host1 = dst_info1
+        src_ltgid2, src_host2 = src_info2
+        dst_ltgid2, dst_host2 = dst_info2
+        if (src_ltgid1, dst_ltgid1) == (src_ltgid2, dst_ltgid2):
+            return True
+        elif (src_ltgid1, dst_ltgid1) == (dst_ltgid2, src_ltgid2):
+            return True
+        else:
+            return False
+    else:
+        if (src_info1, dst_info1) == (src_info2, dst_info2):
+            return True
+        elif (src_info1, dst_info1) == (dst_info2, src_info2):
+            return True
+        else:
+            return False
+
 
 def graph_no_orphan(src):
     g = nx.DiGraph()
@@ -276,83 +367,120 @@ def graph_no_orphan(src):
     return g
 
 
-def mcs_size_ratio(r1, r2, ig_direction):
+def mcs_size_ratio(r1, r2, ig_direction = False, weight = None):
     mcs = maximum_common_subgraph(r1, r2, ig_direction)
-    ret = 2.0 * len(mcs.edges()) / \
-            (len(r1.graph.edges()) + len(r2.graph.edges()))
-    #ret = 1.0 / len(mcs.edges())
-    return ret
+
+    if weight is None:
+        size = len(mcs.edges())
+    else:
+        mcs_cedges = [r1._edge_info(edge) for edge in mcs.edges()]
+        size = sum([1.0 * weight.idf(cedge, r1) for cedge in mcs_cedges])
+            # if use tf, fail for edges only in r2
+
+    return (len(r1.graph.edges()) + len(r2.graph.edges())) / (2.0 * size)
 
 
 def maximum_common_subgraph(r1, r2, ig_direction = False):
     
-    g1_edges = [r1._edge_info(edge) for edge in r1.graph.edges()]
-    g2_edges = [r2._edge_info(edge) for edge in r2.graph.edges()]
+    g1_cedges = [r1._edge_info(edge) for edge in r1.graph.edges()]
+    g2_cedges = [r2._edge_info(edge) for edge in r2.graph.edges()]
 
     if ig_direction:
         g = nx.Graph()
-        for edge in g1_edges:
-            if edge in g2_edges or (edge[1], edge[0]) in g2_edges:
-                g.add_edge(r1._node_id(edge[0]), r2._node_id(edge[1]))
+        for cedge in g1_cedges:
+            src_info, dst_info = cedge
+            if (src_info, dst_info) in g2_cedges or \
+                    (dst_info, src_info) in g2_cedges:
+                g.add_edge(r1._node_id(src_info), r1._node_id(dst_info))
         return nx.DiGraph(g)
     else:
         g = nx.DiGraph()
-        for edge in g1_edges:
-            if edge in g2_edges:
-                g.add_edge(edge[0], edge[1])
+        for cedge in g1_cedges:
+            if cedge in g2_cedges:
+                g.add_edge(r1._node_id(cedge[0]), r1._node_id(cedge[1]))
         return g
 
 
-def graph_edit_distance(r1, r2, ig_direction = False):
-    # ignore orphan nodes, only see edges
+def graph_edit_distance(r1, r2, ig_direction = False, weight = None):
+    # weight : weight object like TFIDF()
 
-    g1_edges = [r1._edge_info(edge) for edge in r1.graph.edges()]
-    g2_edges = [r2._edge_info(edge) for edge in r2.graph.edges()]
+    def owned(cedge, l_cedges, ig_direction):
+        src_info, dst_info = cedge
+        if cedge in l_cedges:
+            return True
+        elif ig_direction and (dst_info, src_info) in l_cedges:
+            return True
+        else:
+            return False
+
+    g1_cedges = [r1._edge_info(edge) for edge in r1.graph.edges()]
+    g2_cedges = [r2._edge_info(edge) for edge in r2.graph.edges()]
 
     l_edit = []
     # counting "add edges only in g2"
-    l_edit = l_edit + [edge for edge in g2_edges if not edge in g1_edges]
+    l_edit = l_edit + [cedge for cedge in g2_cedges
+            if not owned(cedge, g1_cedges, ig_direction)]
     # counting "remove edges only in g1"
-    l_edit = l_edit + [edge for edge in g1_edges if not edge in g2_edges]
+    l_edit = l_edit + [cedge for cedge in g1_cedges
+            if not owned(cedge, g2_cedges, ig_direction)]
 
-    # get combination in l_edit
-    s = set()
-    for edit in l_edit:
-        for e in s:
-            if edit[0] == e[1] and edit[1] == e[0]:
-                break
-        else:
-            s.add(edit)
-
-    def get_direction(r, edge):
-        # edge : edge_info
-        if (not r._has_node(edge[0])) or (not r._has_node(edge[1])):
-            return "none"
-        src_node = r._node_id(edge[0])
-        dst_node = r._node_id(edge[1])
-        if (src_node, dst_node) in r.graph.edges():
-            if (dst_node, src_node) in r.graph.edges():
-                return "both"
-            else:
-                return "src_to_dst"
-        elif (dst_node, src_node) in r.graph.edges():
-            return "dst_to_src"
-        else:
-            return "none"
-    pass
-
-    if ig_direction:
-        # count only if either graph is "none"
-        ret = 0.0
-        for edge in s:
-            d1 = get_direction(r1, edge)
-            d2 = get_direction(r2, edge)
-            if "none" in (d1, d2):
-                ret += 1.0
+    if weight is None:
+        return float(len(l_edit))
     else:
-        ret = len(s)
+        return sum([1.0 * weight.idf(cedge, r1) for cedge in l_edit])
+            # if use tf, fail for edges only in r2
 
-    return ret
+
+#def graph_edit_distance(r1, r2, ig_direction = False):
+#    # ignore orphan nodes, only seeing edges
+#
+#    g1_edges = [r1._edge_info(edge) for edge in r1.graph.edges()]
+#    g2_edges = [r2._edge_info(edge) for edge in r2.graph.edges()]
+#
+#    l_edit = []
+#    # counting "add edges only in g2"
+#    l_edit = l_edit + [edge for edge in g2_edges if not edge in g1_edges]
+#    # counting "remove edges only in g1"
+#    l_edit = l_edit + [edge for edge in g1_edges if not edge in g2_edges]
+#
+#    # get combination in l_edit
+#    s = set()
+#    for edit in l_edit:
+#        for e in s:
+#            if edit[0] == e[1] and edit[1] == e[0]:
+#                break
+#        else:
+#            s.add(edit)
+#
+#    def get_direction(r, edge):
+#        # edge : edge_info
+#        if (not r._has_node(edge[0])) or (not r._has_node(edge[1])):
+#            return "none"
+#        src_node = r._node_id(edge[0])
+#        dst_node = r._node_id(edge[1])
+#        if (src_node, dst_node) in r.graph.edges():
+#            if (dst_node, src_node) in r.graph.edges():
+#                return "both"
+#            else:
+#                return "src_to_dst"
+#        elif (dst_node, src_node) in r.graph.edges():
+#            return "dst_to_src"
+#        else:
+#            return "none"
+#    pass
+#
+#    if ig_direction:
+#        # count only if either graph is "none"
+#        ret = 0.0
+#        for edge in s:
+#            d1 = get_direction(r1, edge)
+#            d2 = get_direction(r2, edge)
+#            if "none" in (d1, d2):
+#                ret += 1.0
+#    else:
+#        ret = 1.0 * len(s)
+#
+#    return ret
 
 
 def graph_network(graph):

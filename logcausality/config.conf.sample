@@ -190,6 +190,8 @@ threshold = 0.9
 
 
 [cluster_graph]
+# TODO to be moved to debugging repo,
+# before graph matching is officially implemented
 
 # Definition of distance calculation method
 # [ed, mcs] is available
@@ -200,6 +202,9 @@ dist_method = ed
 # Ignore direction of edge in graph or not
 # when calculating distance of graphs
 ig_direction = true
+
+# Weight distance with TF-IDF
+weight = true
 
 # Criterion of threshold to generate flat cluster from hierarchy cluster
 # [maxclust, distance, etc...]
