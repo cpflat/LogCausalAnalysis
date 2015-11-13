@@ -266,20 +266,43 @@ class LTSearchTree():
 
     def _trace(self, ltwords):
         point = self.root
-        for w in ltwords:
+        temp_ltwords = ltwords[:]
+        check_points = []
+            # points with 2 candidates to go, for example "word" and "**"
+            # [(node, len(left_words)), ...]
+            # use as stack
+        while True:
+            w = temp_ltwords.pop(0)
             if w == self.sym:
                 if point.wild is None:
                     return None
                 else:
                     point = point.wild
             elif point.windex.has_key(w):
+                if point.wild is not None:
+                    check_points.append((point, len(temp_ltwords)))
                 point = point.windex[w]
             elif point.wild is not None:
                 point = point.wild
             else:
-                return None
-        else:
-            return point
+                if len(check_points) == 0:
+                    return None
+                else:
+                    p, left_wlen = check_points.pop(-1)
+                    temp_ltwords = ltwords[-left_wlen+1:]
+                        # +1 : for one **(wild) node
+                    point = p.wild
+
+            if len(temp_ltwords) == 0:
+                if point.end is None:
+                    if len(check_points) == 0:
+                        return None
+                    else:
+                        p, left_wlen = check_points.pop(-1)
+                        temp_ltwords = ltwords[-left_wlen+1:]
+                        point = p.wild
+                else:
+                    return point
 
     def remove(self, ltid, ltwords):
         node = self._trace(ltwords)
@@ -324,6 +347,14 @@ class LTSearchTreeNode():
         else:
             return None
 
+    def current_point(self):
+        buf = []
+        point = self
+        while point.parent is not None:
+            buf = [point.word] + buf
+            point = point.parent
+        print " ".join(buf)
+
     def set_ltid(self, ltid):
         self.end = ltid
 
@@ -349,4 +380,5 @@ def merge_lt(m1, m2, sym):
         else:
             ret.append(sym)
     return ret
+
 

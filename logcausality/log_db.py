@@ -720,7 +720,8 @@ ltgroups will be different from that with incremental processing.
     options, args = op.parse_args()
 
     conf = config.open_config(options.conf)
-    config.set_common_logging(conf, _logger, ["lt_common", "lt_shiso"])
+    config.set_common_logging(conf, _logger, 
+            ["lt_common", "lt_shiso", "lt_va", "lt_import"])
 
     if options.aflag:
         remake_area(conf)

@@ -9,6 +9,11 @@ import log_db
 import lt_common
 
 
+def export(ld):
+    for ltline in ld.table:
+        print ltline
+
+
 def show_all(ld):
     print ld.show_all_ltgroup()
 
@@ -160,7 +165,9 @@ args:
     conf = config.open_config(options.conf)
 
     ld = log_db.LogData(conf)
-    if mode == "show":
+    if mode == "export":
+        export(ld)
+    elif mode == "show":
         show_all(ld)
     elif mode == "show-lt":
         show_lt(ld)

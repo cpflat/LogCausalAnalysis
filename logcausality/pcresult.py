@@ -336,7 +336,7 @@ class EdgeTFIDF():
 # functions for graph
 
 
-def equal_edge(self, cedge1, cedge2, ig_host = False):
+def equal_edge(cedge1, cedge2, ig_host = False):
     # return True if the adjacent nodes of cedge1 is same as that of cedge2
     # If ig_host is True, ignore difference of hosts
     src_info1, dst_info1 = cedge1
