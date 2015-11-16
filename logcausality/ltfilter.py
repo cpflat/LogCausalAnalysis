@@ -5,12 +5,13 @@ import sys
 import os
 import datetime
 import logging
-import cPickle as pickle
+#import cPickle as pickle
+import numpy as np
 
 import config
-import calc
-import log_db
-import timelabel
+#import calc
+#import log_db
+#import timelabel
 
 _logger = logging.getLogger(__name__)
 
@@ -49,120 +50,28 @@ class IDFilter():
         return nid in self.fids
 
 
-class CalculateSelfCorr():
+# To filter cyclic log
 
-    def __init__(self, conf, fflag):
-        self.ld = log_db.LogData(conf)
-        self.filename = conf.get("filter_self_corr", "indata_filename")
-        w_term = conf.getterm("filter_self_corr", "term")
-        if w_term is None:
-            self.top_dt, self.end_dt = self.ld.whole_term()
-        else:
-            self.top_dt, self.end_dt = w_term
-        self.l_dur = [config.str2dur(str_dur) for str_dur
-                in conf.getlist("filter_self_corr", "dur")]
-        self.binsize = conf.getdur("filter_self_corr", "bin_size")
-        self.th = conf.getfloat("filter_self_corr", "threshold")
+def interval(self, l_dt, threshold):
+    # args
+    #   l_dt : list of datetime.datetime
+    #   threshold : threshold value for standard deviation
+    # return
+    #   interval(int) if the given l_dt have stable interval
+    #   or return None
 
-        self.d_result = {}
-        self.d_info = {}
+    l_interval = []
+    prev_dt = None
+    for dt in sorted(l_dt):
+        if prev_dt is not None:
+            diff = (dt - prev_dt).total_seconds()
+            l_interval.append(diff)
+        prev_dt = dt
 
-        self.fflag = fflag
-        if self.loaded():
-            self.load()
-
-    def loaded(self):
-        return os.path.exists(self.filename) and not self.fflag
-
-    def _add_result(self, val, ltgid, dur, cnt):
-        self.d_result[(ltgid, dur)] = val
-        self.d_info[ltgid] = cnt
-
-    def calc_self_corr(self, ltgid):
-        l_dt = [line.dt for line in self.ld.iter_lines(ltgid = ltgid,
-                top_dt = self.top_dt, end_dt = self.end_dt)]
-        cnt = len(l_dt)
-        if cnt > 0:
-            for dur in self.l_dur:
-                ts = timelabel.TimeSeries(self.top_dt, self.end_dt,
-                        self.binsize, 0)
-                ts.countdata(l_dt)
-                c = calc.self_corr(ts.data, dur, len(ts.label))
-                self._add_result(c, ltgid, dur, cnt)
-        else:
-            _logger.info("no data for ltgid {0}".format(ltgid))
-
-    def calc_all(self):
-        for ltgid in self.ld.iter_ltgid():
-            _logger.info("calculating ltgid {0}".format(ltgid))
-            self.calc_self_corr(ltgid)
-        self.dump()
-
-    def show_result(self):
-        buf = []
-        for k, val in sorted(self.d_result.items(), key = lambda x: x[0][0]):
-            ltgid, dur = k
-            cnt = self.d_info[ltgid]
-            buf.append("ltgid {0} : {1} in {2} (cnt {3})".format(
-                ltgid, val, dur, cnt))
-        return "\n".join(buf)
-
-    def show_filtered(self, threshold = None):
-        if threshold is None:
-            threshold = self.th
-        ret = set()
-        for k, val in self.d_result.items():
-            ltgid, dur = k
-            if val > threshold:
-                ret.add(ltgid)
-        for ltgid in ret:
-            print ltgid
-
-    def load(self):
-        with open(self.filename, 'r') as f:
-            self.d_result, self.d_info = pickle.load(f)
-
-    def dump(self):
-        with open(self.filename, 'w') as f:
-            obj = self.d_result, self.d_info
-            pickle.dump(obj, f)
-
-
-def mkfilter_self_corr(conf, fflag, threshold = None):
-    sc = CalculateSelfCorr(conf, fflag)
-    if sc.loaded():
-        pass
+    dist = np.array(l_interval)
+    std = np.std(dist)
+    if std < threshold:
+        return int(np.median(dist))
     else:
-        sc.calc_all()
-    print sc.show_filtered(threshold)
-
-
-def show_self_corr(conf):
-    sc = CalculateSelfCorr(conf, False)
-    if sc.loaded():
-        print sc.show_result()
-
-
-if __name__ == "__main__":
-    
-    import optparse
-    usage = "usage: {0} [options] mode".format(sys.argv[0])
-    op = optparse.OptionParser(usage)
-    op.add_option("-c", "--config", action="store",
-            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
-            help="configuration file path")
-    op.add_option("-f", action="store_true", dest="fflag",
-            default=False, help="format indata and recalculate")
-    op.add_option("-t", "--threshold", action="store", dest="threshold",
-            type="float", default=None, help="Threshold")
-    (options, args) = op.parse_args()
-    if len(args) == 0: sys.exit(usage)
-
-    conf = config.open_config(options.conf)
-    config.set_common_logging(conf, _logger)
-
-    if args[0] == "self-corr":
-        mkfilter_self_corr(conf, options.fflag, options.threshold)
-    elif args[0] == "show-self-corr":
-        show_self_corr(conf) 
+        return None
 
