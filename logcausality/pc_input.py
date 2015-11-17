@@ -8,11 +8,11 @@ from logging import getLogger
 _logger = getLogger(__name__)
 
 
-def pc(nsdict, threshold, mode = "pylib"):
+def pc(d_dt, threshold, mode = "pylib"):
     if mode == "rlib":   
-        graph = pc_rlib(nsdict, threshold)
+        graph = pc_rlib(d_dt, threshold)
     elif mode == "pylib":
-        graph = pc_pylib(nsdict, threshold)
+        graph = pc_pylib(d_dt, threshold)
     #print graph.edges()
     #import cPickle as pickle
     #with open("graph_dump", 'w') as f:
@@ -20,12 +20,11 @@ def pc(nsdict, threshold, mode = "pylib"):
     return graph
 
 
-def pc_pylib(nsdict, threshold):
+def pc_pylib(d_dt, threshold):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
-    dm = np.array([ns.get_values() for nid, ns
-            in sorted(nsdict.iteritems())]).transpose()
+    dm = np.array([data for nid, data in sorted(d_dt.iteritems())]).transpose()
     (g, sep_set) = pcalg.estimate_skeleton(indep_test_func=ci_test_bin,
                                      data_matrix=dm,
                                      alpha=threshold)
@@ -33,13 +32,14 @@ def pc_pylib(nsdict, threshold):
     return g
 
 
-def pc_rlib(nsdict, threshold):
+def pc_rlib(d_dt, threshold):
     import pandas
     import pyper
 
-    input_data = {}
-    for nid, ns in nsdict.iteritems():
-        input_data[nid] = ns.get_values()
+    input_data = d_dt
+    #input_data = {}
+    #for nid, ns in nsdict.iteritems():
+    #    input_data[nid] = ns.get_values()
 
     r = pyper.R(use_pandas='True')
     r("library(pcalg)")

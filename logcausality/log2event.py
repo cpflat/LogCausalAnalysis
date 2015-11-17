@@ -54,11 +54,12 @@ class LogEventIDMap():
             self.ermap[old_info] = new_eid
 
 
-def log2event(conf, top_dt, end_dt, dur, area):
+#def log2event(conf, top_dt, end_dt, dur, area):
+def log2event(conf, top_dt, end_dt, area):
     ld = log_db.LogData(conf)
-    ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
+    #ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
     evmap = LogEventIDMap()
-    edict = {} # key : eid, val : nodestat.EventSequence
+    edict = {} # key : eid, val : list(datetime.datetime)
 
     if area == "all":
         iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt)
@@ -69,14 +70,39 @@ def log2event(conf, top_dt, end_dt, dur, area):
         iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
 
     for line in iterobj:
-        if not ltf.isremoved(line.lt.ltid):
-            ev = nodestat.Event(line.dt, 1)
-            eid = evmap.eid(line)
-            ev.key = line.dt
-            ev.val = 1
-            if not edict.has_key(eid):
-                edict[eid] = nodestat.EventSequence(eid, \
-                        top_dt, end_dt, dur, maxval=2, default=0)
-            edict[eid].add_event(ev)
+        eid = evmap.eid(line)
+        edict.setdefault(eid, []).append(line.dt)
     return edict, evmap
+
+
+def event2stat(edict, top_dt, end_dt, dur):
+    d_stat = {}
+    dt_label = []
+    temp_dt = top_dt + dur
+    while temp_dt < end_dt:
+        dt_label.append(temp_dt)
+        temp_dt += dur
+    dt_label.append(end_dt)
+
+    for eid, l_ev in edict.iteritems():
+        l_val = []
+        if len(l_ev) > 0:
+            new_ev = l_ev.pop(0)
+        for dt in dt_label:
+            cnt = 0
+            while new_ev < dt:
+                cnt += 1
+                if len(l_ev) > 0:
+                    new_ev = l_ev.pop(0)
+                else:
+                    break
+            
+            if cnt > 0:
+                l_val.append(1)
+            else:
+                l_val.append(0)
+        d_stat[eid] = l_val
+
+    return d_stat
+
 
