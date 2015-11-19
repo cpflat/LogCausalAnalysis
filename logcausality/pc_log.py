@@ -121,6 +121,10 @@ def pc_mthread(l_args, pal=1):
     _logger.info("pc_log task done ({0})".format(end_dt - start_dt))
 
 
+def test_pc(l_args):
+    pc_log(*(l_args[0]))
+
+
 if __name__ == "__main__":
     
     usage = "usage: {0} [options]".format(sys.argv[0])
@@ -133,13 +137,18 @@ if __name__ == "__main__":
             default=1, help="multithreading")
     op.add_option("-r", action="store_true", dest="rflag",
             default=False, help="using pcalg library in R")
+    op.add_option("--test", action="store_true", dest="test",
+            default=False, help="test pc_log; do with first term")
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, [])
 
+
     fslib.mkdir(conf.get("dag", "output_dir"))
     l_args = pc_all_args(conf)
+    if options.test:
+        test_pc(l_args); sys.exit()
     pc_mthread(l_args, options.pal)
 
 

@@ -102,7 +102,6 @@ def event2stat(edict, top_dt, end_dt, dur):
             else:
                 l_val.append(0)
         d_stat[eid] = l_val
-
     return d_stat
 
 

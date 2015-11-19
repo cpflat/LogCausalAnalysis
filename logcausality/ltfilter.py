@@ -60,6 +60,10 @@ def interval(self, l_dt, threshold):
     #   interval(int) if the given l_dt have stable interval
     #   or return None
 
+    if len(l_dt) < 3:
+        #len(l_dt) < 2 : no interval will be found
+        #len(l_dt) == 2 : only 1 interval that always seem cyclic...
+        return None
     l_interval = []
     prev_dt = None
     for dt in sorted(l_dt):
@@ -74,4 +78,5 @@ def interval(self, l_dt, threshold):
         return int(np.median(dist))
     else:
         return None
+
 
