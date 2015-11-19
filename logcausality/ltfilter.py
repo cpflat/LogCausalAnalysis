@@ -52,7 +52,7 @@ class IDFilter():
 
 # To filter cyclic log
 
-def interval(self, l_dt, threshold = 0.01):
+def interval(self, l_dt, threshold = 0.5):
     # args
     #   l_dt : list of datetime.datetime
     #   threshold : threshold value for standard deviation

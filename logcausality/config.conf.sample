@@ -168,25 +168,25 @@ use_filter =
 ltlabel = 
 
 
-[filter_self_corr]
-# Options for constructing filters to remove regular log messages
-# by calculating self-correlation of each log events
-
-# Calculated self-correlation values
-indata_filename = ltfilter.dump
-
-# Target term to calculate self-correlation
-# If empty, set whole days including all log data in DB
-term = 
-
-# Time lag to calculate self-correlation
-dur = 1h, 1d
-
-# Bin size of log event frequency data
-bin_size = 10s
-
-# Threshold of self-correlation to make filters
-threshold = 0.9
+#[filter_self_corr]
+## Options for constructing filters to remove regular log messages
+## by calculating self-correlation of each log events
+#
+## Calculated self-correlation values
+#indata_filename = ltfilter.dump
+#
+## Target term to calculate self-correlation
+## If empty, set whole days including all log data in DB
+#term = 
+#
+## Time lag to calculate self-correlation
+#dur = 1h, 1d
+#
+## Bin size of log event frequency data
+#bin_size = 10s
+#
+## Threshold of self-correlation to make filters
+#threshold = 0.9
 
 
 [cluster_graph]
