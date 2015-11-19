@@ -52,7 +52,7 @@ class IDFilter():
 
 # To filter cyclic log
 
-def interval(self, l_dt, threshold):
+def interval(self, l_dt, threshold = 0.01):
     # args
     #   l_dt : list of datetime.datetime
     #   threshold : threshold value for standard deviation
@@ -62,7 +62,7 @@ def interval(self, l_dt, threshold):
 
     if len(l_dt) < 3:
         #len(l_dt) < 2 : no interval will be found
-        #len(l_dt) == 2 : only 1 interval that always seem cyclic...
+        #len(l_dt) == 2 : only 1 interval that not seem cyclic...
         return None
     l_interval = []
     prev_dt = None
@@ -74,7 +74,11 @@ def interval(self, l_dt, threshold):
 
     dist = np.array(l_interval)
     std = np.std(dist)
-    if std < threshold:
+    mean = np.std(dist)
+    if mean == 0:
+        #mean == 0 : multiple message in 1 time, not seem cyclic
+        return None
+    if (std / mean) < threshold:
         return int(np.median(dist))
     else:
         return None
