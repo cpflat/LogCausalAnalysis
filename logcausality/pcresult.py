@@ -259,6 +259,8 @@ class PCOutput():
         return nx.relabel_nodes(graph, mapping, copy=True)
 
     def show_graph(self, fn, graph = None, eflag = False):
+        import matplotlib
+        matplotlib.use('Agg')
         if graph is None:
             graph = self.graph
         if eflag:
