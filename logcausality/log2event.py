@@ -41,6 +41,17 @@ class LogEventIDMap():
     def get_eid(self, info):
         return self.ermap[info]
 
+    def pop(self, eid):
+        info = self.emap.pop(eid)
+        self.ermap.pop(info)
+        self.eidlen -= 1
+        return info
+
+    def move_eid(self, old_eid, new_eid):
+        info = self.pop(old_eid)
+        self.emap[new_eid] = info
+        self.ermap[info] = new_eid
+
     def rearrange(self, l_eid):
         import copy
         assert len(l_eid) == self.eidlen
@@ -54,7 +65,6 @@ class LogEventIDMap():
             self.ermap[old_info] = new_eid
 
 
-#def log2event(conf, top_dt, end_dt, dur, area):
 def log2event(conf, top_dt, end_dt, area):
     ld = log_db.LogData(conf)
     #ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
@@ -72,6 +82,50 @@ def log2event(conf, top_dt, end_dt, area):
     for line in iterobj:
         eid = evmap.eid(line)
         edict.setdefault(eid, []).append(line.dt)
+
+    edict, evmap = filter_edict(conf, edict, evmap)
+
+    return edict, evmap
+
+
+def filter_edict(conf, edict, evmap):
+    l_filter = conf.gettuple("dag", "use_filter")
+    if len(l_filter) == 0:
+        return edict, evmap
+    if "file" in l_filter:
+        ff = ltfilter.IDFilter(conf.getlist("dag_filter", "filter_name"))
+    if "periodic" in l_filter:
+        per_th = conf.getfloat("dag_filter", "periodic_th")
+        per_count = cont.getint("dag_filter", "periodic_count")
+        per_term = config.str2dur(conf.getfloat("dag_filter", "periodic_th"))
+
+    l_eid = []
+    for eid, l_dt in edict.iteritems():
+        if "periodic" in l_filter:
+            temp = ltfilter.interval(l_dt, per_th, per_count, per_term)
+            if temp is not None:
+                l_eid.append(eid)
+        if "file" in l_filter:
+            if ff.isremoved(eid):
+                l_eid.append(eid)
+
+    for eid in l_eid:
+        edict.pop(eid)
+        evmap.pop(eid)
+    return _remap_eid(edict, evmap)
+
+
+def _remap_eid(edict, evmap):
+    new_eid = 0
+    for old_eid in edict.keys():
+        if old_eid == new_eid:
+            new_eid += 1
+        else:
+            temp = edict[old_eid]
+            edict[old_eid].pop()
+            edict[new_eid] = temp
+            evmap.move_eid(old_eid, new_eid)
+
     return edict, evmap
 
 

@@ -16,8 +16,25 @@ info_log = auto.log
 
 [database]
 
-# Classified log database
-db_filename = log.db
+# Database management system to use
+# [sqlite3, #mysql(debugging)] is available
+# mysql : Require MySQL for PYTHON (MySQLdb) package
+database = sqlite3
+
+# Classified log database for sqlite3
+sqlite3_filename = log.db
+
+# Database hostname for mysql
+mysql_host = localhost
+
+# Database name for mysql
+mysql_dbname = logcausality
+
+# Mysql username
+mysql_user = test
+
+# Mysql user password
+mysql_passwd = test
 
 # Store log data with following splitter symbol string
 # If log_template.sym_ignore is False,
@@ -64,7 +81,7 @@ sym_filename =
 
 # Ignore splitting symbol strings in log template generation
 # In many cases this option enables speeding up in exchange for precision
-sym_ignore = false
+sym_ignore = true
 
 # Symbol string to abstract variable strings in log templates
 # that must not appear in raw log messages
@@ -112,6 +129,7 @@ ltgen_threshold = 0.9
 ltgen_max_child = 4
 
 # Size of Ngram in Adjustment Phase
+# If not ignoring splitter symbols, recommended to set more than 5
 ltgroup_ngram_length = 3
 
 # Lookup threshold for Ngram in Adjustment Phase
@@ -156,9 +174,26 @@ threshold = 0.01
 output_dir = pc_output
 
 # Log template IDs to be removed from input log data
+# [file, periodic] is available
+use_filter = 
+
+
+[dag_filter]
+
+# Filter filenames to use in filter option 'file'
 # For example:
 # use_filter = filter.txt, filter2.txt
-use_filter = 
+filter_name = 
+
+# Threshold value for filter 'periodic'
+periodic_th = 0.5
+
+# Required times of periodic event appearance to repeat
+# set more than 3
+periodic_count = 3
+
+# Required term length of periodic event to repeat
+periodic_term = 7d
 
 
 [visual]

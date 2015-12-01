@@ -9,6 +9,7 @@ import logging
 
 import config
 import fslib
+import db_common
 import logparser
 import lt_common
 
@@ -156,7 +157,7 @@ class LogData():
         self.db.add_line(ltid, dt, host, l_w)
 
     def update_area(self):
-        self.db._areadb()
+        self.db._init_area()
 
     def commit_db(self):
         self.db.commit()
@@ -166,124 +167,112 @@ class LogData():
 
 class LogDB():
 
-    def __init__(self, conf, table, reset_db):
+    def __init__(self, conf, table, reset_db, db_type = "sqlite3"):
         self.table = table
-        self.dbfn = conf.get("database", "db_filename")
         self.areafn = conf.get("database", "area_filename")
         self.splitter = conf.get("database", "split_symbol")
 
-        if reset_db == True:
-            fslib.rm(self.dbfn)
-            self._open()
-            self._initdb()
-            self._areadb()
-        elif os.path.exists(self.dbfn):
-            self._open()
-            self._init_lttable()
+        if db_type == "sqlite3":
+            dbpath = conf.get("database", "sqlite3_filename")
+            if dbpath is None:
+                # for compatibility
+                dbpath = conf.get("database", "db_filename")
+            self.db = db_common.sqlite3(dbpath)
+        elif db_type == "mysql":
+            host = conf.get("database", "mysql_host")
+            dbname = conf.get("database", "mysql_dbname")
+            user = conf.get("database", "mysql_user")
+            passwd = conf.get("database", "mysql_passwd")
+            self.db = db_common.mysql(host, dbpath, user, passwd)
+
+        if self.db.db_exists():
+            if reset_db == True:
+                self.db.reset()
+                self._init_tables()
+                self._init_area()
+            else:
+                self._init_lttable()
         else:
-            self._open()
-            self._initdb()
-            self._areadb()
+            self._init_tables()
+            self._init_area()
 
-    def __del__(self):
-        self._close()
-
-    def _open(self):
-        self.connect = sqlite3.connect(self.dbfn)
-        self.connect.text_factory = str
-
-    def _close(self):
-        self.connect.close()
-
-    def _initdb(self):
+    def _init_tables(self):
         # init table log
-        sql = u"""
-            create table log (
-                lid integer primary key autoincrement not null,
-                ltid integer,
-                dt text,
-                host text,
-                words text
-            );
-        """
-        self.connect.execute(sql)
+        table_name = "log"
+        l_key = [db_common.tablekey("lid", "integer",
+                    ("primary_key", "auto_increment", "not_null")),
+                 db_common.tablekey("ltid", "integer"),
+                 db_common.tablekey("dt", "datetime"),
+                 db_common.tablekey("host", "text"),
+                 db_common.tablekey("words", "text")]
+        sql = self.db.create_table_sql(table_name, l_key)
+        self.db.execute(sql)
 
         # init table lt
-        sql = u"""
-            create table lt (
-                ltid integer primary key,
-                ltw text,
-                lts text,
-                count integer
-            );
-        """
-        self.connect.execute(sql)
+        table_name = "lt"
+        l_key = [db_common.tablekey("ltid", "integer", ("primary_key",)),
+                 db_common.tablekey("ltw", "text"),
+                 db_common.tablekey("lts", "text"),
+                 db_common.tablekey("count", "integer")]
+        sql = self.db.create_table_sql(table_name, l_key)
+        self.db.execute(sql)
 
         # init table ltg
-        sql = u"""
-            create table ltg (
-                ltid integer primary key,
-                ltgid integer
-            );
-        """
-        self.connect.execute(sql)
+        table_name = "ltg"
+        l_key = [db_common.tablekey("ltid", "integer", ("primary_key",)),
+                 db_common.tablekey("ltgid", "integer")]
+        sql = self.db.create_table_sql(table_name, l_key)
+        self.db.execute(sql)
 
         # init table area
-        sql = u"""
-            create table area (
-                defid integer primary key autoincrement not null,
-                host text,
-                area text
-            );
-        """
-        self.connect.execute(sql)
+        table_name = "area"
+        l_key = [db_common.tablekey("defid", "integer",
+                    ("primary_key", "auto_increment", "not_null")),
+                 db_common.tablekey("host", "text"),
+                 db_common.tablekey("area", "text")]
+        sql = self.db.create_table_sql(table_name, l_key)
+        self.db.execute(sql)
 
         self._init_index()
 
     def _init_index(self):
-        sql = u"""
-            create index log_index on log(ltid, dt, host);
-        """
-        try:
-            self.connect.execute(sql)
-        except sqlite3.OperationalError:
-            pass
+        l_table_name = self.db.get_table_names()
 
-        sql = u"""
-            create index ltg_index on ltg(ltgid);
-        """
-        try:
-            self.connect.execute(sql)
-        except sqlite3.OperationalError:
-            pass
+        table_name = "log"
+        index_name = "log_index"
+        l_key = ["ltid", "dt", "host"]
+        if not index_name in l_table_name:
+            sql = self.db.create_index_sql(table_name, index_name, l_key)
+            self.db.execute(sql)
+            
+        table_name = "ltg"
+        index_name = "ltg_index"
+        l_key = ["ltgid"]
+        if not index_name in l_table_name:
+            sql = self.db.create_index_sql(table_name, index_name, l_key)
+            self.db.execute(sql)
         
-        sql = u"""
-            create index area_index on ltg(area);
-        """
-        try:
-            self.connect.execute(sql)
-        except sqlite3.OperationalError:
-            pass
-    
+        table_name = "area"
+        index_name = "area_index"
+        l_key = ["area"]
+        if not index_name in l_table_name:
+            sql = self.db.create_index_sql(table_name, index_name, l_key)
+            self.db.execute(sql)
+
     def commit(self):
-        self.connect.commit()
+        self.db.commit()
     
     def add_line(self, ltid, dt, host, l_w):
-        sql = u"""
-            insert into log (ltid, dt, host, words) values (
-                :ltid,
-                :dt,
-                :host,
-                :words
-            );
-        """
-        sqlv = {
+        table_name = "log"
+        d_val = {
             "ltid" : ltid,
-            "dt" : dt.strftime('%Y-%m-%d %H:%M:%S'),
+            "dt" : self.db.strftime(dt),
             "host" : host,
-            "words" : self.splitter.join(l_w)
+            "words" : self.splitter.join(l_w),
         }
-        self.connect.execute(sql, sqlv)
+        l_ss = [db_common.setstate(k, k) for k in d_val.keys()]
+        sql = self.db.insert_sql(table_name, l_ss)
+        self.db.execute(sql, d_val)
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):
@@ -300,7 +289,7 @@ class LogDB():
         for row in self._select_log(d_cond):
             lid = row[0]
             ltid = row[1]
-            dt = datetime.datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S')
+            dt = self.db.strptime(row[2])
             host = row[3]
             if row[4] == "":
                 l_w = []
@@ -327,197 +316,165 @@ class LogDB():
                 yield row[4].split(self.splitter)
 
     def _select_log(self, d_cond):
-        # d_cond = {column : value, ...}
         if len(d_cond) == 0:
             raise ValueError("called select with empty condition")
 
-        sql_header = "select lid, ltid, dt, host, words from log"
-        sqlc = []
-        if d_cond.has_key("lid"):
-            sqlc.append("lid = :lid")
-        else:
-            if d_cond.has_key("ltid"):
-                sqlc.append("ltid = :ltid")
+        table_name = "log"
+        l_key = ["lid", "ltid", "dt", "host", "words"]
+        l_cond = []
+        for c in d_cond.keys():
+            if c == "ltgid":
+                sql= self.db.select_sql("ltg", ["ltid"],
+                        [db_common.cond(c, "=", c)])
+                l_cond.append(db_common.cond("ltid", "in", sql, False))
+            elif c == "area":
+                sql= self.db.select_sql("area", ["host"],
+                        [db_common.cond(c, "=", c)])
+                l_cond.append(db_common.cond("host", "in", sql, False))
+            elif c == "top_dt":
+                l_cond.append(db_common.cond("dt", ">=", c))
+            elif c == "end_dt":
+                l_cond.append(db_common.cond("dt", ">=", c))
             else:
-                if d_cond.has_key("ltgid"):
-                    sqlc.append("""
-                        ltid in (
-                            select ltid
-                            from ltg
-                            where ltgid = :ltgid
-                        )
-                        """)
-            if d_cond.has_key("top_dt"):
-                sqlc.append("log.dt >= :top_dt")
-            if d_cond.has_key("end_dt"):
-                sqlc.append("log.dt < :end_dt")
-            if d_cond.has_key("host"):
-                sqlc.append("host = :host")
-            else:
-                if d_cond.has_key("area"):
-                    sqlc.append("""
-                        host in (
-                            select host
-                            from area
-                            where area = :area
-                        )
-                        """)
-        sql = " ".join((sql_header, "where", " and ".join(sqlc)))
-        cursor = self.connect.cursor()
-        cursor.execute(sql, d_cond)
-        return cursor
-
-        #sql_header = """
-        #    select log.lid, log.ltid, log.dt, log.host, log.words from log
-        #    left outer join ltg on log.ltid == ltg.ltid
-        #"""
-        #if "area" in d_cond.keys():
-        #    sql_header += " left outer join area on log.host == area.host"
-        #sqlc = []
-        #for k, v in d_cond.iteritems():
-        #    if k in ("lid", "ltid", "host"):
-        #        sqlc.append("log.{0} = :{0}".format(k))
-        #    elif k == "top_dt":
-        #        sqlc.append("log.dt >= :top_dt")
-        #    elif k == "end_dt":
-        #        sqlc.append("log.dt < :end_dt")
-        #    elif k == "ltgid":
-        #        sqlc.append("ltg.ltgid = :ltgid")
-        #    elif k == "area":
-        #        sqlc.append("area.area = :area")
-        #sql = " ".join((sql_header, "where", " and ".join(sqlc)))
-        #cursor = self.connect.cursor()
-        #cursor.execute(sql, d_cond)
-        #return cursor
+                l_cond.append(db_common.cond(c, "=", c))
+        sql = self.db.select_sql(table_name, l_key, l_cond)
+        return self.db.execute(sql, d_cond)
 
     def update_log(self, d_cond, d_update):
-        # updating rows in table db (NOT allow editing lt / ltg / area)
         if len(d_cond) == 0:
             raise ValueError("called update with empty condition")
+        args = d_cond.copy()
 
-        sql_header = "update log set"
-        l_buf = []
+        table_name = "log"
+        l_ss = []
         for k, v in d_update.iteritems():
             assert k in ("ltid", "top_dt", "end_dt", "host")
-            l_buf.append("{0} = \'{1}\'".format(k, v))
-        sql_update = ", ".join(l_buf)
-        sqlc = []
-        for k, v in d_cond.iteritems():
-            if k in ("lid", "ltid", "top_dt", "end_dt", "host"):
-                sqlc.append("{0} = :{0}".format(k))
-            elif k == "ltgid":
-                sqlc.append("ltid in " + 
-                        "(select ltid from ltg where ltgid = :ltgid)")
-            elif k == "area":
-                sqlc.append("host in " + 
-                        "(select host from area where area = :area)")
-        sql_cond = " and ".join(sqlc)
-        sql = " ".join((sql_header, sql_update, "where", sql_cond))
-        cursor = self.connect.cursor()
-        cursor.execute(sql, d_cond)
+            keyname = "update_" + k
+            l_ss.append(db_common.setstate(k, keyname))
+            args[keyname] = v
+        l_cond = []
+        for c in d_cond.keys():
+            if c == "ltgid":
+                sql= self.db.select_sql("ltg", ["ltid"],
+                        [db_common.cond(c, "=", c)])
+                l_cond.append(db_common.cond("ltid", "in", sql, False))
+            elif c == "area":
+                sql= self.db.select_sql("area", ["host"],
+                        [db_common.cond(c, "=", c)])
+                l_cond.append(db_common.cond("host", "in", sql, False))
+            elif c == "top_dt":
+                l_cond.append(db_common.cond("dt", ">=", c))
+            elif c == "end_dt":
+                l_cond.append(db_common.cond("dt", ">=", c))
+            else:
+                l_cond.append(db_common.cond(c, "=", c))
+        sql = self.db.update_sql(table_name, l_ss, l_cond)
+        self.db.execute(sql, args)
 
     def whole_term(self):
-        sql = "select dt from log"
-        cursor = self.connect.cursor()
-        cursor.execute(sql)
-        s = set()
-        for row in cursor:
-            dt = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
-            s.add(dt.date())
-        l_dt = [datetime.datetime.combine(d, datetime.time()) for d in s]
-        l_dt.sort(reverse = False)
-        return l_dt[0], l_dt[-1] + datetime.timedelta(days = 1)
+        table_name = "log"
+        l_key = ["min(dt)"]
+        sql, args = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql, args)
+        top_dt = self.db.strptime([row for row in cursor][0][0])
+
+        table_name = "log"
+        l_key = ["max(dt)"]
+        sql, args = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql, args)
+        end_dt = self.db.strptime([row for row in cursor][0][0])
+
+        top_dt = datetime.datetime.combine(top_dt.date(), datetime.time())
+        end_dt = datetime.datetime.combine(end_dt.date(), datetime.time()) + \
+                datetime.timedelta(days = 1)
+        return top_dt, end_dt
 
     def whole_host(self, top_dt = None, end_dt = None):
-        sql = "select distinct host from log"
-        sqlc = []
-        sqlv = {}
+        table_name = "log"
+        l_key = ["host"]
+        l_cond = []
+        args = {}
         if top_dt is not None:
-            sqlc.append("log.dt >= :top_dt")
-            sqlv["top_dt"] = top_dt
+            l_cond.append(db_common.cond("dt", ">=", "top_dt"))
+            args["top_dt"] = top_dt
         if end_dt is not None:
-            sqlc.append("log.dt < :end_dt")
-            sqlv["end_dt"] = end_dt
-        if len(sqlc) > 0:
-            sql_cond = " and ".join(sqlc)
-            sql = " ".join((sql, "where", sql_cond))
-        cursor = self.connect.cursor()
-        cursor.execute(sql, sqlv)
+            l_cond.append(db_common.cond("dt", "<", "end_dt"))
+            args["end_dt"] = end_dt
+        sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
+        cursor = self.db.execute(sql, args)
         return [row[0] for row in cursor]
 
     def add_lt(self, ltline):
-        # add to lt
-        sql = u"""
-            insert into lt (ltid, ltw, lts, count) values (
-                :ltid,
-                :ltw,
-                :lts,
-                :count
-            );
-        """
+        table_name = "lt"
+        l_ss = []
+        l_ss.append(db_common.setstate("ltid", "ltid"))
+        l_ss.append(db_common.setstate("ltw", "ltw"))
+        l_ss.append(db_common.setstate("lts", "lts"))
+        l_ss.append(db_common.setstate("count", "count"))
         if ltline.lts is None:
             lts = None
         else:
             lts = self.splitter.join(ltline.lts)
-        sqlv = {
+        args = {
             "ltid" : ltline.ltid,
             "ltw" : self.splitter.join(ltline.ltw),
             "lts" : lts,
             "count" : ltline.cnt,
         }
-        self.connect.execute(sql, sqlv)
+        sql = self.db.insert_sql(table_name, l_ss)
+        self.db.execute(sql, args)
 
         self.add_ltg(ltline.ltid, ltline.ltgid)
 
     def add_ltg(self, ltid, ltgid):
-        # add to ltg
-        sql = u"""
-            insert into ltg (ltid, ltgid) values (
-                :ltid,
-                :ltgid
-            );
-        """
-        sqlv = {
-            "ltid" : ltid,
-            "ltgid" : ltgid,
-            }
-        self.connect.execute(sql, sqlv)
+        table_name = "ltg"
+        l_ss = []
+        l_ss.append(db_common.setstate("ltid", "ltid"))
+        l_ss.append(db_common.setstate("ltgid", "ltgid"))
+        args = {"ltid" : ltid, "ltgid" : ltgid}
+        sql = self.db.insert_sql(table_name, l_ss)
+        self.db.execute(sql, args)
 
     def update_lt(self, ltid, ltw, lts, count):
-        sql_header = "update lt set"
-        sqlv = {"ltid" : ltid}
-        l_buf = []
+        table_name = "lt"
+        l_ss = []
+        args = {}
         if ltw is not None:
-            l_buf.append("ltw = :ltw")
-            sqlv["ltw"] = self.splitter.join(ltw)
+            l_ss.append(db_common.setstate("ltw", "ltw"))
+            args["ltw"] = self.splitter.join(ltw)
         if lts is not None:
-            l_buf.append("lts = :lts")
-            sqlv["lts"] = self.splitter.join(lts)
+            l_ss.append(db_common.setstate("lts", "lts"))
+            args["lts"] = self.splitter.join(lts)
         if count is not None:
-            l_buf.append("count = :count")
-            sqlv["count"] = count
-        sql_update = ", ".join(l_buf)
-        sql_cond = "where ltid = :ltid".format(ltid)
-        sql = " ".join((sql_header, sql_update, sql_cond))
-        cursor = self.connect.cursor()
-        cursor.execute(sql, sqlv)
+            l_ss.append(db_common.setstate("count", "count"))
+            args["count"] = count
+        l_cond = [db_common.cond("ltid", "=", "ltid")]
+        args["ltid"] = ltid
+
+        sql = self.db.update_sql(table_name, l_ss, l_cond)
+        self.db.execute(sql, args)
 
     def remove_lt(self, ltid):
+        args = {"ltid" : ltid}
+
         # remove from lt
-        sql = "delete from lt where ltid = :ltid"
-        sqlv = {"ltid" : ltid}
-        self.connect.execute(sql, sqlv)
+        table_name = "lt"
+        l_cond = [db_common.cond("ltid", "=", "ltid")]
+        sql = self.db.delete_sql(table_name, l_cond)
+        self.db.execute(sql, args)
 
         # remove from ltg
-        sql = "delete from ltg where ltid = :ltid"
-        sqlv = {"ltid" : ltid}
-        self.connect.execute(sql, sqlv)
+        table_name = "ltg"
+        l_cond = [db_common.cond("ltid", "=", "ltid")]
+        sql = self.db.delete_sql(table_name, l_cond)
+        self.db.execute(sql, args)
 
     def _init_lttable(self):
-        sql = "select lt.ltid, ltg.ltgid, lt.ltw, lt.lts, lt.count " + \
-                "from lt left outer join ltg where lt.ltid = ltg.ltid"
-        cursor = self.connect.cursor()
-        cursor.execute(sql)
+        table_name = self.db.join_sql("left outer",
+                "lt", "ltg", "ltid", "ltid")
+        l_key = ("lt.ltid", "ltg.ltgid", "lt.ltw", "lt.lts", "lt.count")
+        sql = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql)
         for row in cursor:
             ltid = row[0]
             ltgid = row[1]
@@ -531,93 +488,66 @@ class LogDB():
             self.table.restore_lt(ltid, ltgid, ltw, lts, count)
 
     def len_ltg(self):
-        sql = "select count(*) from ltg"
-        cursor = self.connect.cursor()
-        cursor.execute(sql)
+        table_name = "ltg"
+        l_key = ["count(*)"]
+        sql = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql)
         return cursor.fetchone()[0]
 
     def iter_ltg_def(self):
-        sql = "select ltid, ltgid from ltg"
-        cursor = self.connect.cursor()
-        cursor.execute(sql)
+        table_name = "ltg"
+        l_key = ["ltid", "ltgid"]
+        sql = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql)
         for row in cursor:
             ltid, ltgid = row
             yield ltid, ltgid
 
     def iter_ltgid(self):
-        sql = "select distinct ltgid from ltg"
-        cursor = self.connect.cursor()
-        cursor.execute(sql)
+        table_name = "ltg"
+        l_key = ["ltgid"]
+        sql = self.db.select_sql(table_name, l_key, opt = ["distinct"])
+        cursor = self.db.execute(sql)
         for row in cursor:
             ltgid = row[0]
             yield ltgid
 
     def get_ltg_members(self, ltgid):
-        sql = "select ltid from ltg where ltgid = {0}".format(ltgid)
-        cursor = self.connect.cursor()
-        cursor.execute(sql)
+        table_name = "ltg"
+        l_key = ["ltid"]
+        l_cond = [db_common.cond("ltgid", "=", "ltgid")]
+        args = {"ltgid" : ltgid}
+        sql = self.db.select_sql(table_name, l_key, l_cond)
+        cursor = self.db.execute(sql, args)
         return [row[0] for row in cursor]
 
     def reset_ltg(self):
-        sql = "delete from ltg;"
-        self.connect.execute(sql)
+        sql = self.db.delete_sql("ltg")
+        self.db.execute(sql)
 
-    def _areadb(self):
-
-        # remake area table for compatibility
-        # to be removed
-        sql = "delete from area;"
-        self.connect.execute(sql)
-        sql = "drop table area;"
-        self.connect.execute(sql)
-        sql = u"""
-            create table area (
-                defid integer primary key autoincrement not null,
-                host text,
-                area text
-            );
-        """
-        self.connect.execute(sql)
-        try:
-            sql = u"""
-                create table area (
-                    defid integer primary key autoincrement not null,
-                    host text,
-                    area text
-                );
-            """
-            self.connect.execute(sql)
-            sql = u"""
-                create index area_index on ltg(area);
-            """
-            self.connect.execute(sql)
-        except sqlite3.OperationalError:
-            pass
-
-        # add definitions for area table
+    def _init_area(self):
         areadict = config.GroupDef(self.areafn)
+        table_name = "area"
+        l_ss = [db_common.setstate("host", "host"),
+                db_common.setstate("area", "area")]
+        sql = self.db.insert_sql(table_name, l_ss)
         for area, host in areadict.iter_def():
-            sql = u"""
-                insert into area (host, area) values (
-                    :host,
-                    :area
-                );
-            """
-            sqlv = {
+            args = {
                 "host" : host,
                 "area" : area
             }
-            self.connect.execute(sql, sqlv) 
-        self.connect.commit()
+            self.db.execute(sql, args)
+        self.commit()
 
     def host_area(self, host):
-        cursor = self.connect.cursor()
-        sql = u"""
-            select area from area where host = :host
-        """
-        sqlv = {"host" : host}
-        cursor.execute(sql, sqlv)
+        table_name = area
+        l_key = ["area"]
+        l_cond = [db_common.cond("host", "=", "host")]
+        args = {"host" : host}
+        sql = self.db.select_sql(table_name, l_key, l_cond)
+        cursor = self.db.execute(sql, args)
         return [row[0] for row in cursor]
+
 
 def process_files(conf, targets, rflag, fflag):
     if len(targets) == 0:

@@ -208,6 +208,9 @@ def str2dur(string):
     elif "d" in string:
         num = int(string.partition("d")[0])
         return datetime.timedelta(days = num)
+    elif "w" in string:
+        num = int(string.partition("w")[0])
+        return datetime.timedelta(days = num)
     else:
         raise ValueError("Duration string invalid")
 

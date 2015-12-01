@@ -50,19 +50,21 @@ class IDFilter():
         return nid in self.fids
 
 
-# To filter cyclic log
+# To filter periodic log
 
-def interval(l_dt, threshold = 0.5):
+def interval(l_dt, threshold = 0.5, th_count = 3,
+        th_term = datetime.timedelta(days = 7)):
     # args
     #   l_dt : list of datetime.datetime
     #   threshold : threshold value for standard deviation
+    #   th_term : required term length to appear periodically
     # return
     #   interval(int) if the given l_dt have stable interval
     #   or return None
 
-    if len(l_dt) < 3:
-        #len(l_dt) < 2 : no interval will be found
-        #len(l_dt) == 2 : only 1 interval that not seem cyclic...
+    if len(l_dt) < th_count:
+        # len(l_dt) < 2 : no interval will be found
+        # len(l_dt) == 2 : only 1 interval that not seem periodic...
         return None
     l_interval = []
     prev_dt = None
@@ -74,11 +76,12 @@ def interval(l_dt, threshold = 0.5):
 
     dist = np.array(l_interval)
     std = np.std(dist)
-    mean = np.std(dist)
+    mean = np.mean(dist)
+    term = th_term.total_seconds()
     if mean == 0:
-        #mean == 0 : multiple message in 1 time, not seem cyclic
+        # mean == 0 : multiple message in 1 time, not seem periodic
         return None
-    if (std / mean) < threshold:
+    if (std / mean) < threshold and mean * len(l_dt) > term:
         return int(np.median(dist))
     else:
         return None
