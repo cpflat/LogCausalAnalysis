@@ -34,7 +34,10 @@ class database(object):
 
     def strptime(self, string):
         return datetime.datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
-    
+
+    def datetime(self, ret):
+        raise NotImplementedError
+
     def _ph(self, varname):
         raise NotImplementedError
         
@@ -161,6 +164,9 @@ class sqlite3(database):
         if self.connect is not None:
             self.connect.commit()
 
+    def datetime(self, ret):
+        return self.strptime(self, ret)
+
     def _ph(self, varname):
         return ":{0}".format(varname)
 
@@ -248,6 +254,9 @@ class mysql(database):
     def commit(self):
         if self.connect is not None:
             self.connect.commit()
+
+    def datetime(self, ret):
+        return ret
 
     def _ph(self, varname):
         return "%({0})s".format(varname)

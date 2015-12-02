@@ -295,7 +295,7 @@ class LogDB():
         for row in self._select_log(d_cond):
             lid = int(row[0])
             ltid = int(row[1])
-            dt = self.db.strptime(row[2])
+            dt = self.db.datetime(row[2])
             host = row[3]
             if row[4] == "":
                 l_w = []
@@ -382,13 +382,13 @@ class LogDB():
         l_key = ["min(dt)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
-        top_dt = self.db.strptime([row for row in cursor][0][0])
+        top_dt = self.db.datetime([row for row in cursor][0][0])
 
         table_name = "log"
         l_key = ["max(dt)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
-        end_dt = self.db.strptime([row for row in cursor][0][0])
+        end_dt = self.db.datetime([row for row in cursor][0][0])
 
         top_dt = datetime.datetime.combine(top_dt.date(), datetime.time())
         end_dt = datetime.datetime.combine(end_dt.date(), datetime.time()) + \
