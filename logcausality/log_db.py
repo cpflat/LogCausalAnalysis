@@ -167,23 +167,24 @@ class LogData():
 
 class LogDB():
 
-    def __init__(self, conf, table, reset_db, db_type = "sqlite3"):
+    def __init__(self, conf, table, reset_db):
         self.table = table
+        self.db_type = conf.get("database", "database")
         self.areafn = conf.get("database", "area_filename")
         self.splitter = conf.get("database", "split_symbol")
 
-        if db_type == "sqlite3":
+        if self.db_type == "sqlite3":
             dbpath = conf.get("database", "sqlite3_filename")
             if dbpath is None:
                 # for compatibility
                 dbpath = conf.get("database", "db_filename")
             self.db = db_common.sqlite3(dbpath)
-        elif db_type == "mysql":
+        elif self.db_type == "mysql":
             host = conf.get("database", "mysql_host")
             dbname = conf.get("database", "mysql_dbname")
             user = conf.get("database", "mysql_user")
             passwd = conf.get("database", "mysql_passwd")
-            self.db = db_common.mysql(host, dbpath, user, passwd)
+            self.db = db_common.mysql(host, dbname, user, passwd)
 
         if self.db.db_exists():
             if reset_db == True:
@@ -240,21 +241,23 @@ class LogDB():
 
         table_name = "log"
         index_name = "log_index"
-        l_key = ["ltid", "dt", "host"]
+        l_key = [db_common.tablekey("ltid", "integer"),
+                 db_common.tablekey("dt", "datetime"),
+                 db_common.tablekey("host", "text", (100, ))]
         if not index_name in l_table_name:
             sql = self.db.create_index_sql(table_name, index_name, l_key)
             self.db.execute(sql)
             
         table_name = "ltg"
         index_name = "ltg_index"
-        l_key = ["ltgid"]
+        l_key = [db_common.tablekey("ltgid", "integer")]
         if not index_name in l_table_name:
             sql = self.db.create_index_sql(table_name, index_name, l_key)
             self.db.execute(sql)
         
         table_name = "area"
         index_name = "area_index"
-        l_key = ["area"]
+        l_key = [db_common.tablekey("area", "text", (100, ))]
         if not index_name in l_table_name:
             sql = self.db.create_index_sql(table_name, index_name, l_key)
             self.db.execute(sql)

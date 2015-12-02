@@ -64,6 +64,9 @@ class database(object):
         # allowed attr : primary_key, auto_increment, not_null
         raise NotImplementedError
 
+    def _index_key(self, tablekey):
+        raise NotImplementedError
+
     def join_sql(self, join_opt, table_name1, table_name2, key1, key2):
         return "{1} {0} join {2} where {1}.{3} = {2}.{4}".format(join_opt,
                 table_name1, table_name2, key1, key2)
@@ -85,7 +88,7 @@ class database(object):
 
     def create_index_sql(self, table_name, index_name, l_key):
         sql = "create index {0} on {1}({2})".format(index_name,
-                table_name, ", ".join(l_key))
+                table_name, ", ".join([self._index_key(key) for key in l_key]))
         return sql
 
     def select_sql(self, table_name, l_key, l_cond = [], opt = []):
@@ -125,9 +128,7 @@ class database(object):
         raise NotImplementedError
 
     def get_table_names(self):
-        sql = "select name from sqlite_master"
-        cursor = self.execute(sql)
-        return [row[0] for row in cursor]
+        raise NotImplementedError
 
 
 class sqlite3(database):
@@ -179,6 +180,9 @@ class sqlite3(database):
         else:
             raise NotImplementedError
 
+    def _index_key(self, tablekey):
+        return tablekey.key
+        
     def execute(self, sql, args = {}):
         #print sql
         #if len(args) > 0: print args
@@ -191,10 +195,16 @@ class sqlite3(database):
             cursor.execute(sql, args)
         return cursor
 
+    def get_table_names(self):
+        sql = "select name from sqlite_master"
+        cursor = self.execute(sql)
+        return [row[0] for row in cursor]
+
 
 class mysql(database):
 
     def __init__(self, host, dbname, user, passwd):
+        global MySQLdb
         import MySQLdb
         self.host = host
         self.dbname = dbname
@@ -208,8 +218,15 @@ class mysql(database):
             self.connect.close()
 
     def _open(self):
+        if not self.db_exists():
+            self._init_database()
         self.connect = MySQLdb.connect(host = self.host, db = self.dbname,
                                        user = self.user, passwd = self.passwd)
+
+    def _init_database(self):
+        connect = self._connect_root()
+        cursor = connect.cursor()
+        cursor.execute("create database {0}".format(self.dbname))
 
     def _connect_root(self):
         return MySQLdb.connect(host = self.host, user = self.user,
@@ -225,7 +242,7 @@ class mysql(database):
         if self.db_exists():
             connect = self._connect_root()
             cursor = connect.cursor()
-            cursor.execute("drop database %(db)s", {"db" : self.dbname})
+            cursor.execute("drop database {0}".format(self.dbname))
             connect.commit()
 
     def commit(self):
@@ -259,6 +276,12 @@ class mysql(database):
             return "not null"
         else:
             raise NotImplementedError
+    
+    def _index_key(self, tablekey):
+        if tablekey.type == "text":
+            return "{0}({1})".format(tablekey.key, tablekey.attr[0])
+        else:
+            return tablekey.key
 
     def execute(self, sql, args = {}):
         if self.connect is None:
@@ -269,6 +292,11 @@ class mysql(database):
         else:
             cursor.execute(sql, args)
         return cursor
+
+    def get_table_names(self):
+        sql = "show tables"
+        cursor = self.execute(sql)
+        return [row[0] for row in cursor]
 
 
 def tablekey(keyname, typename, attributes = tuple()):
