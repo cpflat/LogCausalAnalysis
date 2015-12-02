@@ -185,6 +185,9 @@ class LogDB():
             user = conf.get("database", "mysql_user")
             passwd = conf.get("database", "mysql_passwd")
             self.db = db_common.mysql(host, dbname, user, passwd)
+        else:
+            raise ValueError("invalid database type ({0})".format(
+                    self.db_type))
 
         if self.db.db_exists():
             if reset_db == True:
@@ -290,8 +293,8 @@ class LogDB():
         if len(d_cond) == 0:
             raise ValueError("More than 1 argument should NOT be None")
         for row in self._select_log(d_cond):
-            lid = row[0]
-            ltid = row[1]
+            lid = int(row[0])
+            ltid = int(row[1])
             dt = self.db.strptime(row[2])
             host = row[3]
             if row[4] == "":
@@ -479,15 +482,15 @@ class LogDB():
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
         for row in cursor:
-            ltid = row[0]
-            ltgid = row[1]
+            ltid = int(row[0])
+            ltgid = int(row[1])
             ltw = row[2].split(self.splitter)
             temp = row[3]
             if temp is None:
                 lts = None
             else:
                 lts = temp.split(self.splitter)
-            count = row[4]
+            count = int(row[4])
             self.table.restore_lt(ltid, ltgid, ltw, lts, count)
 
     def len_ltg(self):
@@ -495,7 +498,7 @@ class LogDB():
         l_key = ["count(*)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
-        return cursor.fetchone()[0]
+        return int(cursor.fetchone()[0])
 
     def iter_ltg_def(self):
         table_name = "ltg"
@@ -504,7 +507,7 @@ class LogDB():
         cursor = self.db.execute(sql)
         for row in cursor:
             ltid, ltgid = row
-            yield ltid, ltgid
+            yield int(ltid), int(ltgid)
 
     def iter_ltgid(self):
         table_name = "ltg"
@@ -513,7 +516,7 @@ class LogDB():
         cursor = self.db.execute(sql)
         for row in cursor:
             ltgid = row[0]
-            yield ltgid
+            yield int(ltgid)
 
     def get_ltg_members(self, ltgid):
         table_name = "ltg"
@@ -522,7 +525,7 @@ class LogDB():
         args = {"ltgid" : ltgid}
         sql = self.db.select_sql(table_name, l_key, l_cond)
         cursor = self.db.execute(sql, args)
-        return [row[0] for row in cursor]
+        return [int(row[0]) for row in cursor]
 
     def reset_ltg(self):
         sql = self.db.delete_sql("ltg")

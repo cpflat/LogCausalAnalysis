@@ -68,7 +68,7 @@ class database(object):
         raise NotImplementedError
 
     def join_sql(self, join_opt, table_name1, table_name2, key1, key2):
-        return "{1} {0} join {2} where {1}.{3} = {2}.{4}".format(join_opt,
+        return "{1} {0} join {2} on {1}.{3} = {2}.{4}".format(join_opt,
                 table_name1, table_name2, key1, key2)
 
     def create_table_sql(self, table_name, l_key):
@@ -284,6 +284,8 @@ class mysql(database):
             return tablekey.key
 
     def execute(self, sql, args = {}):
+        print sql
+        if len(args) > 0: print args
         if self.connect is None:
             self._open()
         cursor = self.connect.cursor()
