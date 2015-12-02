@@ -380,14 +380,14 @@ class LogDB():
     def whole_term(self):
         table_name = "log"
         l_key = ["min(dt)"]
-        sql, args = self.db.select_sql(table_name, l_key)
-        cursor = self.db.execute(sql, args)
+        sql = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql)
         top_dt = self.db.strptime([row for row in cursor][0][0])
 
         table_name = "log"
         l_key = ["max(dt)"]
-        sql, args = self.db.select_sql(table_name, l_key)
-        cursor = self.db.execute(sql, args)
+        sql = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql)
         end_dt = self.db.strptime([row for row in cursor][0][0])
 
         top_dt = datetime.datetime.combine(top_dt.date(), datetime.time())

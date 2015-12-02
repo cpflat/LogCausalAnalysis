@@ -284,8 +284,8 @@ class mysql(database):
             return tablekey.key
 
     def execute(self, sql, args = {}):
-        print sql
-        if len(args) > 0: print args
+        #print sql
+        #if len(args) > 0: print args
         if self.connect is None:
             self._open()
         cursor = self.connect.cursor()
