@@ -324,6 +324,7 @@ class LogDB():
     def _select_log(self, d_cond):
         if len(d_cond) == 0:
             raise ValueError("called select with empty condition")
+        args = d_cond.copy()
 
         table_name = "log"
         l_key = ["lid", "ltid", "dt", "host", "words"]
@@ -339,12 +340,14 @@ class LogDB():
                 l_cond.append(db_common.cond("host", "in", sql, False))
             elif c == "top_dt":
                 l_cond.append(db_common.cond("dt", ">=", c))
+                args[c] = self.db.strftime(d_cond[c])
             elif c == "end_dt":
-                l_cond.append(db_common.cond("dt", ">=", c))
+                l_cond.append(db_common.cond("dt", "<", c))
+                args[c] = self.db.strftime(d_cond[c])
             else:
                 l_cond.append(db_common.cond(c, "=", c))
         sql = self.db.select_sql(table_name, l_key, l_cond)
-        return self.db.execute(sql, d_cond)
+        return self.db.execute(sql, args)
 
     def update_log(self, d_cond, d_update):
         if len(d_cond) == 0:
@@ -370,8 +373,10 @@ class LogDB():
                 l_cond.append(db_common.cond("host", "in", sql, False))
             elif c == "top_dt":
                 l_cond.append(db_common.cond("dt", ">=", c))
+                args[c] = self.db.strftime(d_cond[c])
             elif c == "end_dt":
-                l_cond.append(db_common.cond("dt", ">=", c))
+                l_cond.append(db_common.cond("dt", "<", c))
+                args[c] = self.db.strftime(d_cond[c])
             else:
                 l_cond.append(db_common.cond(c, "=", c))
         sql = self.db.update_sql(table_name, l_ss, l_cond)
