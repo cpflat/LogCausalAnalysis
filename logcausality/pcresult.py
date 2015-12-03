@@ -621,6 +621,36 @@ def diff_label_graph(conf, r):
     return g
 
 
+def similar_graph(conf, r, area, alg):
+    # ed, mcs, edw, mcsw
+    assert r.area == area
+    src_dir = conf.get("dag", "output_dir")
+    l_result = []
+    for fp in fslib.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        if r.area == area:
+            l_result.append(r)
+
+    weight = None
+    if "w" in alg:
+        weight = EdgeTFIDF(l_result)
+
+    data = []
+    for rr in l_result:
+        if alg.rstrip("w") == "ed":
+            dist = graph_edit_distance(r, rr, True, weight)
+        elif alg.rstrip("w") == "mcs":
+            dist = mcs_size_ratio(r, rr, True, weight)
+        else:
+            raise ValueError()
+        data.append((dist, rr))
+
+    data = sorted(data, key = lambda x: x[0], reverse = False)
+    print data[0][1].filename
+    print data[1][1].filename
+    print data[2][1].filename
+
+
 if __name__ == "__main__":
 
     usage = """
@@ -714,6 +744,14 @@ args:
         r1 = PCOutput(conf).load(args[0])
         r2 = PCOutput(conf).load(args[1])
         print graph_edit_distance(r1, r2)
+    elif mode in ("similar-graph-ed", "similar-graph-mcs",
+            "similar-graph-edw", "similar-graph-mcsw"):
+        if len(args) < 2:
+            sys.exit("give me area and filename of pc result object")
+        alg = mode.rpartition("-")[-1]
+        area = args[0]
+        r = PCOutput(conf).load(args[1])
+        similar_graph(conf, r, area, alg)
     else:
         print "invalid argument"
         sys.exit(usage)
