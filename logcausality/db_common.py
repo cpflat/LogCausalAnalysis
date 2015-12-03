@@ -165,7 +165,7 @@ class sqlite3(database):
             self.connect.commit()
 
     def datetime(self, ret):
-        return self.strptime(self, ret)
+        return self.strptime(ret)
 
     def _ph(self, varname):
         return ":{0}".format(varname)

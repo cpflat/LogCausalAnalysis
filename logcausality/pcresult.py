@@ -87,12 +87,19 @@ class PCOutput():
         print("\n ".join(
             [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
 
-    def _print_edge(self, edge):
+    def _print_edge(self, edge, label):
         src_ltgid, src_host = self.evmap.info(edge[0])
         dst_ltgid, dst_host = self.evmap.info(edge[1])
-        print("{0} [{1}] ({2}) -> {3}[{4}] ({5})".format(
+        if label == "directed":
+            arrow = "->"
+        elif label == "undirected":
+            arrow = "<->"
+        else:
+            raise ValueError
+        print("{0} [{1}] ({2}) {6} {3}[{4}] ({5})".format(
                 src_ltgid, self._label_ltg(src_ltgid), src_host, 
-                dst_ltgid, self._label_ltg(dst_ltgid), dst_host))
+                dst_ltgid, self._label_ltg(dst_ltgid), dst_host,
+                arrow))
     
     def _print_edge_lt(self, edge):
         for eid, header in zip(edge, ("src", "dst")):
@@ -134,9 +141,11 @@ class PCOutput():
         if graph is None:
             graph = self.graph
         self._none_caution()
-        for edges in self._separate_edges(graph): # directed, undirected
+        for edges, label in zip(self._separate_edges(graph),
+                ("directed", "undirected")):
+            # directed, undirected
             for edge in edges:
-                self._print_edge(edge)
+                self._print_edge(edge, label)
         print
 
     def print_result_lt(self, graph = None):
@@ -148,7 +157,7 @@ class PCOutput():
                 ("directed", "undirected")):
             print("### {0} ###").format(label)
             for edge in edges:
-                self._print_edge(edge)
+                self._print_edge(edge, label)
                 self._print_edge_lt(edge)
             print
 
@@ -161,7 +170,7 @@ class PCOutput():
                 ("directed", "undirected")):
             print("### {0} ###").format(label)
             for edge in edges:
-                self._print_edge(edge)
+                self._print_edge(edge, label)
                 self._print_edge_detail(edge, limit)
             print
 
@@ -621,9 +630,9 @@ def diff_label_graph(conf, r):
     return g
 
 
-def similar_graph(conf, result, area, alg):
+def similar_graph(conf, result, area, alg, cand = 20):
     # ed, mcs, edw, mcsw
-    assert r.area == area
+    assert result.area == area
     src_dir = conf.get("dag", "output_dir")
     l_result = []
     for fp in fslib.rep_dir(src_dir):
@@ -637,18 +646,19 @@ def similar_graph(conf, result, area, alg):
 
     data = []
     for r in l_result:
+        if r.filename == result.filename:
+            continue
         if alg.rstrip("w") == "ed":
             dist = graph_edit_distance(result, r, True, weight)
         elif alg.rstrip("w") == "mcs":
             dist = mcs_size_ratio(result, r, True, weight)
         else:
             raise ValueError()
-        data.append((dist, rr))
+        data.append((dist, r))
 
     data = sorted(data, key = lambda x: x[0], reverse = False)
-    print data[0][1].filename
-    print data[1][1].filename
-    print data[2][1].filename
+    for d in data[:cand]:
+        print d[0], d[1].filename
 
 
 if __name__ == "__main__":
