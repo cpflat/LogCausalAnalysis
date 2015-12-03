@@ -44,6 +44,21 @@ class PCOutput():
             d = pickle.load(f)
         self.__dict__.update(d)
         self.conf = c
+
+        # for filtering
+        l_filter = conf.gettuple("dag", "use_filter")
+        if "file" in l_filter:
+            import ltfilter
+            ff = ltfilter.IDFilter(conf.getlist("dag_filter", "filter_name"))
+
+            graph = self.graph
+            for edge in self.graph.edges():
+                ltgid1, host1 = self._node_info(edge[0])
+                ltgid2, host1 = self._node_info(edge[1])
+                if ff.isremoved(ltgid1) or ff.isremoved(ltgid2):
+                    graph.remove_edge(*edge)
+            self.graph = graph
+
         return self
 
     def dump(self, fn = None):
