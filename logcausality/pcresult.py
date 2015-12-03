@@ -621,7 +621,7 @@ def diff_label_graph(conf, r):
     return g
 
 
-def similar_graph(conf, r, area, alg):
+def similar_graph(conf, result, area, alg):
     # ed, mcs, edw, mcsw
     assert r.area == area
     src_dir = conf.get("dag", "output_dir")
@@ -636,11 +636,11 @@ def similar_graph(conf, r, area, alg):
         weight = EdgeTFIDF(l_result)
 
     data = []
-    for rr in l_result:
+    for r in l_result:
         if alg.rstrip("w") == "ed":
-            dist = graph_edit_distance(r, rr, True, weight)
+            dist = graph_edit_distance(result, r, True, weight)
         elif alg.rstrip("w") == "mcs":
-            dist = mcs_size_ratio(r, rr, True, weight)
+            dist = mcs_size_ratio(result, r, True, weight)
         else:
             raise ValueError()
         data.append((dist, rr))
