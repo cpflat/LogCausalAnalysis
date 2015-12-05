@@ -50,10 +50,33 @@ class IDFilter():
         return nid in self.fids
 
 
+def filtered(conf, edict, l_filter):
+    # edict : {eid : [datetime, ...]}
+    if len(l_filter) == 0:
+        return edict, evmap
+    if "file" in l_filter:
+        ff = ltfilter.IDFilter(conf.getlist("dag_filter", "filter_name"))
+    if "periodic" in l_filter:
+        per_th = conf.getfloat("dag_filter", "periodic_th")
+        per_count = cont.getint("dag_filter", "periodic_count")
+        per_term = config.str2dur(conf.getfloat("dag_filter", "periodic_th"))
+
+    l_eid = []
+    for eid, l_dt in edict.iteritems():
+        if "file" in l_filter:
+            if ff.isremoved(eid):
+                l_eid.append(eid)
+        if "periodic" in l_filter:
+            temp = ltfilter.interval(l_dt, per_th, per_count, per_term)
+            if temp is not None:
+                l_eid.append(eid)
+    return l_eid
+
+
 # To filter periodic log
 
 def interval(l_dt, threshold = 0.5, th_count = 3,
-        th_term = datetime.timedelta(days = 7)):
+        th_term = datetime.timedelta(hours = 6)):
     # args
     #   l_dt : list of datetime.datetime
     #   threshold : threshold value for standard deviation

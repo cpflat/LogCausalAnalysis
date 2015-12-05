@@ -92,22 +92,7 @@ def filter_edict(conf, edict, evmap):
     l_filter = conf.gettuple("dag", "use_filter")
     if len(l_filter) == 0:
         return edict, evmap
-    if "file" in l_filter:
-        ff = ltfilter.IDFilter(conf.getlist("dag_filter", "filter_name"))
-    if "periodic" in l_filter:
-        per_th = conf.getfloat("dag_filter", "periodic_th")
-        per_count = cont.getint("dag_filter", "periodic_count")
-        per_term = config.str2dur(conf.getfloat("dag_filter", "periodic_th"))
-
-    l_eid = []
-    for eid, l_dt in edict.iteritems():
-        if "periodic" in l_filter:
-            temp = ltfilter.interval(l_dt, per_th, per_count, per_term)
-            if temp is not None:
-                l_eid.append(eid)
-        if "file" in l_filter:
-            if ff.isremoved(eid):
-                l_eid.append(eid)
+    l_eid = ltfilter.filtered(conf, edict, l_filter)
 
     for eid in l_eid:
         edict.pop(eid)

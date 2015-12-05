@@ -173,12 +173,15 @@ threshold = 0.01
 # Found DAG object data
 output_dir = pc_output
 
-# Log template IDs to be removed from input log data
-# [file, periodic] is available
+# Filtering rules to remove unnecessary events before generating causality graph
 use_filter = 
 
 
-[dag_filter]
+[filter]
+# Filters for log events
+# [file, periodic] is available
+# file : Filtering IDs given in filter file
+# periodic : Filtering events that appear with stable interval
 
 # Filter filenames to use in filter option 'file'
 # For example:
@@ -190,10 +193,10 @@ periodic_th = 0.5
 
 # Required times of periodic event appearance to repeat
 # set more than 3
-periodic_count = 3
+periodic_count = 5
 
 # Required term length of periodic event to repeat
-periodic_term = 7d
+periodic_term = 6h
 
 
 [visual]
