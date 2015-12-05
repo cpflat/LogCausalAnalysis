@@ -170,35 +170,39 @@ class LogParser():
 
         line = src_line
 
-        if self.re_datetime.match(line):
-            # 2112-09-01 10:00:00 hostname mesasges...
-            date_str, line = pop_string(line)
-            time_str, line = pop_string(line)
-            dt = datetime.datetime.strptime(" ".join((date_str, time_str)),
-                    "%Y-%m-%d %H:%M:%S")
-            host, line = pop_string(line)
-            message = line
-        else:
-            # (2112) Sep 01 10:00:00 hostname messages...
-            string, line = pop_string(line)
-            if self.re_year.match(string):
-                year = int(string)
-                month_str, line = pop_string(line)
-                month = str2month(month_str)
+        try:
+            if self.re_datetime.match(line):
+                # 2112-09-01 10:00:00 hostname mesasges...
+                date_str, line = pop_string(line)
+                time_str, line = pop_string(line)
+                dt = datetime.datetime.strptime(" ".join((date_str, time_str)),
+                        "%Y-%m-%d %H:%M:%S")
+                host, line = pop_string(line)
+                message = line
             else:
-                year = self._set_year()
-                month = str2month(string)
-            if month is None:
-                return None, None, None
-            day_str, line = pop_string(line)
-            day = int(day_str)
-            time_str, line = pop_string(line)
-            hour, minute, second = tuple(int(e) for e in time_str.split(":"))
-            host, line = pop_string(line)
-            message = line
-            dt = datetime.datetime(year = year, month = month, day = day, 
-                    hour = hour, minute = minute,
-                    second = second, microsecond = 0)
+                # (2112) Sep 01 10:00:00 hostname messages...
+                string, line = pop_string(line)
+                if self.re_year.match(string):
+                    year = int(string)
+                    month_str, line = pop_string(line)
+                    month = str2month(month_str)
+                else:
+                    year = self._set_year()
+                    month = str2month(string)
+                if month is None:
+                    return None, None, None
+                day_str, line = pop_string(line)
+                day = int(day_str)
+                time_str, line = pop_string(line)
+                hour, minute, second = tuple(int(e) for e
+                                             in time_str.split(":"))
+                host, line = pop_string(line)
+                message = line
+                dt = datetime.datetime(year = year, month = month, day = day, 
+                        hour = hour, minute = minute,
+                        second = second, microsecond = 0)
+        except:
+            return None, None, None
 
         return dt, host, message
 
