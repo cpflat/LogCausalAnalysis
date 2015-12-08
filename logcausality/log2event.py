@@ -3,9 +3,9 @@
 
 
 import config
+import dtutil
 import log_db
-import nodestat
-import ltfilter
+import evfilter
 
 
 class LogEventIDMap():
@@ -67,7 +67,6 @@ class LogEventIDMap():
 
 def log2event(conf, top_dt, end_dt, area):
     ld = log_db.LogData(conf)
-    #ltf = ltfilter.IDFilter(conf.getlist("dag", "use_filter"))
     evmap = LogEventIDMap()
     edict = {} # key : eid, val : list(datetime.datetime)
 
@@ -92,7 +91,7 @@ def filter_edict(conf, edict, evmap):
     l_filter = conf.gettuple("dag", "use_filter")
     if len(l_filter) == 0:
         return edict, evmap
-    l_eid = ltfilter.filtered(conf, edict, l_filter)
+    l_eid = evfilter.filtered(conf, edict, l_filter)
 
     for eid in l_eid:
         edict.pop(eid)
@@ -107,7 +106,7 @@ def _remap_eid(edict, evmap):
             new_eid += 1
         else:
             temp = edict[old_eid]
-            edict[old_eid].pop()
+            edict.pop(old_eid)
             edict[new_eid] = temp
             evmap.move_eid(old_eid, new_eid)
 
@@ -116,31 +115,11 @@ def _remap_eid(edict, evmap):
 
 def event2stat(edict, top_dt, end_dt, dur):
     d_stat = {}
-    dt_label = []
-    temp_dt = top_dt + dur
-    while temp_dt < end_dt:
-        dt_label.append(temp_dt)
-        temp_dt += dur
-    dt_label.append(end_dt)
+    l_label = dtutil.label(top_dt, end_dt, dur)
 
     for eid, l_ev in edict.iteritems():
-        l_val = []
-        if len(l_ev) > 0:
-            new_ev = l_ev.pop(0)
-        for dt in dt_label:
-            cnt = 0
-            while new_ev < dt:
-                cnt += 1
-                if len(l_ev) > 0:
-                    new_ev = l_ev.pop(0)
-                else:
-                    break
-            
-            if cnt > 0:
-                l_val.append(1)
-            else:
-                l_val.append(0)
-        d_stat[eid] = l_val
+        import pdb; pdb.set_trace()
+        d_stat[eid] = dtutil.discretize(l_ev, l_label, binarize = True)
     return d_stat
 
 

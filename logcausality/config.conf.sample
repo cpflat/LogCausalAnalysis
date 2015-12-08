@@ -179,7 +179,7 @@ use_filter =
 
 [filter]
 # Filters for log events
-# [file, periodic] is available
+# [file, periodic, self-corr] is available
 # file : Filtering IDs given in filter file
 # periodic : Filtering events that appear with stable interval
 
@@ -198,33 +198,21 @@ periodic_count = 5
 # Required term length of periodic event to repeat
 periodic_term = 6h
 
+# Threshold value for self-correlation
+self_corr_th = 0.5
+
+# Difference duration candidates to calculate self-correlation
+self_corr_diff = 1h, 1d
+
+# Bin size to discretize event appearance data in calculating self-correlation
+self_corr_bin = 10s
+
 
 [visual]
 
 # Log template label definition
 # If empty, use default configuration (lt_label.conf.sample)
 ltlabel = 
-
-
-#[filter_self_corr]
-## Options for constructing filters to remove regular log messages
-## by calculating self-correlation of each log events
-#
-## Calculated self-correlation values
-#indata_filename = ltfilter.dump
-#
-## Target term to calculate self-correlation
-## If empty, set whole days including all log data in DB
-#term = 
-#
-## Time lag to calculate self-correlation
-#dur = 1h, 1d
-#
-## Bin size of log event frequency data
-#bin_size = 10s
-#
-## Threshold of self-correlation to make filters
-#threshold = 0.9
 
 
 [cluster_graph]

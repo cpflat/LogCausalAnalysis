@@ -9,6 +9,7 @@ import logging
 import numpy as np
 
 import config
+import dtutil
 #import calc
 #import log_db
 #import timelabel
@@ -55,21 +56,33 @@ def filtered(conf, edict, l_filter):
     if len(l_filter) == 0:
         return edict, evmap
     if "file" in l_filter:
-        ff = ltfilter.IDFilter(conf.getlist("dag_filter", "filter_name"))
+        ff = IDFilter(conf.getlist("filter", "filter_name"))
     if "periodic" in l_filter:
-        per_th = conf.getfloat("dag_filter", "periodic_th")
-        per_count = cont.getint("dag_filter", "periodic_count")
-        per_term = config.str2dur(conf.getfloat("dag_filter", "periodic_th"))
+        per_th = conf.getfloat("filter", "periodic_th")
+        per_count = cont.getint("filter", "periodic_count")
+        per_term = conf.getdur("filter", "periodic_term")
+    if "self-corr" in l_filter:
+        corr_th = conf.getfloat("filter", "self_corr_th")
+        corr_diff = [config.str2dur(diffstr) for diffstr
+                     in conf.gettuple("filter", "self_corr_diff")]
+        corr_bin = conf.getdur("filter", "self_corr_bin")
 
     l_eid = []
     for eid, l_dt in edict.iteritems():
         if "file" in l_filter:
             if ff.isremoved(eid):
                 l_eid.append(eid)
+                continue
         if "periodic" in l_filter:
-            temp = ltfilter.interval(l_dt, per_th, per_count, per_term)
+            temp = interval(l_dt, per_th, per_count, per_term)
             if temp is not None:
                 l_eid.append(eid)
+                continue
+        if "self-corr" in l_filter:
+            if self_correlation(l_dt, corr_diff, corr_bin) > corr_th:
+                l_eid.append(eid)
+                continue
+
     return l_eid
 
 
@@ -108,5 +121,26 @@ def interval(l_dt, threshold = 0.5, th_count = 3,
         return int(np.median(dist))
     else:
         return None
+
+
+def self_correlation(l_dt, l_diff, binsize):
+    if len(l_dt) == 0:
+        return 0.0
+
+    if binsize == datetime.timedelta(seconds = 1):
+        data = l_dt
+    else:
+        top_dt = dtutil.adj_sep(min(l_dt), binsize)
+        end_dt = dtutil.radj_sep(max(l_dt), binsize)
+        l_label = dtutil.label(top_dt, end_dt, duration)
+        data = dtutil.discretize(l_dt, l_label, binarize = False)
+
+    l_ret = []
+    for diff in l_diff:
+        binnum = int(diff.total_seconds() / binsize.total_seconds())
+        data2 = data[binnum:] + [0] * binnum
+        l_ret.append(np.correlate(np.array(data), np.array(data2)))
+
+    return max(l_ret)
 
 
