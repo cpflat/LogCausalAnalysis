@@ -26,7 +26,6 @@ def discretize(l_dt, l_label, binarize = False):
                 l_val.append(1)
         else:
             l_val.append(0)
-        print cnt, label
     return l_val
 
 
@@ -55,4 +54,15 @@ def adj_sep(dt, duration):
 def radj_sep(dt, duration):
     return adj_sep(dt, duration) + duration
 
+
+def iter_term(whole_term, term_length, term_diff):
+    # whole_term : tuple(datetime.datetime, datetime.datetime)
+    # term_length : datetime.timedelta
+    # term_diff : datetime.timedelta
+    w_top_dt, w_end_dt = whole_term
+    top_dt = w_top_dt
+    while top_dt < w_end_dt:
+        end_dt = top_dt + term_length
+        yield (top_dt, end_dt)
+        top_dt = top_dt + term_diff
 

@@ -188,12 +188,13 @@ use_filter =
 # use_filter = filter.txt, filter2.txt
 filter_name = 
 
+# Required times of periodic event appearance to repeat
+# Used for 'periodic' and 'self-corr'
+# set more than 3
+count = 5
+
 # Threshold value for filter 'periodic'
 periodic_th = 0.5
-
-# Required times of periodic event appearance to repeat
-# set more than 3
-periodic_count = 5
 
 # Required term length of periodic event to repeat
 periodic_term = 6h

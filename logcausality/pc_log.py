@@ -22,6 +22,8 @@ def pc_log(conf, top_dt, end_dt, dur, area):
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
 
     edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
+    edict, evmap = log2event.filter_edict(conf, edict, evmap)
+
     _logger.info("{0} events found in given term of log data".format(
             len(edict)))
 

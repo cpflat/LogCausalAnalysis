@@ -59,9 +59,10 @@ def filtered(conf, edict, l_filter):
         ff = IDFilter(conf.getlist("filter", "filter_name"))
     if "periodic" in l_filter:
         per_th = conf.getfloat("filter", "periodic_th")
-        per_count = cont.getint("filter", "periodic_count")
+        per_count = conf.getint("filter", "count")
         per_term = conf.getdur("filter", "periodic_term")
     if "self-corr" in l_filter:
+        corr_count = conf.getint("filter", "count")
         corr_th = conf.getfloat("filter", "self_corr_th")
         corr_diff = [config.str2dur(diffstr) for diffstr
                      in conf.gettuple("filter", "self_corr_diff")]
@@ -79,7 +80,8 @@ def filtered(conf, edict, l_filter):
                 l_eid.append(eid)
                 continue
         if "self-corr" in l_filter:
-            if self_correlation(l_dt, corr_diff, corr_bin) > corr_th:
+            corr = self_correlation(l_dt, corr_diff, corr_bin, corr_count)
+            if corr is not None and corr > corr_th:
                 l_eid.append(eid)
                 continue
 
@@ -89,11 +91,12 @@ def filtered(conf, edict, l_filter):
 # To filter periodic log
 
 def interval(l_dt, threshold = 0.5, th_count = 3,
-        th_term = datetime.timedelta(hours = 6)):
+        th_term = datetime.timedelta(hours = 6), verbose = False):
     # args
     #   l_dt : list of datetime.datetime
     #   threshold : threshold value for standard deviation
     #   th_term : required term length to appear periodically
+    #   verbose : output calculating infomation to stdout
     # return
     #   interval(int) if the given l_dt have stable interval
     #   or return None
@@ -101,6 +104,8 @@ def interval(l_dt, threshold = 0.5, th_count = 3,
     if len(l_dt) < th_count:
         # len(l_dt) < 2 : no interval will be found
         # len(l_dt) == 2 : only 1 interval that not seem periodic...
+        if verbose:
+            print("event appear too small, skip rule [periodic]")
         return None
     l_interval = []
     prev_dt = None
@@ -114,6 +119,11 @@ def interval(l_dt, threshold = 0.5, th_count = 3,
     std = np.std(dist)
     mean = np.mean(dist)
     term = th_term.total_seconds()
+
+    if verbose:
+        print("std {0}, mean {1}, median {2}".format(std, mean,
+                                                     np.median(dist)))
+
     if mean == 0:
         # mean == 0 : multiple message in 1 time, not seem periodic
         return None
@@ -123,24 +133,101 @@ def interval(l_dt, threshold = 0.5, th_count = 3,
         return None
 
 
-def self_correlation(l_dt, l_diff, binsize):
-    if len(l_dt) == 0:
-        return 0.0
+def self_correlation(l_dt, l_diff, binsize, count):
+    if len(l_dt) <= count:
+        return None
 
     if binsize == datetime.timedelta(seconds = 1):
         data = l_dt
     else:
         top_dt = dtutil.adj_sep(min(l_dt), binsize)
         end_dt = dtutil.radj_sep(max(l_dt), binsize)
-        l_label = dtutil.label(top_dt, end_dt, duration)
+        l_label = dtutil.label(top_dt, end_dt, binsize)
         data = dtutil.discretize(l_dt, l_label, binarize = False)
 
     l_ret = []
     for diff in l_diff:
         binnum = int(diff.total_seconds() / binsize.total_seconds())
-        data2 = data[binnum:] + [0] * binnum
-        l_ret.append(np.correlate(np.array(data), np.array(data2)))
+        if len(data) <= binnum * 2:
+            pass
+        else:
+            data1 = data[:len(data) - binnum]
+            data2 = data[binnum:]# + [0] * binnum
+            assert len(data1) == len(data2)
+            l_ret.append(np.corrcoef(np.array(data1), np.array(data2))[0, 1])
 
-    return max(l_ret)
+    if len(l_ret) > 0:
+        return max(l_ret)
+    else:
+        return None
+
+
+def test_filter(conf, area = "all", limit = 10):
+    import log_db
+    import log2event
+    ld = log_db.LogData(conf)
+    w_term = conf.getterm("dag", "whole_term")
+    if w_term is None:
+        w_term = ld.whole_term()
+        print w_term
+    term = conf.getdur("dag", "unit_term")
+    diff = conf.getdur("dag", "unit_diff")
+    dur = conf.getdur("dag", "stat_bin")
+
+    l_filter = conf.gettuple("dag", "use_filter")
+    print l_filter
+    if "file" in l_filter:
+        ff = IDFilter(conf.getlist("filter", "filter_name"))
+    if "periodic" in l_filter:
+        per_th = conf.getfloat("filter", "periodic_th")
+        per_count = conf.getint("filter", "count")
+        per_term = conf.getdur("filter", "periodic_term")
+    if "self-corr" in l_filter:
+        corr_count = conf.getint("filter", "count")
+        corr_th = conf.getfloat("filter", "self_corr_th")
+        corr_diff = [config.str2dur(diffstr) for diffstr
+                     in conf.gettuple("filter", "self_corr_diff")]
+        corr_bin = conf.getdur("filter", "self_corr_bin")
+
+    for top_dt, end_dt in dtutil.iter_term(w_term, term, diff):
+        print("{0} - {1}".format(top_dt, end_dt))
+        edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
+        for eid, l_dt in edict.iteritems():
+            ltgid, host = evmap.info(eid)
+            print("Event {0} : ltgid {1} in host {2} ({3})".format(eid,
+                    ltgid, host, len(l_dt)))
+            ld.show_log_repr(limit = limit, ltgid = ltgid,
+                    top_dt = top_dt, end_dt = end_dt, host = host, area = area)
+            if "file" in l_filter:
+                if ff.isremoved(eid):
+                    print("found in definition file, removed")
+            if "periodic" in l_filter:
+                temp = interval(l_dt, per_th, per_count, per_term,
+                        verbose = True)
+                if temp is not None:
+                    print("rule [periodic] safisfied, removed")
+                    print("interval : {0}".format(temp))
+            if "self-corr" in l_filter:
+                corr = self_correlation(l_dt, corr_diff, corr_bin, corr_count)
+                if corr is not None:
+                    print("self-correlation : {0}".format(corr))
+                    if corr > corr_th:
+                        print("rule [self-corr] satisfied, removed")
+            print
+        print
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit("usage: {0} config (area)".format(sys.argv[0]))
+    confname = sys.argv[1]
+    if len(sys.argv) >= 3:
+        area = sys.argv[2]
+    else:
+        area = "all"
+    conf = config.open_config(confname)
+    config.set_common_logging(conf, _logger, [])
+    test_filter(conf, area)
+
 
 

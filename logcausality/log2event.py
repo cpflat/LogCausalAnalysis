@@ -82,8 +82,6 @@ def log2event(conf, top_dt, end_dt, area):
         eid = evmap.eid(line)
         edict.setdefault(eid, []).append(line.dt)
 
-    edict, evmap = filter_edict(conf, edict, evmap)
-
     return edict, evmap
 
 
