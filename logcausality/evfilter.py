@@ -191,6 +191,7 @@ def test_filter(conf, area = "all", limit = 10):
 
     for top_dt, end_dt in dtutil.iter_term(w_term, term, diff):
         print("{0} - {1}".format(top_dt, end_dt))
+        s_eid = set()
         edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
         for eid, l_dt in edict.iteritems():
             ltgid, host = evmap.info(eid)
@@ -201,19 +202,25 @@ def test_filter(conf, area = "all", limit = 10):
             if "file" in l_filter:
                 if ff.isremoved(eid):
                     print("found in definition file, removed")
+                    s_eid.add(eid)
             if "periodic" in l_filter:
                 temp = interval(l_dt, per_th, per_count, per_term,
                         verbose = True)
                 if temp is not None:
                     print("rule [periodic] safisfied, removed")
                     print("interval : {0}".format(temp))
+                    s_eid.add(eid)
             if "self-corr" in l_filter:
                 corr = self_correlation(l_dt, corr_diff, corr_bin, corr_count)
                 if corr is not None:
                     print("self-correlation : {0}".format(corr))
                     if corr > corr_th:
                         print("rule [self-corr] satisfied, removed")
+                        s_eid.add(eid)
             print
+        print("[Summery] in term {0} - {1}".format(top_dt, end_dt))
+        print("  {0} events found, {1} events filtered, {2} remains".format(\
+                len(edict), len(s_eid), len(edict) - len(s_eid)))
         print
 
 
