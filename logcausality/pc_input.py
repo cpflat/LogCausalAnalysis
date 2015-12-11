@@ -5,7 +5,7 @@ import numpy as np
 import networkx as nx
 from logging import getLogger
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 def pc(d_dt, threshold, mode = "pylib"):

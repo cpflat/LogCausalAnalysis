@@ -66,3 +66,12 @@ def iter_term(whole_term, term_length, term_diff):
         yield (top_dt, end_dt)
         top_dt = top_dt + term_diff
 
+
+#def filter_periodic_component(l_dt, duration, std_value):
+#    l_dt_temp = sorted(l_dt[:])
+#
+#    prev_dt = None
+#    while not prev_dt == l_dt_temp[0]:
+        
+
+

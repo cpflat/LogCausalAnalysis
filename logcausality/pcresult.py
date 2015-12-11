@@ -13,7 +13,7 @@ import fslib
 import config
 import lt_label
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 class PCOutput():

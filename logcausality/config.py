@@ -10,6 +10,13 @@ import ConfigParser
 
 DEFAULT_CONFIG_NAME = "/".join((os.path.dirname(__file__),
         "config.conf.sample"))
+LOGGER_NAME = __name__.rpartition(".")[-1]
+_logger = logging.getLogger(LOGGER_NAME)
+_ch = logging.StreamHandler()
+_ch.setLevel(logging.WARNING)
+_logger.setLevel(logging.WARNING)
+_logger.addHandler(_ch)
+
 
 class ExtendedConfigParser(ConfigParser.SafeConfigParser):
 
@@ -215,26 +222,31 @@ def str2dur(string):
         raise ValueError("Duration string invalid")
 
 
-## singleton config instance, to be shared in whole system
-#_fn = DEFAULT_CONFIG_NAME
-#if os.path.exists(_fn):
-#    _config = ExtendedConfigParser(noopterror = False)
-#    _config.read(_fn)
-#
-#def common_config():
-#    if os.path.exists(_fn):
-#        return _config
-#    else:
-#        raise IOError("common configuration file {0} not found".format(_fn))
-
-def open_config(fn, noopterror = False):
+def open_config(fn = None, noopterror = False):
     conf = ExtendedConfigParser(noopterror = noopterror)
-    conf.read(fn)
+    conf.read(DEFAULT_CONFIG_NAME)
+    if fn is not None:
+        conf2 = ExtendedConfigParser(noopterror = noopterror)
+        conf2.read(fn)
+
+        for section in conf2.sections():
+            if section in conf.sections():
+                for option in conf2.options(section):
+                    value = conf2.get(section, option)
+                    if option in conf.options(section):
+                        conf.set(section, option, value)
+                    else:
+                        _logger.warning("""
+Invalid option name {0} in section {1} in {2}, ignored
+                                """.strip().format(option, section, fn))
+            else:
+                _logger.warning("Invalid section name {0} in {1}".format(
+                        section, fn))
     return conf
 
 
 # common objects for logging
-def set_common_logging(conf, logger = None, l_logger_name = None):
+def set_common_logging(conf, logger = None, l_logger_name = []):
     fn = conf.get("general", "info_log")
     fmt = logging.Formatter(
             fmt = "%(asctime)s %(levelname)s (%(threadName)s) %(message)s",
@@ -249,11 +261,10 @@ def set_common_logging(conf, logger = None, l_logger_name = None):
     if logger is not None:
         logger.setLevel(lv)
         logger.addHandler(ch)
-    if l_logger_name is not None:
-        for ln in l_logger_name:
-            temp = logging.getLogger(ln)
-            temp.setLevel(lv)
-            temp.addHandler(ch)
+    for ln in l_logger_name:
+        temp = logging.getLogger(ln)
+        temp.setLevel(lv)
+        temp.addHandler(ch)
     return ch
 
 

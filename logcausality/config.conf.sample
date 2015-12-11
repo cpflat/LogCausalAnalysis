@@ -191,13 +191,14 @@ filter_name =
 # Required times of periodic event appearance to repeat
 # Used for 'periodic' and 'self-corr'
 # set more than 3
-count = 5
+periodic_count = 5
+
+# Required term length of periodic event to repeat
+# Used for 'periodic' and 'self-corr'
+periodic_term = 6h
 
 # Threshold value for filter 'periodic'
 periodic_th = 0.5
-
-# Required term length of periodic event to repeat
-periodic_term = 6h
 
 # Threshold value for self-correlation
 self_corr_th = 0.5

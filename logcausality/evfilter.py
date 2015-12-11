@@ -14,7 +14,7 @@ import dtutil
 #import log_db
 #import timelabel
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 class IDFilter():
@@ -57,12 +57,11 @@ def filtered(conf, edict, l_filter):
         return edict, evmap
     if "file" in l_filter:
         ff = IDFilter(conf.getlist("filter", "filter_name"))
+    per_count = conf.getint("filter", "periodic_count")
+    per_term = conf.getdur("filter", "periodic_term")
     if "periodic" in l_filter:
         per_th = conf.getfloat("filter", "periodic_th")
-        per_count = conf.getint("filter", "count")
-        per_term = conf.getdur("filter", "periodic_term")
     if "self-corr" in l_filter:
-        corr_count = conf.getint("filter", "count")
         corr_th = conf.getfloat("filter", "self_corr_th")
         corr_diff = [config.str2dur(diffstr) for diffstr
                      in conf.gettuple("filter", "self_corr_diff")]
@@ -74,38 +73,48 @@ def filtered(conf, edict, l_filter):
             if ff.isremoved(eid):
                 l_eid.append(eid)
                 continue
-        if "periodic" in l_filter:
-            temp = interval(l_dt, per_th, per_count, per_term)
-            if temp is not None:
-                l_eid.append(eid)
-                continue
-        if "self-corr" in l_filter:
-            corr = self_correlation(l_dt, corr_diff, corr_bin, corr_count)
-            if corr is not None and corr > corr_th:
-                l_eid.append(eid)
-                continue
+        if periodic_term(l_dt, per_count, per_term):
+            if "periodic" in l_filter:
+                temp = interval(l_dt, per_th)
+                if temp is not None:
+                    l_eid.append(eid)
+                    continue
+            if "self-corr" in l_filter:
+                corr = self_correlation(l_dt, corr_diff, corr_bin)
+                if corr is not None and corr > corr_th:
+                    l_eid.append(eid)
+                    continue
 
     return l_eid
 
 
 # To filter periodic log
 
-def interval(l_dt, threshold = 0.5, th_count = 3,
-        th_term = datetime.timedelta(hours = 6), verbose = False):
+def periodic_term(l_dt, count, term, verbose = False):
+    if len(l_dt) < count:
+        if verbose:
+            print("Event appearance is too small, skip periodicity test")
+        return False
+    elif max(l_dt) - min(l_dt) < term:
+        if verbose:
+            print("Event appearing term is too short, skip periodicity test")
+        return False
+    else:
+        return True
+
+
+def interval(l_dt, threshold = 0.5, verbose = False):
     # args
     #   l_dt : list of datetime.datetime
     #   threshold : threshold value for standard deviation
-    #   th_term : required term length to appear periodically
     #   verbose : output calculating infomation to stdout
     # return
     #   interval(int) if the given l_dt have stable interval
     #   or return None
 
-    if len(l_dt) < th_count:
-        # len(l_dt) < 2 : no interval will be found
-        # len(l_dt) == 2 : only 1 interval that not seem periodic...
-        if verbose:
-            print("event appear too small, skip rule [periodic]")
+    if len(l_dt) <= 2:
+    #    # len(l_dt) < 2 : no interval will be found
+    #    # len(l_dt) == 2 : only 1 interval that not seem periodic...
         return None
     l_interval = []
     prev_dt = None
@@ -118,7 +127,6 @@ def interval(l_dt, threshold = 0.5, th_count = 3,
     dist = np.array(l_interval)
     std = np.std(dist)
     mean = np.mean(dist)
-    term = th_term.total_seconds()
 
     if verbose:
         print("std {0}, mean {1}, median {2}".format(std, mean,
@@ -127,16 +135,13 @@ def interval(l_dt, threshold = 0.5, th_count = 3,
     if mean == 0:
         # mean == 0 : multiple message in 1 time, not seem periodic
         return None
-    if (std / mean) < threshold and mean * len(l_dt) > term:
+    if (std / mean) < threshold:
         return int(np.median(dist))
     else:
         return None
 
 
-def self_correlation(l_dt, l_diff, binsize, count):
-    if len(l_dt) <= count:
-        return None
-
+def self_correlation(l_dt, l_diff, binsize):
     if binsize == datetime.timedelta(seconds = 1):
         data = l_dt
     else:
@@ -178,19 +183,18 @@ def test_filter(conf, area = "all", limit = 10):
     print l_filter
     if "file" in l_filter:
         ff = IDFilter(conf.getlist("filter", "filter_name"))
+    per_count = conf.getint("filter", "periodic_count")
+    per_term = conf.getdur("filter", "periodic_term")
     if "periodic" in l_filter:
         per_th = conf.getfloat("filter", "periodic_th")
-        per_count = conf.getint("filter", "count")
-        per_term = conf.getdur("filter", "periodic_term")
     if "self-corr" in l_filter:
-        corr_count = conf.getint("filter", "count")
         corr_th = conf.getfloat("filter", "self_corr_th")
         corr_diff = [config.str2dur(diffstr) for diffstr
                      in conf.gettuple("filter", "self_corr_diff")]
         corr_bin = conf.getdur("filter", "self_corr_bin")
 
     for top_dt, end_dt in dtutil.iter_term(w_term, term, diff):
-        print("{0} - {1}".format(top_dt, end_dt))
+        print("[Testing {0} - {1}]".format(top_dt, end_dt))
         s_eid = set()
         edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
         for eid, l_dt in edict.iteritems():
@@ -203,22 +207,22 @@ def test_filter(conf, area = "all", limit = 10):
                 if ff.isremoved(eid):
                     print("found in definition file, removed")
                     s_eid.add(eid)
-            if "periodic" in l_filter:
-                temp = interval(l_dt, per_th, per_count, per_term,
-                        verbose = True)
-                if temp is not None:
-                    print("rule [periodic] safisfied, removed")
-                    print("interval : {0}".format(temp))
-                    s_eid.add(eid)
-            if "self-corr" in l_filter:
-                corr = self_correlation(l_dt, corr_diff, corr_bin, corr_count)
-                if corr is not None:
-                    print("self-correlation : {0}".format(corr))
-                    if corr > corr_th:
-                        print("rule [self-corr] satisfied, removed")
+            if periodic_term(l_dt, per_count, per_term, verbose = True):
+                if "periodic" in l_filter:
+                    temp = interval(l_dt, per_th, verbose = True)
+                    if temp is not None:
+                        print("rule [periodic] safisfied, removed")
+                        print("interval : {0}".format(temp))
                         s_eid.add(eid)
+                if "self-corr" in l_filter:
+                    corr = self_correlation(l_dt, corr_diff, corr_bin)
+                    if corr is not None:
+                        print("self-correlation : {0}".format(corr))
+                        if corr > corr_th:
+                            print("rule [self-corr] satisfied, removed")
+                            s_eid.add(eid)
             print
-        print("[Summery] in term {0} - {1}".format(top_dt, end_dt))
+        print("[Summary in term {0} - {1}]".format(top_dt, end_dt))
         print("  {0} events found, {1} events filtered, {2} remains".format(\
                 len(edict), len(s_eid), len(edict) - len(s_eid)))
         print

@@ -11,7 +11,7 @@ import fslib
 import logparser
 import log_db
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 DEFAULT_LABEL_CONF = "/".join((os.path.dirname(__file__),
         "lt_label.conf.sample"))
 

@@ -6,7 +6,7 @@ import logging
 import lt_common
 import logparser
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 class LTManager(lt_common.LTManager):

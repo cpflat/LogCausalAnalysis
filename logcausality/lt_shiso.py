@@ -21,7 +21,7 @@ import config
 import fslib
 import lt_common
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 class LTManager(lt_common.LTManager):

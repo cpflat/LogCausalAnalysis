@@ -14,7 +14,7 @@ import log2event
 import pc_input 
 import pcresult
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 def pc_log(conf, top_dt, end_dt, dur, area):
