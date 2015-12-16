@@ -44,6 +44,7 @@ class PCOutput():
             d = pickle.load(f)
         self.__dict__.update(d)
         self.conf = c
+        return self
 
     def dump(self, fn = None):
         if not fn: fn = self.filename
