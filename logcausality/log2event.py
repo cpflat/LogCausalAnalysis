@@ -89,7 +89,7 @@ def filter_edict(conf, edict, evmap):
     l_filter = conf.gettuple("dag", "use_filter")
     if len(l_filter) == 0:
         return edict, evmap
-    l_eid = evfilter.filtered(conf, edict, l_filter)
+    l_eid = evfilter.filtered(conf, edict, evmap, l_filter)
 
     for eid in l_eid:
         edict.pop(eid)
@@ -116,7 +116,6 @@ def event2stat(edict, top_dt, end_dt, dur):
     l_label = dtutil.label(top_dt, end_dt, dur)
 
     for eid, l_ev in edict.iteritems():
-        import pdb; pdb.set_trace()
         d_stat[eid] = dtutil.discretize(l_ev, l_label, binarize = True)
     return d_stat
 

@@ -5,11 +5,13 @@ import sys
 import os
 import datetime
 import logging
-#import cPickle as pickle
+import cPickle as pickle
 import numpy as np
 
 import config
 import dtutil
+import log_db
+import log2event
 #import calc
 #import log_db
 #import timelabel
@@ -51,12 +53,82 @@ class IDFilter():
         return nid in self.fids
 
 
-def filtered(conf, edict, l_filter):
+class EventFilter():
+
+    def __init__(self, filename = "~eventfilter"):
+        self.filename = filename
+        self.l_info = []
+        pass
+
+    def reset(self):
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+
+    def add(self, ltgid, host):
+        self.l_info.append((ltgid, host))
+
+    def filtered(self, ltgid, host):
+        return (ltgid, host) in self.l_info
+
+    def load(self):
+        with open(self.filename, 'r') as f:
+            return pickle.load(f)
+
+    def dump(self):
+        obj = self.l_info
+        with open(self.filename, 'w') as f:
+            pickle.dump(obj, f)
+
+
+def init_evfilter(conf, top_dt, end_dt):
+    if not "periodic-whole" in conf.get("dag", "use_filter"):
+        return 
+    _logger.info("start generating evfilter")
+
+    ld = log_db.LogData(conf)
+    evf = EventFilter()
+    evf.reset()
+    per_count = conf.getint("filter", "periodic_count")
+    per_term = conf.getdur("filter", "periodic_term")
+    per_th = conf.getfloat("filter", "periodic_th")
+    corr_th = conf.getfloat("filter", "self_corr_th")
+    corr_diff = [config.str2dur(diffstr) for diffstr
+                 in conf.gettuple("filter", "self_corr_diff")]
+    corr_bin = conf.getdur("filter", "self_corr_bin")
+
+    edict, evmap = log2event.log2event(conf, top_dt, end_dt, "all")
+    s_interval = set()
+    for eid, l_dt in edict.iteritems():
+        if periodic_term(l_dt, per_count, per_term):
+            temp = interval(l_dt, per_th)
+            if temp is not None:
+                s_interval.add(temp)
+    _logger.info("interval candidates : {0}".format(list(s_interval)))
+
+    corr_diff = corr_diff + [datetime.timedelta(seconds = sec)
+            for sec in s_interval]
+    for eid, l_dt in edict.iteritems():
+        ltgid, host = evmap.info(eid)
+        corr = self_correlation(l_dt, corr_diff, corr_bin)
+        if corr > corr_th:
+            _logger.info("event {0} will be removed (val : {1})".format(\
+                    (ltgid, host), corr))
+            evf.add(ltgid, host)
+
+    evf.dump()
+    _logger.info("generating evfilter done")
+    return
+
+
+def filtered(conf, edict, evmap, l_filter):
     # edict : {eid : [datetime, ...]}
     if len(l_filter) == 0:
         return edict, evmap
     if "file" in l_filter:
         ff = IDFilter(conf.getlist("filter", "filter_name"))
+    if "periodic-whole" in l_filter:
+        pf = EventFilter()
+        pf.load()
     per_count = conf.getint("filter", "periodic_count")
     per_term = conf.getdur("filter", "periodic_term")
     if "periodic" in l_filter:
@@ -71,6 +143,10 @@ def filtered(conf, edict, l_filter):
     for eid, l_dt in edict.iteritems():
         if "file" in l_filter:
             if ff.isremoved(eid):
+                l_eid.append(eid)
+                continue
+        if "periodic-whole" in l_filter:
+            if pf.filtered(*evmap.info(eid)):
                 l_eid.append(eid)
                 continue
         if periodic_term(l_dt, per_count, per_term):
@@ -168,8 +244,6 @@ def self_correlation(l_dt, l_diff, binsize):
 
 
 def test_filter(conf, area = "all", limit = 10):
-    import log_db
-    import log2event
     ld = log_db.LogData(conf)
     w_term = conf.getterm("dag", "whole_term")
     if w_term is None:
@@ -239,6 +313,5 @@ if __name__ == "__main__":
     conf = config.open_config(confname)
     config.set_common_logging(conf, _logger, [])
     test_filter(conf, area)
-
 
 

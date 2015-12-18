@@ -12,6 +12,7 @@ import fslib
 import log_db
 import log2event
 import pc_input 
+import evfilter
 import pcresult
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
@@ -65,6 +66,7 @@ def pc_all_args(conf):
         w_top_dt, w_end_dt = ld.whole_term()
     else:
         w_top_dt, w_end_dt = w_term
+    evfilter.init_evfilter(conf, w_top_dt, w_end_dt)
     term = conf.getdur("dag", "unit_term")
     diff = conf.getdur("dag", "unit_diff")
     dur = conf.getdur("dag", "stat_bin")
@@ -144,7 +146,7 @@ if __name__ == "__main__":
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
-    config.set_common_logging(conf, _logger, [])
+    config.set_common_logging(conf, _logger, ["evfilter"])
 
 
     fslib.mkdir(conf.get("dag", "output_dir"))

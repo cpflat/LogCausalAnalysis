@@ -3,7 +3,7 @@
 
 import numpy as np
 import networkx as nx
-from logging import getLogger
+import logging
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
