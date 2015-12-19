@@ -58,7 +58,6 @@ class EventFilter():
     def __init__(self, filename = "~eventfilter"):
         self.filename = filename
         self.l_info = []
-        pass
 
     def reset(self):
         if os.path.exists(self.filename):
@@ -72,7 +71,7 @@ class EventFilter():
 
     def load(self):
         with open(self.filename, 'r') as f:
-            return pickle.load(f)
+            self.l_info = pickle.load(f)
 
     def dump(self):
         obj = self.l_info
