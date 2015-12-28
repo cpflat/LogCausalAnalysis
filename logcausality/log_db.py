@@ -155,6 +155,7 @@ class LogData():
 
     def add_line(self, ltid, dt, host, l_w):
         self.db.add_line(ltid, dt, host, l_w)
+        return LogMessage(lid, self.table[ltid], dt, host, l_w)
 
     def update_area(self):
         self.db._init_area()
@@ -169,6 +170,7 @@ class LogDB():
 
     def __init__(self, conf, table, reset_db):
         self.table = table
+        self.line_cnt = 0
         self.db_type = conf.get("database", "database")
         self.areafn = conf.get("database", "area_filename")
         self.splitter = conf.get("database", "split_symbol")
@@ -195,6 +197,7 @@ class LogDB():
                 self._init_tables()
                 self._init_area()
             else:
+                self.line_cnt = self._load_line_cnt()
                 self._init_lttable()
         else:
             self._init_tables()
@@ -382,6 +385,13 @@ class LogDB():
         sql = self.db.update_sql(table_name, l_ss, l_cond)
         self.db.execute(sql, args)
 
+    def _load_line_cnt(self):
+        table_name = "log"
+        l_key = ["max(lid)"]
+        sql = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql)
+        return [row for row in cursor][0][0]
+        
     def whole_term(self):
         table_name = "log"
         l_key = ["min(dt)"]
