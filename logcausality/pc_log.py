@@ -99,6 +99,17 @@ def pc_all_args(conf):
     #    top_dt = top_dt + diff
     #return l_args
 
+def pc_sthread(l_args):
+
+    start_dt = datetime.datetime.now()
+    _logger.info("pc_log task start ({0} jobs)".format(len(l_args)))
+
+    for args in l_args:
+        pc_log(*args)
+
+    end_dt = datetime.datetime.now()
+    _logger.info("pc_log task done ({0})".format(end_dt - start_dt))
+
 
 def pc_mthread(l_args, pal=1):
 
@@ -153,6 +164,10 @@ if __name__ == "__main__":
     l_args = pc_all_args(conf)
     if options.test:
         test_pc(l_args); sys.exit()
-    pc_mthread(l_args, options.pal)
+
+    if options.pal == 1:
+        pc_sthread(l_args)
+    else:
+        pc_mthread(l_args, options.pal)
 
 
