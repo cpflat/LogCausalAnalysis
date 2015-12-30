@@ -5,6 +5,7 @@ import sys
 import time
 import datetime
 import threading
+import cPickle as pickle
 import logging
 
 import config
@@ -22,11 +23,14 @@ def pc_log(conf, top_dt, end_dt, dur, area):
 
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
 
+    tempfn = thread_name(conf, top_dt, end_dt, dur, area) + ".temp"
     edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
     edict, evmap = log2event.filter_edict(conf, edict, evmap)
 
     _logger.info("{0} events found in given term of log data".format(
             len(edict)))
+    with open(tempfn, 'w') as f:
+        pickle.dump((edict, evmap), f)
 
     if len(edict) > 2:
         threshold = conf.getfloat("dag", "threshold")
@@ -40,6 +44,8 @@ def pc_log(conf, top_dt, end_dt, dur, area):
     output = pcresult.PCOutput(conf)
     output.make(graph, evmap, top_dt, end_dt, dur, area)
     output.dump()
+
+    fslib.rm(tempfn)
     _logger.info("job done, output {0}".format(output.filename))
     return output
 
