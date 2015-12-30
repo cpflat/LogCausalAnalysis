@@ -21,9 +21,9 @@ def discretize(l_dt, l_label, binarize = False):
         
         if cnt > 0:
             if binarize:
-                l_val.append(cnt)
-            else:
                 l_val.append(1)
+            else:
+                l_val.append(cnt)
         else:
             l_val.append(0)
     return l_val
