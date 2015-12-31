@@ -115,6 +115,9 @@ class CompareVariable():
 
 
 def test(conf, area):
+    start_dt = datetime.datetime.now()
+    _logger.info("var_cls task start")
+
     ld = log_db.LogData(conf)
     cv = CompareVariable()
     w_term = conf.getterm("dag", "whole_term")
@@ -124,12 +127,19 @@ def test(conf, area):
     diff = datetime.timedelta(days = 1)
 
     for top_dt, end_dt in dtutil.iter_term(w_term, term, diff):
+        _logger.info("loading log data ({0[0]} - {0[1]})".format(w_term))
         for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt,
                 area = area):
             cv.add(line)
 
+    _logger.info("log data loading done")
+    _logger.info("{0} events found".format(len(cv.evmap)))
     cv.process()
+    _logger.info("event relation estimating done")
     print cv.show_result()
+
+    end_dt = datetime.datetime.now()
+    _logger.info("var_cls task done ({0})".format(end_dt - start_dt))
 
 
 if __name__ == "__main__":
