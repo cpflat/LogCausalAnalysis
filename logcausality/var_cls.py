@@ -56,15 +56,12 @@ class CompareVariable():
         return tf * idf
 
     def _similarlity(self, eid1, ltid1, vid1, eid2, ltid2, vid2):
-        dict1 = self.d_var[eid1][(ltid1, vid1)] 
-        dict2 = self.d_var[eid2][(ltid2, vid2)] 
-        ret = 0.0
-        whole = set(dict1.keys()) | set(dict2.keys())
-        for var in whole:
-            if var in set(dict1.keys()) & set(dict2.keys()):
-                ret += self._var_tfidf(var, eid1, eid2)
-            else:
-                pass
+        set1 = set(self.d_var[eid1][(ltid1, vid1)].keys())
+        set2 = set(self.d_var[eid2][(ltid2, vid2)].keys())
+        whole = set1 | set2
+        common = set1 & set2
+        ret = sum([self._var_tfidf(var, eid1, eid2) for var in whole
+                if var in common])
         return ret / len(whole)
 
     def process(self):
@@ -101,11 +98,11 @@ class CompareVariable():
             l_buf.append("{0} in [LTID {1} variable {2}]".format(sim,
                     ltid1, vid1) + " [LTID {0} variable {1}]".format(
                     ltid2, vid2))
-            dict1 = self.d_var[eid1][(ltid1, vid1)]
-            dict2 = self.d_var[eid2][(ltid2, vid2)]
-            common = set(dict1.keys()) & set(dict2.keys())
-            uncommon1 = set(dict1.keys()) - common
-            uncommon2 = set(dict2.keys()) - common
+            set1 = set(self.d_var[eid1][(ltid1, vid1)].keys())
+            set2 = set(self.d_var[eid2][(ltid2, vid2)].keys())
+            common = set1 & set2
+            uncommon1 = set1 - common
+            uncommon2 = set2 - common
             l_buf.append(show_words(list(common), "common", wlimit))
             l_buf.append(show_words(list(uncommon1), "event1 only", wlimit))
             l_buf.append(show_words(list(uncommon2), "event2 only", wlimit))
