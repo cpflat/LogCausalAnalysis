@@ -70,6 +70,8 @@ class CompareVariable():
     def process(self):
         self.d_result = {}
         for eid1, eid2 in combinations(self.d_var.keys(), 2):
+            _logger.info("evaluating event {0} and event {1}".format(
+                    eid1, eid2))
             d_sim = {}
             for ltid1, vid1 in self.d_var[eid1].keys():
                 for ltid2, vid2 in self.d_var[eid2].keys():
