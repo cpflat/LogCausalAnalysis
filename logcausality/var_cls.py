@@ -127,7 +127,7 @@ def test(conf, area):
     diff = datetime.timedelta(days = 1)
 
     for top_dt, end_dt in dtutil.iter_term(w_term, term, diff):
-        _logger.info("loading log data ({0[0]} - {0[1]})".format(w_term))
+        _logger.info("loading log data ({0} - {1})".format(top_dt, end_dt))
         for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt,
                 area = area):
             cv.add(line)
