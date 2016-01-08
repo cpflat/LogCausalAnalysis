@@ -30,7 +30,12 @@ class database(object):
         raise NotImplementedError
         
     def strftime(self, dt):
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        if isinstance(dt, datetime.datetime):
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
+        elif isinstance(dt, str):
+            return dt
+        else:
+            raise TypeError
 
     def strptime(self, string):
         return datetime.datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
