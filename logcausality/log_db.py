@@ -155,7 +155,7 @@ class LogData():
 
     def add_line(self, ltid, dt, host, l_w):
         self.db.add_line(ltid, dt, host, l_w)
-        return LogMessage(lid, self.table[ltid], dt, host, l_w)
+        return LogMessage(ltid, self.table[ltid], dt, host, l_w)
 
     def update_area(self):
         self.db._init_area()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import copy
 
 import config
 import dtutil
@@ -11,23 +12,32 @@ import evfilter
 class LogEventIDMap():
 
     def __init__(self):
-        self.eidlen = 0
+        #self.eidlen = 0
         self.emap = {} # key : eid, val : info
         self.ermap = {} # key : info, val : eid
 
     def __len__(self):
-        return self.eidlen
+        #return self.eidlen
+        return len(self.emap)
 
     def _info(self, line):
         return (line.lt.ltgid, line.host)
+
+    def _next_eid(self):
+        eid = len(self.emap)
+        while self.emap.has_key(eid):
+            eid += 1
+        else:
+            return eid
 
     def eid(self, line):
         info = self._info(line)
         if self.ermap.has_key(info):
             return self.ermap[info]
         else:
-            eid = self.eidlen
-            self.eidlen += 1
+            eid = self._next_eid()
+            #eid = self.eidlen
+            #self.eidlen += 1
             self.emap[eid] = info
             self.ermap[info] = eid
             return eid
@@ -44,7 +54,7 @@ class LogEventIDMap():
     def pop(self, eid):
         info = self.emap.pop(eid)
         self.ermap.pop(info)
-        self.eidlen -= 1
+        #self.eidlen -= 1
         return info
 
     def move_eid(self, old_eid, new_eid):
@@ -53,8 +63,7 @@ class LogEventIDMap():
         self.ermap[info] = new_eid
 
     def rearrange(self, l_eid):
-        import copy
-        assert len(l_eid) == self.eidlen
+        #assert len(l_eid) == self.eidlen
         emap = copy.deepcopy(self.emap)
         ermap = copy.deepcopy(self.ermap)
         self.emap = {}
@@ -63,6 +72,13 @@ class LogEventIDMap():
             old_info = emap[old_eid]
             self.emap[new_eid] = old_info 
             self.ermap[old_info] = new_eid
+
+
+def _copy_evmap(evmap):
+    new_evmap = LogEventIDMap()
+    new_evmap.emap = copy.deepcopy(evmap.emap)
+    new_evmap.ermap = copy.deepcopy(evmap.ermap)
+    return new_evmap
 
 
 def log2event(conf, top_dt, end_dt, area):
@@ -91,10 +107,12 @@ def filter_edict(conf, edict, evmap):
         return edict, evmap
     l_eid = evfilter.filtered(conf, edict, evmap, l_filter)
 
+    temp_edict = edict.copy()
+    temp_evmap = _copy_evmap(evmap)
     for eid in l_eid:
-        edict.pop(eid)
-        evmap.pop(eid)
-    return _remap_eid(edict, evmap)
+        temp_edict.pop(eid)
+        temp_evmap.pop(eid)
+    return _remap_eid(temp_edict, temp_evmap)
 
 
 def _remap_eid(edict, evmap):
@@ -107,6 +125,7 @@ def _remap_eid(edict, evmap):
             edict.pop(old_eid)
             edict[new_eid] = temp
             evmap.move_eid(old_eid, new_eid)
+            new_eid += 1
 
     return edict, evmap
 
