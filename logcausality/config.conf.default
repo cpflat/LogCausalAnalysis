@@ -1,4 +1,9 @@
 
+# Configuration file for logcausality
+# If some options does not given in this file,
+# logcausality will use defaults defined in config.conf.default
+
+
 [general]
 
 # Source log data path
@@ -15,8 +20,7 @@ info_log = auto.log
 
 # Another configparser filename, to add any options without warnings
 # Use this to define new options for private use
-# Please take care that imported configparser will overwrite
-# all options in defaults or importing configparser file
+# In imported configparser file, existing options in defaults will be ignored
 import = 
 
 

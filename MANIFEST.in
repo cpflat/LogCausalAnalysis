@@ -1,3 +1,5 @@
 include README.md
 include logcausality/*.txt.sample
 include logcausality/*.conf.sample
+include logcausality/*.conf.default
+
