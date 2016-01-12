@@ -210,9 +210,10 @@ def open_config(fn = None):
 
         if conf.has_section("general"):
             if conf.has_option("general", "import"):
-                conf3 = ExtendedConfigParser()
-                conf3.read(conf.get("general", "import"))
-                conf.merge(conf3)
+                if not conf.get("general", "import") == "":
+                    conf3 = ExtendedConfigParser()
+                    conf3.read(conf.get("general", "import"))
+                    conf.merge(conf3)
 
     return conf
 
