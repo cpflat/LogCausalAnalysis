@@ -18,117 +18,81 @@ _logger.setLevel(logging.WARNING)
 _logger.addHandler(_ch)
 
 
-class ExtendedConfigParser(ConfigParser.SafeConfigParser):
-
-    def __init__(self, noopterror=True, defaults=None,
-            dict_type=collections.OrderedDict, allow_no_value=False):
-        self._conf = ConfigParser.SafeConfigParser(defaults = defaults,
-                dict_type = dict_type, allow_no_value = allow_no_value)
-        self._noopt = noopterror
-
-    def _no_option(self, err = None):
-        if self._noopt:
-            raise err
-        else:
-            return None
-
-    def _call_method(self, method_name, section, name):
-        method = getattr(self._conf, method_name)
-        try:
-            ret = method(section, name)
-        except ConfigParser.NoOptionError as err:
-            return self._no_option(err)
-        except ValueError as err:
-            return self._no_option(err)
-        else:
-            return ret
-
-    def set(self, section, name, value):
-        return getattr(self._conf, sys._getframe().f_code.co_name)(
-                section, name, value)
+class ExtendedConfigParser(ConfigParser.SafeConfigParser, object):
+    
+    def __init__(self):
+        
+        #super(ExtendedConfigParser, self).__init__(self)
+        ConfigParser.SafeConfigParser.__init__(self)
+        self.filename = None # source filename
 
     def read(self, fn):
         if not os.path.exists(fn):
             raise IOError("{0} not found".format(fn))
         else:
-            return self._conf.read(fn)
+            self.filename = fn
+            return super(ExtendedConfigParser, self).read(fn)
 
-    def write(self, fn):
-        return self._conf.write(fn)
+    def merge(self, conf, warn = False):
 
-    def sections(self):
-        return getattr(self._conf, sys._getframe().f_code.co_name)()
+        def opt_warn(section, option, fn):
+            _logger.warning("""
+Invalid option name {0} in section {1} in {2}, ignored
+                    """.strip().format(option, section, fn))
 
-    def options(self, section):
-        return getattr(self._conf, sys._getframe().f_code.co_name)(section)
-
-    def get(self, section, name):
-        return self._call_method(sys._getframe().f_code.co_name, section, name)
-
-    def getint(self, section, name):
-        return self._call_method(sys._getframe().f_code.co_name, section, name)
-
-    def getfloat(self, section, name):
-        return self._call_method(sys._getframe().f_code.co_name, section, name)
-
-    def getboolean(self, section, name):
-        return self._call_method(sys._getframe().f_code.co_name, section, name)
+        def sec_warn(section, fn):
+            _logger.warning("Invalid section name {0} in {1}".format(
+                    section, fn))
+        
+        for section in conf.sections():
+            if section in self.sections():
+                for option in conf.options(section):
+                    value = conf.get(section, option)
+                    if option in self.options(section):
+                        self.set(section, option, value)
+                    else:
+                        if warn:
+                            opt_warn(section, option, conf.filename)
+            else:
+                if warn:
+                    sec_warn(section, conf.filename)
+        return self
 
     def gettuple(self, section, name):
-        try:
-            ret = self._conf.get(section, name)
-        except ConfigParser.NoOptionError as err:
-            return self._no_option(err)
-        else:
-            return tuple(e.strip() for e in ret.split(",")
-                    if not e.strip() == "")
+        ret = self.get(section, name)
+        return tuple(e.strip() for e in ret.split(",")
+                if not e.strip() == "")
 
     def getlist(self, section, name):
-        try:
-            ret = self._conf.get(section, name)
-        except ConfigParser.NoOptionError as err:
-            return self._no_option(err)
+        ret = self._conf.get(section, name)
+        if ret == "":
+            return None
         else:
-            if ret == "":
-                return self._no_option()
-            else:
-                return [e.strip() for e in ret.split(",")
-                        if not e.strip() == ""]
+            return [e.strip() for e in ret.split(",")
+                    if not e.strip() == ""]
 
     def getdt(self, section, name):
-        try:
-            ret = self._conf.get(section, name)
-        except ConfigParser.NoOptionError as err:
-            return self._no_option(err)
+        ret = self._conf.get(section, name)
+        if ret == "":
+            return None
         else:
-            if ret == "":
-                return self._no_option()
-            else:
-                return datetime.datetime.strptime(ret.strip(),
-                        "%Y-%m-%d %H:%M:%S")
+            return datetime.datetime.strptime(ret.strip(),
+                    "%Y-%m-%d %H:%M:%S")
 
     def getterm(self, section, name):
-        try:
-            ret = self._conf.get(section, name)
-        except ConfigParser.NoOptionError as err:
-            return self._no_option(err)
+        ret = self._conf.get(section, name)
+        if ret == "":
+            return None
         else:
-            if ret == "":
-                return self._no_option()
-            else:
-                return tuple(datetime.datetime.strptime(e.strip(),
-                        "%Y-%m-%d %H:%M:%S") for e in ret.split(","))
+            return tuple(datetime.datetime.strptime(e.strip(),
+                    "%Y-%m-%d %H:%M:%S") for e in ret.split(","))
 
     def getdur(self, section, name):
-        try:
-            ret = self._conf.get(section, name)
-        except ConfigParser.NoOptionError as err:
-            return self._no_option(err)
+        ret = self._conf.get(section, name)
+        if ret == "":
+            return None
         else:
-            if ret == "":
-                return self._no_option()
-            else:
-                return str2dur(ret)
+            return str2dur(ret)
 
 
 class GroupDef():
@@ -222,26 +186,13 @@ def str2dur(string):
         raise ValueError("Duration string invalid")
 
 
-def open_config(fn = None, noopterror = False):
-    conf = ExtendedConfigParser(noopterror = noopterror)
+def open_config(fn = None):
+    conf = ExtendedConfigParser()
     conf.read(DEFAULT_CONFIG_NAME)
     if fn is not None:
-        conf2 = ExtendedConfigParser(noopterror = noopterror)
+        conf2 = ExtendedConfigParser()
         conf2.read(fn)
-
-        for section in conf2.sections():
-            if section in conf.sections():
-                for option in conf2.options(section):
-                    value = conf2.get(section, option)
-                    if option in conf.options(section):
-                        conf.set(section, option, value)
-                    else:
-                        _logger.warning("""
-Invalid option name {0} in section {1} in {2}, ignored
-                                """.strip().format(option, section, fn))
-            else:
-                _logger.warning("Invalid section name {0} in {1}".format(
-                        section, fn))
+        conf.merge(conf2, warn = True)
     return conf
 
 
@@ -277,25 +228,31 @@ def release_common_logging(ch, logger = None, l_logger_name = None):
             temp.removeHandler(ch)
 
 
-def overwrite_config(conf_fn1, conf_fn2, output):
-    conf1 = open_config(conf_fn1) # conf1 as basis
-    conf2 = open_config(conf_fn2) # overwrite with conf2
-    for section in conf2.sections():
-        if section in conf1.sections():
-            for option in conf2.options(section):
-                value = conf2.get(section, option)
-                if option in conf1.options(section):
-                    conf1.set(section, option, value)
-    with open(output, 'w') as f:
-        conf1.write(f)
+#def overwrite_config(conf_fn1, conf_fn2, output):
+#    conf1 = open_config(conf_fn1) # conf1 as basis
+#    conf2 = open_config(conf_fn2) # overwrite with conf2
+#    for section in conf2.sections():
+#        if section in conf1.sections():
+#            for option in conf2.options(section):
+#                value = conf2.get(section, option)
+#                if option in conf1.options(section):
+#                    conf1.set(section, option, value)
+#    with open(output, 'w') as f:
+#        conf1.write(f)
+
+
+def test_config(conf_name):
+    conf = open_config(conf_name)
+    pass
 
 
 if __name__ == "__main__":
     # import old config, merge it with new default config, and output
-    if len(sys.argv) < 3:
-        sys.exit("usage : {0} config output".format(sys.argv[0]))
-    default_conf = DEFAULT_CONFIG_NAME
+    if len(sys.argv) < 2:
+        sys.exit("usage : {0} config".format(sys.argv[0]))
+    #default_conf = DEFAULT_CONFIG_NAME
     conf = sys.argv[1]
-    output = sys.argv[2]
-    overwrite_config(default_conf, conf, output) 
+    test_config(conf)
+    #output = sys.argv[2]
+    #overwrite_config(default_conf, conf, output) 
 

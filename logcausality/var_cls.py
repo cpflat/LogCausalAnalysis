@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 class CompareVariable():
 
-    def __init__(self):
+    def __init__(self, conf):
         self.evmap = log2event.LogEventIDMap()
         self.d_var = {}
         self.d_eventvar = {} # key = eid, val = {var : cnt, ...}
@@ -118,7 +118,7 @@ def test(conf, area):
     _logger.info("var_cls task start")
 
     ld = log_db.LogData(conf)
-    cv = CompareVariable()
+    cv = CompareVariable(conf)
     w_term = conf.getterm("dag", "whole_term")
     if w_term is None:
         w_term = ld.whole_term()
