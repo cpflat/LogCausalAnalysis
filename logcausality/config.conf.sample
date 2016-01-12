@@ -10,14 +10,20 @@ src_path = test.temp
 src_recur = false
 
 # Processing log output path (not dataset but log of this system)
-# If blank, output log on stderr
+# If empty, output log on stderr
 info_log = auto.log
+
+# Another configparser filename, to add any options without warnings
+# Use this to define new options for private use
+# Please take care that imported configparser will overwrite
+# all options in defaults or importing configparser file
+import = 
 
 
 [database]
 
 # Database management system to use
-# [sqlite3, #mysql(debugging)] is available
+# [sqlite3, mysql] is available
 # mysql : Require MySQL for PYTHON (MySQLdb) package
 database = sqlite3
 
@@ -216,28 +222,4 @@ self_corr_bin = 10s
 # If empty, use default configuration (lt_label.conf.sample)
 ltlabel = 
 
-
-[cluster_graph]
-# TODO to be moved to debugging repo,
-# before graph matching is officially implemented
-
-# Definition of distance calculation method
-# [ed, mcs] is available
-# ed : graph edit distance
-# mcs : size ratio of maximum common subgraph
-dist_method = ed
-
-# Ignore direction of edge in graph or not
-# when calculating distance of graphs
-ig_direction = true
-
-# Weight distance with TF-IDF
-weight = true
-
-# Criterion of threshold to generate flat cluster from hierarchy cluster
-# [maxclust, distance, etc...]
-th_criterion = maxclust
-
-# Threshold (float value) to generate flat cluster from hierarchy cluster
-th = 10.0
 

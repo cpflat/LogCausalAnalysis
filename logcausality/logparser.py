@@ -28,10 +28,10 @@ class LogParser():
 
     def __init__(self, conf):
         self.default_year = conf.getint("database", "default_year")
-        self.rmheader_fl = conf.getlist("database", "remove_header_filename")
+        self.rmheader_fl = conf.gettuple("database", "remove_header_filename")
         self.symdef = conf.get("log_template", "sym_filename")
         self.varsym = conf.get("log_template", "variable_symbol")
-        if self.symdef == "":
+        if self.symdef is None or self.symdef == "":
             self.symdef = DEFAULT_SYMDEF
         self.sym_ignore = conf.getboolean("log_template", "sym_ignore")
         self.rm_header = []
@@ -63,7 +63,7 @@ class LogParser():
             return False
 
     def _set_year(self):
-        if self.default_year is None:
+        if self.default_year is None or self.default_year == "":
             return datetime.datetime.today().year
         else:
             return self.default_year

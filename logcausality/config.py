@@ -33,14 +33,16 @@ class ExtendedConfigParser(ConfigParser.SafeConfigParser, object):
             self.filename = fn
             return super(ExtendedConfigParser, self).read(fn)
 
-    def merge(self, conf, warn = False):
+    def update(self, conf, warn = False):
+        # Update existing configurations in defaults
+        # If new option found, warn and ignore it
 
-        def opt_warn(section, option, fn):
+        def warn_opt(section, option, fn):
             _logger.warning("""
 Invalid option name {0} in section {1} in {2}, ignored
                     """.strip().format(option, section, fn))
 
-        def sec_warn(section, fn):
+        def warn_sec(section, fn):
             _logger.warning("Invalid section name {0} in {1}".format(
                     section, fn))
         
@@ -52,10 +54,22 @@ Invalid option name {0} in section {1} in {2}, ignored
                         self.set(section, option, value)
                     else:
                         if warn:
-                            opt_warn(section, option, conf.filename)
+                            warn_opt(section, option, conf.filename)
             else:
                 if warn:
-                    sec_warn(section, conf.filename)
+                    warn_sec(section, conf.filename)
+        return self
+
+    def merge(self, conf):
+        # Do NOT allow updateing existing options in defaults
+
+        for section in conf.sections():
+            if not section in self.sections():
+                self.add_section(section)
+            for option in conf.options(section):
+                if not self.has_option(section, option):
+                    value = conf.get(section, option)
+                    self.set(section, option, value)
         return self
 
     def gettuple(self, section, name):
@@ -102,7 +116,7 @@ class GroupDef():
     Rules:
         description after # in a line will be recognized as comment
         line "[GROUP_NAME]" will change group to set
-        other lines add elements in group set with GROUP_NAME line
+        other lines add elements in the group set with GROUP_NAME line
     """
 
     def __init__(self, fn, default_val = None):
@@ -192,7 +206,14 @@ def open_config(fn = None):
     if fn is not None:
         conf2 = ExtendedConfigParser()
         conf2.read(fn)
-        conf.merge(conf2, warn = True)
+        conf.update(conf2, warn = True)
+
+        if conf.has_section("general"):
+            if conf.has_option("general", "import"):
+                conf3 = ExtendedConfigParser()
+                conf3.read(conf.get("general", "import"))
+                conf.merge(conf3)
+
     return conf
 
 
@@ -203,7 +224,7 @@ def set_common_logging(conf, logger = None, l_logger_name = []):
             fmt = "%(asctime)s %(levelname)s (%(threadName)s) %(message)s",
             datefmt = "%Y-%m-%d %H:%M:%S")
     lv = logging.INFO
-    if fn is None:
+    if fn == "":
         ch = logging.StreamHandler()
     else:
         ch = logging.FileHandler(fn)
@@ -228,26 +249,16 @@ def release_common_logging(ch, logger = None, l_logger_name = None):
             temp.removeHandler(ch)
 
 
-#def overwrite_config(conf_fn1, conf_fn2, output):
-#    conf1 = open_config(conf_fn1) # conf1 as basis
-#    conf2 = open_config(conf_fn2) # overwrite with conf2
-#    for section in conf2.sections():
-#        if section in conf1.sections():
-#            for option in conf2.options(section):
-#                value = conf2.get(section, option)
-#                if option in conf1.options(section):
-#                    conf1.set(section, option, value)
-#    with open(output, 'w') as f:
-#        conf1.write(f)
-
-
 def test_config(conf_name):
     conf = open_config(conf_name)
-    pass
+    for section in conf.sections():
+        print "[{0}]".format(section)
+        for option, value in conf.items(section):
+            print "{0} = {1}".format(option, value)
 
 
 if __name__ == "__main__":
-    # import old config, merge it with new default config, and output
+    ## import old config, merge it with new default config, and output
     if len(sys.argv) < 2:
         sys.exit("usage : {0} config".format(sys.argv[0]))
     #default_conf = DEFAULT_CONFIG_NAME

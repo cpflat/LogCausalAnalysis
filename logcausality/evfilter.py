@@ -34,6 +34,8 @@ class IDFilter():
                 self._open_def(def_fn)
             else:
                 self._exception_notfound(def_fn)
+        else:
+            raise TypeError("Invalid filter definition name")
 
     def _exception_notfound(self, def_fn):
         _logger.warning("Filter definition file {0} not found".format(fn))
@@ -90,7 +92,7 @@ class EventFilter():
 
 
 def init_evfilter(conf, top_dt, end_dt):
-    if not "periodic-whole" in conf.get("dag", "use_filter"):
+    if not "periodic-whole" in conf.gettuple("dag", "use_filter"):
         return 
     _logger.info("start initializing evfilter")
 

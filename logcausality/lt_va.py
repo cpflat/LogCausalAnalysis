@@ -20,7 +20,7 @@ class LTManager(lt_common.LTManager):
         super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
         
         self.src_fn = self.conf.get("log_template_va", "src_path")
-        if self.src_fn == "":
+        if self.src_fn is not None or self.src_fn == "":
             self.src_fn = conf.get("general", "src_path")
 
         self._init_ltgen()

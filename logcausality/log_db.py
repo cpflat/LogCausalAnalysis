@@ -547,6 +547,8 @@ class LogDB():
         self.db.execute(sql)
 
     def _init_area(self):
+        if self.areafn is None or self.areafn == "":
+            return
         areadict = config.GroupDef(self.areafn)
         table_name = "area"
         l_ss = [db_common.setstate("host", "host"),

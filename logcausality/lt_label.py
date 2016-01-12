@@ -22,7 +22,7 @@ class LTLabel():
     label_header = "label_"
 
     def __init__(self, conf_fn):
-        self.conf = config.ExtendedConfigParser(noopterror = False)
+        self.conf = config.ExtendedConfigParser()
         self.conf.read(conf_fn)
 
         self.groups = []
