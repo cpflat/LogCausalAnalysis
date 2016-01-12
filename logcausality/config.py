@@ -9,7 +9,7 @@ import collections
 import ConfigParser
 
 DEFAULT_CONFIG_NAME = "/".join((os.path.dirname(__file__),
-        "config.conf.sample"))
+        "config.conf.default"))
 LOGGER_NAME = __name__.rpartition(".")[-1]
 _logger = logging.getLogger(LOGGER_NAME)
 _ch = logging.StreamHandler()
