@@ -78,7 +78,7 @@ Invalid option name {0} in section {1} in {2}, ignored
                 if not e.strip() == "")
 
     def getlist(self, section, name):
-        ret = self._conf.get(section, name)
+        ret = self.get(section, name)
         if ret == "":
             return None
         else:
@@ -86,7 +86,7 @@ Invalid option name {0} in section {1} in {2}, ignored
                     if not e.strip() == ""]
 
     def getdt(self, section, name):
-        ret = self._conf.get(section, name)
+        ret = self.get(section, name)
         if ret == "":
             return None
         else:
@@ -94,7 +94,7 @@ Invalid option name {0} in section {1} in {2}, ignored
                     "%Y-%m-%d %H:%M:%S")
 
     def getterm(self, section, name):
-        ret = self._conf.get(section, name)
+        ret = self.get(section, name)
         if ret == "":
             return None
         else:
@@ -102,7 +102,7 @@ Invalid option name {0} in section {1} in {2}, ignored
                     "%Y-%m-%d %H:%M:%S") for e in ret.split(","))
 
     def getdur(self, section, name):
-        ret = self._conf.get(section, name)
+        ret = self.get(section, name)
         if ret == "":
             return None
         else:
