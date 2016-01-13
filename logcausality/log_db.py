@@ -605,18 +605,23 @@ def process_files(conf, targets, initflag, diff = False):
     _logger.info("log_db task start")
 
     for fp in targets:
-        with open(fp, 'r') as f:
-            _logger.info("log_db processing {0}".format(fp))
-            for line in f:
-                dt, host, l_w, l_s = lp.process_line(line)
-                if diff and dt < latest: continue
-                if l_w is None: continue
-                ltline = ld.ltm.process_line(l_w, l_s)
-                if ltline is None:
-                    _logger.warning("Log template not found " + \
-                            "for message [{0}]".format(line))
-                else:
-                    ld.add_line(ltline.ltid, dt, host, l_w)
+        if os.path.isdir(fp):
+            sys.stderr.write("{0} is a directory, fail to process".format(fp))
+            sys.stderr.write(
+                    "Use -r if you need to search log data recursively")
+        else:
+            with open(fp, 'r') as f:
+                _logger.info("log_db processing {0}".format(fp))
+                for line in f:
+                    dt, host, l_w, l_s = lp.process_line(line)
+                    if diff and dt < latest: continue
+                    if l_w is None: continue
+                    ltline = ld.ltm.process_line(l_w, l_s)
+                    if ltline is None:
+                        _logger.warning("Log template not found " + \
+                                "for message [{0}]".format(line))
+                    else:
+                        ld.add_line(ltline.ltid, dt, host, l_w)
     ld.commit_db()
     
     end_dt = datetime.datetime.now()
@@ -676,27 +681,13 @@ args:
                    different from that with incremental processing.
     """.strip().format(sys.argv[0])
 
-#    gflag_help = """
-#Remake ltgroup for existing log template.
-#If using this option with existing db,
-#ltgroups will be different from that with incremental processing.
-#    """.strip()
-
     import optparse
     op = optparse.OptionParser(usage)
-#    op.add_option("-a", "--area", action="store_true", dest="aflag",
-#            default=False, help="remake area definition")
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
-#    op.add_option("-f", action="store_true", dest="format",
-#            default=False, help="format db and reconstruct")
-#    op.add_option("-m", action="store_true", dest="migrate",
-#            default=False, help="change existing db into recent version")
     op.add_option("-r", action="store_true", dest="recur",
             default=False, help="search log file recursively")
-#    op.add_option("-g", "--group", action="store_true", dest="gflag",
-#            default=False, help=gflag_help)
     options, args = op.parse_args()
 
     conf = config.open_config(options.conf)
