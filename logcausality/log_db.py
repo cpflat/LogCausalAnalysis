@@ -606,9 +606,10 @@ def process_files(conf, targets, initflag, diff = False):
 
     for fp in targets:
         if os.path.isdir(fp):
-            sys.stderr.write("{0} is a directory, fail to process".format(fp))
             sys.stderr.write(
-                    "Use -r if you need to search log data recursively")
+                    "{0} is a directory, fail to process\n".format(fp))
+            sys.stderr.write(
+                    "Use -r if you need to search log data recursively\n")
         else:
             with open(fp, 'r') as f:
                 _logger.info("log_db processing {0}".format(fp))
