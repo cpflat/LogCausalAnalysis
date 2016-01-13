@@ -526,7 +526,7 @@ class LogDB():
 
     def count_ltg(self):
         table_name = "ltg"
-        l_key = ["count(*)"]
+        l_key = ["max(ltgid)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
         return int(cursor.fetchone()[0])
