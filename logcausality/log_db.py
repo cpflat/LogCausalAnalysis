@@ -99,11 +99,28 @@ class LogData():
             buf.append("({0})".format(length))
         print "\n".join(buf)
 
+    def count_lines(self):
+        return self.db.count_lines()
+
+    def dt_term(self):
+        return self.db.dt_term()
+
     def whole_term(self):
-        return self.db.whole_term()
+        # return date term that cover all log data
+        top_dt, end_dt = self.db.dt_term()
+        top_dt = datetime.datetime.combine(top_dt.date(), datetime.time())
+        end_dt = datetime.datetime.combine(end_dt.date(), datetime.time()) + \
+                datetime.timedelta(days = 1)
+        return top_dt, end_dt
 
     def whole_host(self, top_dt = None, end_dt = None):
         return self.db.whole_host(top_dt = top_dt, end_dt = end_dt)
+
+    def count_lt(self):
+        return self.db.count_lt()
+
+    def count_ltg(self):
+        return self.db.count_ltg()
 
     def iter_lt(self):
         for ltline in self.table:
@@ -133,7 +150,7 @@ class LogData():
         return "\n".join(buf)
 
     def show_all_ltgroup(self):
-        if self.db.len_ltg() == 0:
+        if self.db.count_ltg() == 0:
             self.show_all_lt()
         else:
             buf = []
@@ -197,7 +214,7 @@ class LogDB():
                 self._init_tables()
                 self._init_area()
             else:
-                self.line_cnt = self._load_line_cnt()
+                self.line_cnt = self.count_lines()
                 self._init_lttable()
         else:
             self._init_tables()
@@ -385,30 +402,22 @@ class LogDB():
         sql = self.db.update_sql(table_name, l_ss, l_cond)
         self.db.execute(sql, args)
 
-    def _load_line_cnt(self):
+    def count_lines(self):
         table_name = "log"
         l_key = ["max(lid)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
-        return [row for row in cursor][0][0]
-        
-    def whole_term(self):
+        return int(cursor.fetchone()[0])
+
+    def dt_term(self):
         table_name = "log"
-        l_key = ["min(dt)"]
+        l_key = ["min(dt)", "max(dt)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
-        top_dt = self.db.datetime([row for row in cursor][0][0])
-
-        table_name = "log"
-        l_key = ["max(dt)"]
-        sql = self.db.select_sql(table_name, l_key)
-        cursor = self.db.execute(sql)
-        end_dt = self.db.datetime([row for row in cursor][0][0])
-
-        top_dt = datetime.datetime.combine(top_dt.date(), datetime.time())
-        end_dt = datetime.datetime.combine(end_dt.date(), datetime.time()) + \
-                datetime.timedelta(days = 1)
-        return top_dt, end_dt
+        top_dtstr, end_dtstr = cursor.fetchone()
+        if None in (top_dtstr, end_dtstr):
+            raise ValueError("No data found in DB")
+        return self.db.datetime(top_dtstr), self.db.datetime(end_dtstr)
 
     def whole_host(self, top_dt = None, end_dt = None):
         table_name = "log"
@@ -508,7 +517,14 @@ class LogDB():
             count = int(row[4])
             self.table.restore_lt(ltid, ltgid, ltw, lts, count)
 
-    def len_ltg(self):
+    def count_lt(self):
+        table_name = "lt"
+        l_key = ["count(*)"]
+        sql = self.db.select_sql(table_name, l_key)
+        cursor = self.db.execute(sql)
+        return int(cursor.fetchone()[0])
+
+    def count_ltg(self):
         table_name = "ltg"
         l_key = ["count(*)"]
         sql = self.db.select_sql(table_name, l_key)
@@ -572,30 +588,28 @@ class LogDB():
         return [row[0] for row in cursor]
 
 
-def process_files(conf, targets, rflag, fflag):
-    if len(targets) == 0:
-        if conf.getboolean("general", "src_recur") or rflag:
-            l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
-        else:
-            l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
-    else:
-        if rflag:
-            l_fp = fslib.recur_dir(targets)
-        else:
-            l_fp = fslib.rep_dir(targets)
+def process_files(conf, targets, initflag, diff = False):
+    # Adding log data to DB
+    # conf : config.ExtendedConfigParser
+    # targets : filename of log data to add
+    # initflag : If True, initialize DB before adding data
+    # diff : Only add newer log data than latest log in DB
 
     lp = logparser.LogParser(conf)
-    ld = LogData(conf, fflag)
+    ld = LogData(conf, initflag)
     ld.set_ltm()
+    if diff:
+        latest = ld.dt_term()[1]
 
     start_dt = datetime.datetime.now()
     _logger.info("log_db task start")
 
-    for fp in l_fp:
+    for fp in targets:
         with open(fp, 'r') as f:
             _logger.info("log_db processing {0}".format(fp))
             for line in f:
                 dt, host, l_w, l_s = lp.process_line(line)
+                if diff and dt < latest: continue
                 if l_w is None: continue
                 ltline = ld.ltm.process_line(l_w, l_s)
                 if ltline is None:
@@ -609,8 +623,17 @@ def process_files(conf, targets, rflag, fflag):
     _logger.info("log_db task done ({0})".format(end_dt - start_dt))
 
 
+def info(conf):
+    ld = LogData(conf)
+    print("[DB status]")
+    print("Registered log lines : {0}".format(ld.count_lines()))
+    print("Term : {0[0]} - {0[1]}".format(ld.dt_term()))
+    print("Log templates : {0}".format(ld.count_lt()))
+    print("Log template groups : {0}".format(ld.count_ltg()))
+    print("Hosts : {0}".format(len(ld.whole_host())))
+
+
 def migrate(conf):
-    lp = logparser.LogParser(conf)
     ld = LogData(conf)
     ld.db._init_index()
     ld.update_area()
@@ -618,7 +641,6 @@ def migrate(conf):
     
 
 def remake_ltgroup(conf):
-    lp = logparser.LogParser(conf)
     ld = LogData(conf)
     ld.set_ltm()
     
@@ -633,7 +655,6 @@ def remake_ltgroup(conf):
 
 
 def remake_area(conf):
-    lp = logparser.LogParser(conf)
     ld = LogData(conf)
     ld.update_area()
     ld.commit_db()
@@ -641,52 +662,90 @@ def remake_area(conf):
 
 if __name__ == "__main__":
 
-    import optparse
     usage = """
-usage: {0} [options] <file...>
-  with arguments:
-    add log data in given src data files
-  with no arguments :
-    add log data in src data files defined in config
+usage: {0} [options] args...
+args:
+  make : initialize DB and add log data given in config
+  make FILES : initialize DB and add log data in FILES
+  add FILES : add all log data in FILES to existing DB
+  update FILES : add newer log data found in FILES to existing DB
+  info : show abstruction of DB status
+  remake-area : reconstruct area definiton of hosts in DB
+  remake-ltgroup : Remake ltgroup definition for existing log templates.
+                   Ltgroups made with this process will be usually
+                   different from that with incremental processing.
     """.strip().format(sys.argv[0])
 
-    gflag_help = """
-Remake ltgroup for existing log template.
-If using this option with existing db,
-ltgroups will be different from that with incremental processing.
-    """.strip()
+#    gflag_help = """
+#Remake ltgroup for existing log template.
+#If using this option with existing db,
+#ltgroups will be different from that with incremental processing.
+#    """.strip()
 
+    import optparse
     op = optparse.OptionParser(usage)
-    op.add_option("-a", "--area", action="store_true", dest="aflag",
-            default=False, help="remake area definition")
+#    op.add_option("-a", "--area", action="store_true", dest="aflag",
+#            default=False, help="remake area definition")
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
-    op.add_option("-f", action="store_true", dest="format",
-            default=False, help="format db and reconstruct")
-    op.add_option("-m", action="store_true", dest="migrate",
-            default=False, help="change existing db into recent version")
+#    op.add_option("-f", action="store_true", dest="format",
+#            default=False, help="format db and reconstruct")
+#    op.add_option("-m", action="store_true", dest="migrate",
+#            default=False, help="change existing db into recent version")
     op.add_option("-r", action="store_true", dest="recur",
             default=False, help="search log file recursively")
-    op.add_option("-g", "--group", action="store_true", dest="gflag",
-            default=False, help=gflag_help)
+#    op.add_option("-g", "--group", action="store_true", dest="gflag",
+#            default=False, help=gflag_help)
     options, args = op.parse_args()
 
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, 
             ["lt_common", "lt_shiso", "lt_va", "lt_import"])
 
-    if options.aflag:
+    if len(args) == 0:
+        sys.exit(usage)
+    mode = args.pop(0)
+    if mode == "make":
+        if len(args) == 0:
+            if conf.getboolean("general", "src_recur") or options.recur:
+                targets = fslib.recur_dir(conf.getlist("general", "src_path"))
+            else:
+                targets = fslib.rep_dir(conf.getlist("general", "src_path"))
+        else:
+            if options.recur:
+                targets = fslib.recur_dir(args)
+            else:
+                targets = fslib.rep_dir(args)
+        process_files(conf, targets, True)
+    elif mode == "add":
+        if len(args) == 0:
+            sys.exit("give me filenames of log data to add to DB")
+        else:
+            if options.recur:
+                targets = fslib.recur_dir(args)
+            else:
+                targets = fslib.rep_dir(args)
+        process_files(conf, targets, False)
+    elif mode == "update":
+        if len(args) == 0:
+            sys.exit("give me filenames of log data to add to DB")
+        else:
+            if options.recur:
+                targets = fslib.recur_dir(args)
+            else:
+                targets = fslib.rep_dir(args)
+        process_files(conf, targets, False, diff = True)
+    elif mode == "info":
+        info(conf)
+    elif mode == "remake-area":
         remake_area(conf)
-    elif options.gflag:
+    elif mode == "remake-ltgroup":
         remake_ltgroup(conf)
-    elif options.migrate:
+    elif mode == "migrate":
         migrate(conf)
     else:
-        process_files(conf, args, options.recur, options.format)
-
-
-
+        sys.exit("Invalid argument")
 
 
 
