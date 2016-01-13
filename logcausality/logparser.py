@@ -27,7 +27,7 @@ class LogParser():
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
     def __init__(self, conf):
-        self.default_year = conf.getint("database", "default_year")
+        self.default_year = conf.get("database", "default_year")
         self.rmheader_fl = conf.gettuple("database", "remove_header_filename")
         self.symdef = conf.get("log_template", "sym_filename")
         self.varsym = conf.get("log_template", "variable_symbol")
@@ -66,7 +66,7 @@ class LogParser():
         if self.default_year is None or self.default_year == "":
             return datetime.datetime.today().year
         else:
-            return self.default_year
+            return int(self.default_year)
     
     def _re_cspl(self, string):
         # judge string is a variable or complex word to be parted
