@@ -57,7 +57,7 @@ class IDFilter():
 
 class EventFilter():
 
-    def __init__(self, default_th, filename = ".eventfilter.temp"):
+    def __init__(self, default_th, filename):
         self.filename = filename
         self.default_th = default_th
         self.d_ev = {}
@@ -91,7 +91,9 @@ class EventFilter():
             pickle.dump(obj, f)
 
 
-def init_evfilter(conf, top_dt, end_dt):
+#def init_evfilter(conf, top_dt, end_dt):
+def init_evfilter(conf):
+    # initialize 'periodic-whole' filter object
     if not "periodic-whole" in conf.gettuple("dag", "use_filter"):
         return 
     _logger.info("start initializing evfilter")
@@ -105,8 +107,19 @@ def init_evfilter(conf, top_dt, end_dt):
     corr_bin = conf.getdur("filter", "self_corr_bin")
 
     ld = log_db.LogData(conf)
-    evf = EventFilter(corr_th)
+    temp_fn = conf.get("filter", "temp_filter_data")
+    evf = EventFilter(corr_th, filename = temp_fn)
     evf.reset()
+    
+    term = conf.getterm("filter", "sampling_term")
+    if term is None:
+        term = conf.getterm("dag", "whole_term")
+        if term is None:
+            top_dt, end_dt = ld.whole_term()
+        else:
+            top_dt, end_dt = term
+    else:
+        top_dt, end_dt = term
 
     edict, evmap = log2event.log2event(conf, top_dt, end_dt, "all")
     s_interval = set()
@@ -142,7 +155,8 @@ def filtered(conf, edict, evmap, l_filter):
         ff = IDFilter(conf.getlist("filter", "filter_name"))
     if "periodic-whole" in l_filter:
         corr_th = conf.getfloat("filter", "self_corr_th")
-        pf = EventFilter(corr_th)
+        temp_fn = conf.get("filter", "temp_filter_data")
+        pf = EventFilter(corr_th, filename = temp_fn)
         pf.load()
     per_count = conf.getint("filter", "periodic_count")
     per_term = conf.getdur("filter", "periodic_term")

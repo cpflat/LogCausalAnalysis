@@ -72,7 +72,7 @@ def pc_all_args(conf):
         w_top_dt, w_end_dt = ld.whole_term()
     else:
         w_top_dt, w_end_dt = w_term
-    evfilter.init_evfilter(conf, w_top_dt, w_end_dt)
+    evfilter.init_evfilter(conf)
     term = conf.getdur("dag", "unit_term")
     diff = conf.getdur("dag", "unit_diff")
     dur = conf.getdur("dag", "stat_bin")

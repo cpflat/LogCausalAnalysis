@@ -189,14 +189,24 @@ use_filter =
 
 [filter]
 # Filters for log events
-# [file, periodic, self-corr] is available
+# [file, periodic, self-corr, periodic-whole] is available
 # file : Filtering IDs given in filter file
 # periodic : Filtering events that appear with stable interval
+# self-corr : Filtering events that have high self-correlation coefficient
+# periodic-whole : 'periodic' with the interval calculated with 'self-corr'
 
 # Filter filenames to use in filter option 'file'
 # For example:
 # use_filter = filter.txt, filter2.txt
 filter_name = 
+
+# Temporal filter filename for 'periodic-whole'
+# Automatically made and removed if process successfully works
+temp_filter_data = filter.temp
+
+# Sampling term to calculate interval candidate in 'periodic-whole'
+# If empty, use whole log data in DB
+sampling_term = 
 
 # Required times of periodic event appearance to repeat
 # Used for 'periodic' and 'self-corr'
@@ -210,7 +220,7 @@ periodic_term = 6h
 # Threshold value for filter 'periodic'
 periodic_th = 0.5
 
-# Threshold value for self-correlation
+# Threshold value for self-correlation ('self-corr', 'periodic-whole')
 self_corr_th = 0.5
 
 # Difference duration candidates to calculate self-correlation
