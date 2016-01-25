@@ -174,12 +174,12 @@ def filtered(conf, edict, evmap, l_filter):
             if ff.isremoved(eid):
                 l_eid.append(eid)
                 continue
-        if "periodic-whole" in l_filter:
-            ltgid, host = evmap.info(eid)
-            if pf.filtered(ltgid, host, corr_th):
-                l_eid.append(eid)
-                continue
         if periodic_term(l_dt, per_count, per_term):
+            if "periodic-whole" in l_filter:
+                ltgid, host = evmap.info(eid)
+                if pf.filtered(ltgid, host, corr_th):
+                    l_eid.append(eid)
+                    continue
             if "periodic" in l_filter:
                 temp = interval(l_dt, per_th)
                 if temp is not None:
