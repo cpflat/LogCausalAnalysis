@@ -92,7 +92,7 @@ class EventFilter():
 
 
 #def init_evfilter(conf, top_dt, end_dt):
-def init_evfilter(conf):
+def init_evfilter(conf, verbose = False):
     # initialize 'periodic-whole' filter object
     if not "periodic-whole" in conf.gettuple("dag", "use_filter"):
         return 
@@ -121,6 +121,7 @@ def init_evfilter(conf):
     else:
         top_dt, end_dt = term
 
+    # generate interval candidates with periodic-check
     edict, evmap = log2event.log2event(conf, top_dt, end_dt, "all")
     s_interval = set()
     for eid, l_dt in edict.iteritems():
@@ -129,18 +130,21 @@ def init_evfilter(conf):
             if temp is not None:
                 s_interval.add(temp)
     new_corr_diff = [datetime.timedelta(seconds = sec) for sec in s_interval]
-    _logger.info("interval candidates : given ({0}), found ({1})".format(\
-            ",".join(str(corr_diff)), ",".join(str(new_corr_diff))))
+    mes = "interval candidates : given ({0}), found ({1})".format(\
+            ",".join(str(corr_diff)), ",".join(str(new_corr_diff)))
+    logging.info(mes)
+    if verbose:
+        print(mes)
 
+    # construct filter object
     corr_diff = corr_diff + new_corr_diff
     for eid, l_dt in edict.iteritems():
         ltgid, host = evmap.info(eid)
         corr = self_correlation(l_dt, corr_diff, corr_bin)
         evf.add(ltgid, host, corr)
-        #if corr > corr_th:
-        #    _logger.info("event {0} will be removed (val : {1})".format(\
-        #            (ltgid, host), corr))
-        #    evf.add(ltgid, host)
+        if verbose:
+            print("event [ltgid {0}, host {1}] : {2}".format(
+                    ltgid, host, corr))
 
     evf.dump()
     _logger.info("initializing evfilter done")
