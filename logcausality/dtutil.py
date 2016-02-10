@@ -67,11 +67,213 @@ def iter_term(whole_term, term_length, term_diff):
         top_dt = top_dt + term_diff
 
 
-#def filter_periodic_component(l_dt, duration, std_value):
-#    l_dt_temp = sorted(l_dt[:])
-#
-#    prev_dt = None
-#    while not prev_dt == l_dt_temp[0]:
+def separate_periodic_dup(data, dur, err):
+    """Separate periodic components from a sequence of timestamps that allow
+    duplication of timestamps in 1 periodic sequence. 
+
+    Args:
+        data (List[datetime.datetime]): A sequence of timestamps
+            to be classified into periodic and non-periodic timestamps.
+        dur (datetime.timedelta): Duration of periodicity.
+        err (float): Allowed error of periodicity duration.
+
+    Returns:
+        List[List[datetime.datetime]]: A set of sequences
+            of periodic timestamps.
+        List[datetime.datetime]: A set of timestamps that do not belong to
+            periodic timestamp sequences.
+    
+    """
+    def _separate_same(target_dt, l_dt, err_dur):
+        # return same, others
+        for cnt, dt in enumerate(l_dt):
+            if target_dt + err_dur <= dt:
+                # No other (almost) same dt
+                return l_dt[:cnt], l_dt[cnt:]
+        else:
+            # all dt in l_dt are (almost) same
+            return l_dt, []
+
+
+    def _has_adjacent(target_dt, l_dt, max_dur, min_dur):
+        for cnt, dt in enumerate(l_dt):
+            if target_dt + max_dur < dt:
+                # No adjacent timestamp
+                return None
+            elif target_dt + min_dur <= dt:
+                # Adjacent timestamp found
+                return cnt
+            else:
+                # Search continues
+                pass
+        else:
+            # No adjacent timestamp
+            return None
+
+    ret = []
+    err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
+    max_dur = dur + err_dur
+    min_dur = dur - err_dur
+
+    remain_dt = sorted(data)
+    while True:
+        l_dt = remain_dt
+        length = len(l_dt)
+        seq = []
+        remain_dt = []
+        while len(l_dt) > 0:
+            target_dt = l_dt.pop(0)
+            adj = _has_adjacent(target_dt, l_dt, max_dur, min_dur)
+            if adj is None:
+                if len(seq) == 0:
+                    # No adjacent dt with target_dt
+                    remain_dt.append(target_dt)
+                else:
+                    # No other adjacent members of this seq
+                    seq.append(target_dt)
+                    l_same, l_others = _separate_same(target_dt, l_dt, err_dur)
+                    seq += l_same
+                    remain_dt += l_others
+                    break
+            else:
+                seq.append(target_dt)
+                cand = l_dt[:adj]
+                    # Candidate of same dt (no adjacent dt in cand)
+                l_same, l_others = _separate_same(target_dt, cand, err_dur)
+                seq += l_same
+                remain_dt += l_others
+                l_dt = l_dt[adj:]
         
+        assert len(seq) + len(remain_dt) == length
+        if len(seq) == 0:
+            break
+        else:
+            ret.append(seq)
+
+    return ret, remain_dt
+
+
+def separate_periodic(data, dur, err):
+    """Separate periodic components from a sequence of timestamps that do not
+    allow duplication of timestamps in 1 periodic sequence. 
+
+    Args:
+        data (List[datetime.datetime]): A sequence of timestamps
+            to be classified into periodic and non-periodic timestamps.
+        dur (datetime.timedelta): Duration of periodicity.
+        err (float): Allowed error of periodicity duration.
+
+    Returns:
+        List[List[datetime.datetime]]: A set of sequences
+            of periodic timestamps.
+        List[datetime.datetime]: A set of timestamps that do not belong to
+            periodic timestamp sequences.
+    
+    """
+    def _adjacents(target_dt, l_dt, max_dur, min_dur):
+        top_id = None; end_id = None
+        for cnt, dt in enumerate(l_dt):
+            if target_dt + max_dur < dt:
+                end_id = cnt
+                break
+            elif (target_dt + min_dur <= dt) and (top_id is None):
+                top_id = cnt
+            else:
+                pass
+        if top_id is None:
+            return []
+        elif end_id is None:
+            return list(enumerate(l_dt))[top_id:]
+        else:
+            return list(enumerate(l_dt))[top_id:end_id]
+
+    def _adj_small_err(target_dt, l_adj, dur):
+        if len(l_adj) == 1:
+            return l_adj[0][0]
+        else:
+            return min(l_adj, key = lambda x: abs(
+                (target_dt + dur - x[1]).total_seconds()))[0]
+
+    ret = []
+    err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
+    max_dur = dur + err_dur
+    min_dur = dur - err_dur
+
+    remain_dt = sorted(data)
+    while True:
+        l_dt = remain_dt
+        length = len(l_dt)
+        seq = []
+        remain_dt = []
+        while len(l_dt) > 0:
+            target_dt = l_dt.pop(0)
+            l_adj = _adjacents(target_dt, l_dt, max_dur, min_dur)
+            if len(l_adj) == 0:
+                if len(seq) == 0:
+                    # No adjacent dt with target_dt
+                    remain_dt.append(target_dt)
+                else:
+                    # No other adjacent members of this seq
+                    seq.append(target_dt)
+                    remain_dt += l_dt
+                    break
+            else:            
+                seq.append(target_dt)
+                adj = _adj_small_err(target_dt, l_adj, dur)
+                remain_dt += l_dt[:adj]
+                l_dt = l_dt[adj:]
+
+        assert len(seq) + len(remain_dt) == length
+        if len(seq) == 0:
+            break
+        else:
+            ret.append(seq)
+
+    return ret, remain_dt
+
+
+def test_separate_periodic():
+    test_data = [
+            "2112-07-16 00:00:00",
+            "2112-07-16 00:00:00",
+            "2112-07-16 00:00:01",
+            "2112-07-16 00:57:18",
+            "2112-07-16 01:57:18",
+            "2112-07-16 02:57:17",
+            "2112-07-16 02:57:18",
+            "2112-07-16 03:57:18",
+            "2112-07-16 04:57:18",
+            "2112-07-16 15:17:01",
+            "2112-07-16 16:17:01",
+            "2112-07-16 18:17:01",
+            "2112-07-16 19:17:01",
+            "2112-07-16 20:17:01",
+            "2112-07-16 20:17:01",
+            "2112-07-16 20:17:02",
+            "2112-07-16 20:17:21",
+            "2112-07-16 20:18:00",
+            "2112-07-16 21:17:01",
+            "2112-07-16 22:17:01",
+            "2112-07-16 23:17:01",
+            "2112-07-17 00:00:00",
+            "2112-07-17 00:00:04"]
+    data = [datetime.datetime.strptime(i, '%Y-%m-%d %H:%M:%S')
+            for i in test_data]
+    dur = datetime.timedelta(hours = 1)
+    err = 0.01 # 1hour -> err 36sec
+    l_seq, remain_dt = separate_periodic(data, dur, err)
+    #l_seq, remain_dt = separate_periodic_dup(data, dur, err)
+    for cnt, seq in enumerate(l_seq):
+        print "sequence", cnt
+        for dt in seq:
+            print dt
+        print
+    print("remains")
+    for dt in remain_dt:
+        print dt
+
+
+if __name__ == "__main__":
+    test_separate_periodic()
 
 

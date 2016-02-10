@@ -67,7 +67,7 @@ def _str_lt(ltid):
 
 
 def merge_ltid(ld, ltid1, ltid2, sym):
-    ld.set_ltm()
+    ld.init_ltmanager()
     print("merge following log templates...")
     print _str_lt(ltid1)
     print _str_lt(ltid2)
@@ -110,7 +110,7 @@ def separate_ltid(ld, ltid, vid, value, sym):
         print 
         return new_lt, cnt
 
-    ld.set_ltm()
+    ld.init_ltmanager()
     print("separate following log template...")
     print _str_lt(ltid)
     print("new log template if variable {0} is {1}".format(vid, value))
@@ -164,7 +164,7 @@ args:
     mode = args[0]
     conf = config.open_config(options.conf)
 
-    ld = log_db.LogData(conf)
+    ld = log_db.LogData(conf, edit = True)
     if mode == "export":
         export(ld)
     elif mode == "show":

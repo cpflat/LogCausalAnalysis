@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""
+Construct and manage database of log messages, templates,
+and grouping definitions.
+"""
+
 import sys
 import os
 import datetime
@@ -17,8 +22,30 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 class LogMessage():
+    """An annotated log message.
+    
+    An instance have information of a log message line,
+    including timestamp, hostname, log template, and message contents.
 
+    Attributes:
+        lid (int): A message identifier in DB.
+        lt (lt_common.LogTemplate): Log template of this message.
+        dt (datetime.datetime): A timestamp for this message.
+        host (str): A hostname that output this message.
+        l_w (List(str)): A sequence of words in this message.
+
+    """
+    
     def __init__(self, lid, lt, dt, host, l_w):
+        """
+        Args:
+            lid (int): A message identifier in DB.
+            lt (lt_common.LogTemplate): Log template of this message.
+            dt (datetime.datetime): A timestamp for this message.
+            host (str): A hostname that output this message.
+            l_w (List(str)): A sequence of words in this message.
+
+        """
         self.lid = lid
         self.lt = lt
         self.dt = dt
@@ -26,53 +53,102 @@ class LogMessage():
         self.l_w = l_w
 
     def __str__(self):
+        """str: Show attributes in 1 string."""
         return " ".join((str(self.dt), self.host, str(self.lt.ltid),\
                 str(self.l_w)))
 
     def var(self):
+        """str: Get sequence of all variable words in this message.
+        Variable words are presented with mask (defaults **) in log template.
+        """
         return self.lt.var(self.l_w)
 
     def restore_message(self):
-        # restore original log message without header
+        """str: Get pseudo original log message
+        including headers (timestamp and hostname).
+        """
         return self.lt.restore_message(self.l_w)
 
     def restore_line(self):
-        # restore original log message with header (dt, host)
+        """str: Get original log message contents
+        except headers (timestamp and hostname).
+        """
         return " ".join((str(self.dt), str(self.host),
                 self.restore_message()))
 
 
 class LogData():
 
-    def __init__(self, conf, reset_db = False):
+    """Interface to get, add or edit log messages in DB.
+
+    Attributes:
+        conf (config.ExtendedConfigParser): A common configuration object.
+        table (lt_common.LTTable): Log template table object.
+        db (LogDB): Log database instance.
+        ltm (lt_common.LTManager): Log template classifier object.
+    """
+
+    def __init__(self, conf, edit = False, reset_db = False):
+        """
+        Args:
+            conf (config.ExtendedConfigParser): A common configuration object.
+            edit (Optional[bool]): Defaults to False.
+                True if database will be added or edited.
+                False if database is used in readonly mode.
+            reset_db (Optional[bool]): Defaults to False.
+                If True, database will be reset before following process.
+
+        """
         self.conf = conf
-        self.reset_db = reset_db
+        self._reset_db = reset_db
         sym = conf.get("log_template", "variable_symbol")
         self.table = lt_common.LTTable(sym) # lt_common.LTTable
-        self.db = LogDB(conf, self.table, reset_db) # log_db.LogDB
+        self.db = LogDB(conf, self.table, edit, reset_db) # log_db.LogDB
         self.ltm = None # lt_common.LTManager
 
-    def set_ltm(self):
+    def init_ltmanager(self):
+        """Initialize log template classifier object.
+        Call this before adding new log message in original
+        plain string format (not classified with log template) to DB.
+        """
         lt_alg = self.conf.get("log_template", "lt_alg")
         ltg_alg = self.conf.get("log_template", "ltgroup_alg")
         # ltg_alg : used in lt_common.LTManager._init_ltgroup
         if lt_alg == "shiso":
             import lt_shiso
             self.ltm = lt_shiso.LTManager(self.conf, self.db, self.table,
-                    self.reset_db, ltg_alg)
+                    self._reset_db, ltg_alg)
         elif lt_alg == "va":
             import lt_va
             self.ltm = lt_va.LTManager(self.conf, self.db, self.table,
-                    self.reset_db, ltg_alg)
+                    self._reset_db, ltg_alg)
         elif lt_alg == "import":
             import lt_import
             self.ltm = lt_import.LTManager(self.conf, self.db, self.table,
-                    self.reset_db, ltg_alg)
+                    self._reset_db, ltg_alg)
         else:
             raise ValueError("lt_alg({0}) invalid".format(lt_alg))
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):
+        """Generate log messages in DB that satisfy conditions
+        given in arguments. All arguments are defaults to None, and ignored.
+
+        Args:
+            lid (Optional[int]): A message identifier in DB.
+            ltid (Optional[int]): A log template identifier.
+            ltgid (Optional[int]): A log template grouping identifier.
+            top_dt (Optional[datetime.datetime]): Condition for timestamp.
+                Messages output after 'top_dt' will be yield.
+            end_dt (Optional[datetime.datetime]): Condition for timestamp.
+                Messages output before 'end_dt' will be yield.
+            host (Optional[str]): A source hostname of the message.
+            area (Optional[str]): An area name of source hostname.
+
+        Yields:
+            LogMessage: An annotated log message instance
+                which satisfies all given conditions.
+        """
         if area == "all":
             area = None
         return self.db.iter_lines(lid = lid, ltid = ltid, ltgid = ltgid,
@@ -80,7 +156,26 @@ class LogData():
 
     def show_log_repr(self, limit = None, ltid = None, ltgid = None,
             top_dt = None, end_dt = None, host = None, area = None):
+        """Show representative log messages in DB
+        that satisfy conditions given in arguments.
+        Arguments except 'limit' are defaults to None, and ignored.
+        Results will be shown in Standard Output.
 
+        Args:
+            limit (Optional[int]): A number of messages to show.
+                Defaults to None, and then all messages satisfying conditions
+                will be output. (not recommended)
+            lid (Optional[int]): A message identifier in DB.
+            ltid (Optional[int]): A log template identifier.
+            ltgid (Optional[int]): A log template grouping identifier.
+            top_dt (Optional[datetime.datetime]): Condition for timestamp.
+                Messages output after 'top_dt' will be yield.
+            end_dt (Optional[datetime.datetime]): Condition for timestamp.
+                Messages output before 'end_dt' will be yield.
+            host (Optional[str]): A source hostname of the message.
+            area (Optional[str]): An area name of source hostname.
+
+        """
         buf = []
         cnt = 0
         limit_flag = False
@@ -100,12 +195,18 @@ class LogData():
         print "\n".join(buf)
 
     def count_lines(self):
+        """int: Number of all messages in DB."""
         return self.db.count_lines()
 
     def dt_term(self):
+        """datetime.datetime, datetime.datetime:
+            Period of all registered log messages in DB."""
         return self.db.dt_term()
 
     def whole_term(self):
+        """datetime.datetime, datetime.datetime:
+            Period of dates that include all log messages in DB.
+        """
         # return date term that cover all log data
         top_dt, end_dt = self.db.dt_term()
         top_dt = datetime.datetime.combine(top_dt.date(), datetime.time())
@@ -114,28 +215,61 @@ class LogData():
         return top_dt, end_dt
 
     def whole_host(self, top_dt = None, end_dt = None):
+        """List[str]: Sequence of all source hostname in DB."""
         return self.db.whole_host(top_dt = top_dt, end_dt = end_dt)
 
     def count_lt(self):
+        """int: Number of all log templates."""
         return self.db.count_lt()
 
     def count_ltg(self):
+        """int: Number of all log template groups."""
         return self.db.count_ltg()
 
     def iter_lt(self):
+        """Yields lt_common.LogTemplate: All log template instance in DB."""
         for ltline in self.table:
             yield ltline
 
     def lt(self, ltid):
+        """Get log template instance of given log template identifier.
+
+        Args:
+            ltid (int): A log template identifier.
+
+        Returns:
+            lt_common.LogTemplate: A log template instance.
+
+        """
         return self.table[ltid]
 
     def iter_ltgid(self):
+        """Yields int: Get all identifiers of log template groups."""
         return self.db.iter_ltgid()
 
     def ltg_members(self, ltgid):
+        """Get all log templates in given log template group.
+        
+        Args:
+            ltgid (int): A log template group identifier.
+
+        Returns:
+            List[lt_common.LogTemplates]: Sequence of all log template
+                instances that belongs to given log template group.
+        
+        """
         return [self.table[ltid] for ltid in self.db.get_ltg_members(ltgid)]
 
     def host_area(self, host):
+        """Get area names that given host belongs to.
+        
+        Args:
+            host (str): A hostname.
+
+        Returns:
+            List[str]: A sequence of area names that given host belongs to.
+
+        """
         return self.db.host_area(host)
 
     @staticmethod
@@ -144,12 +278,24 @@ class LogData():
                 str(ltline), "({0})".format(ltline.cnt)))
 
     def show_all_lt(self):
+        """Show all log templates. Log template identifier
+        and its template message will be output.
+
+        Returns:
+            str: Output message buffer.
+        """
         buf = []
         for ltline in self.table:
             buf.append(self._str_ltline(ltline))
         return "\n".join(buf)
 
     def show_all_ltgroup(self):
+        """Show all log template groups. Log template grouping identifier
+        and its template candidates will be output.
+
+        Returns:
+            str: Output message buffer.
+        """
         if self.db.count_ltg() == 0:
             self.show_all_lt()
         else:
@@ -159,6 +305,11 @@ class LogData():
             return "\n".join(buf)
 
     def show_ltgroup(self, gid):
+        """Show log template groups.
+
+        Returns:
+            str: Output message buffer.
+        """
         buf = []
         l_ltid = self.db.get_ltg_members(gid)
         length = len(l_ltid)
@@ -171,6 +322,17 @@ class LogData():
         return "\n".join(buf)
 
     def add_line(self, ltid, dt, host, l_w):
+        """Add a log message to DB.
+
+        Args:
+            ltid (int): A log template identifier.
+            dt (datetime.datetime): A timestamp.
+            host (str): A source hostname of log message.
+            l_w (List[str]): A sequence of log message contents.
+
+        Returns:
+            LogMessage: An annotated log message instance.
+        """
         self.db.add_line(ltid, dt, host, l_w)
         return LogMessage(ltid, self.table[ltid], dt, host, l_w)
 
@@ -178,14 +340,22 @@ class LogData():
         self.db._init_area()
 
     def commit_db(self):
+        """Commit requested changes in LogDB.
+        """
         self.db.commit()
         if self.ltm is not None:
             self.ltm.dump()
 
 
 class LogDB():
+    """Interface of DB transaction for log data.
+    
+    Note:
+        It is not recommended to use this class directly.
+        Instead, use LogData.
+    """
 
-    def __init__(self, conf, table, reset_db):
+    def __init__(self, conf, table, edit, reset_db):
         self.table = table
         self.line_cnt = 0
         self.db_type = conf.get("database", "database")
@@ -208,17 +378,27 @@ class LogDB():
             raise ValueError("invalid database type ({0})".format(
                     self.db_type))
 
-        if self.db.db_exists():
-            if reset_db == True:
-                self.db.reset()
+        if edit:
+            if self.db.db_exists():
+                if reset_db == True:
+                    self.db.reset()
+                    self._init_tables()
+                    self._init_area()
+                else:
+                    self.line_cnt = self.count_lines()
+                    self._init_lttable()
+            else:
+                if reset_db == True:
+                    _logger.warning(
+                            "Requested to reset DB, but database not found")
                 self._init_tables()
                 self._init_area()
-            else:
+        else: 
+            if self.db.db_exists():
                 self.line_cnt = self.count_lines()
                 self._init_lttable()
-        else:
-            self._init_tables()
-            self._init_area()
+            else:
+                raise IOError("database not found")
 
     def _init_tables(self):
         # init table log
@@ -299,6 +479,7 @@ class LogDB():
         l_ss = [db_common.setstate(k, k) for k in d_val.keys()]
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, d_val)
+        
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):
@@ -588,18 +769,56 @@ class LogDB():
         return [row[0] for row in cursor]
 
 
-def process_files(conf, targets, initflag, diff = False):
-    # Adding log data to DB
-    # conf : config.ExtendedConfigParser
-    # targets : filename of log data to add
-    # initflag : If True, initialize DB before adding data
-    # diff : Only add newer log data than latest log in DB
+def process_line(conf, msg, ld, lp, isnew_check = False, latest = None):
+    """Add given log message to DB.
+    
+    Args:
+        conf (config.ExtendedConfigParser): A common configuration object.
+        msg (str): A log message to process.
+            Line feed code will be ignored.
+        ld (LogData): An log database interface opened in edit mode.
+            Needs to initialize template classifier with ld.init_ltmanager.
+        lp (logparser.LogParser): An open message parser.
+        latest (Optional[datetime.datetime]): If not None,
+            Ignore messages that have later timestamp than 'latest'.
 
+    Returns:
+        LogMessage: An annotated log message instance.
+            Same as lines given with LogData.iterlines.
+    """
+    line = None
+
+    dt, host, l_w, l_s = lp.process_line(msg)
+    if latest is not None and dt < latest: return None
+    if l_w is None: return None
+
+    ltline = ld.ltm.process_line(l_w, l_s)
+    if ltline is None:
+        _logger.warning("Log template not found " + \
+                "for message [{0}]".format(line))
+    else:
+        line = ld.add_line(ltline.ltid, dt, host, l_w)
+    return line
+
+
+def process_files(conf, targets, reset_db, isnew_check = False):
+    """Add log messages to DB from files.
+
+    Args:
+        conf (config.ExtendedConfigParser): A common configuration object.
+        targets (List[str]): A sequence of filepaths to process.
+        reset_db (bool): True if DB needs to reset before adding,
+            False otherwise. 
+        isnew_check (Optional[bool]): If True, add message to DB
+            only if its timestamp is newest of existing messages in DB.
+
+    Raises:
+        IOError: If a file in targets not found.
+    """
     lp = logparser.LogParser(conf)
-    ld = LogData(conf, initflag)
-    ld.set_ltm()
-    if diff:
-        latest = ld.dt_term()[1]
+    ld = LogData(conf, edit = True, reset_db = reset_db)
+    ld.init_ltmanager()
+    latest = ld.dt_term()[1] if isnew_check else None
 
     start_dt = datetime.datetime.now()
     _logger.info("log_db task start")
@@ -611,25 +830,26 @@ def process_files(conf, targets, initflag, diff = False):
             sys.stderr.write(
                     "Use -r if you need to search log data recursively\n")
         else:
+            if not os.path.isfile(fp):
+                raise IOError("File {0} not found".format(fp))
             with open(fp, 'r') as f:
                 _logger.info("log_db processing {0}".format(fp))
                 for line in f:
-                    dt, host, l_w, l_s = lp.process_line(line)
-                    if diff and dt < latest: continue
-                    if l_w is None: continue
-                    ltline = ld.ltm.process_line(l_w, l_s)
-                    if ltline is None:
-                        _logger.warning("Log template not found " + \
-                                "for message [{0}]".format(line))
-                    else:
-                        ld.add_line(ltline.ltid, dt, host, l_w)
+                    process_line(conf, line, ld, lp, isnew_check, latest)
     ld.commit_db()
-    
+
     end_dt = datetime.datetime.now()
     _logger.info("log_db task done ({0})".format(end_dt - start_dt))
 
 
 def info(conf):
+    """Show abstruction of log messages registered in DB.
+
+    Args:
+        conf (config.ExtendedConfigParser): A common configuration object.
+
+    """
+
     ld = LogData(conf)
     print("[DB status]")
     print("Registered log lines : {0}".format(ld.count_lines()))
@@ -640,15 +860,15 @@ def info(conf):
 
 
 def migrate(conf):
-    ld = LogData(conf)
+    ld = LogData(conf, edit = True)
     ld.db._init_index()
     ld.update_area()
     ld.commit_db()
     
 
 def remake_ltgroup(conf):
-    ld = LogData(conf)
-    ld.set_ltm()
+    ld = LogData(conf, edit = True)
+    ld.init_ltmanager()
     
     start_dt = datetime.datetime.now()
     _logger.info("log_db remake_ltg task start")
@@ -661,7 +881,8 @@ def remake_ltgroup(conf):
 
 
 def remake_area(conf):
-    ld = LogData(conf)
+    ld = LogData(conf, edit = True)
+    ld.init_ltmanager()
     ld.update_area()
     ld.commit_db()
 
