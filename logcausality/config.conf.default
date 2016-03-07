@@ -183,22 +183,22 @@ threshold = 0.01
 # Found DAG object data
 output_dir = pc_output
 
-# Filtering rules to remove unnecessary events before generating causality graph
-use_filter = 
+# Filtering redundant events with periodicity test before generating causality graph
+usefilter = false
+
+## use_filter : outdated
 
 
 [filter]
 # Filters for log events
 # [file, periodic, self-corr, periodic-whole] is available
-# file : Filtering IDs given in filter file
 # periodic : Filtering events that appear with stable interval
 # self-corr : Filtering events that have high self-correlation coefficient
 # periodic-whole : 'periodic' with the interval calculated with 'self-corr'
 
-# Filter filenames to use in filter option 'file'
-# For example:
-# use_filter = filter.txt, filter2.txt
-filter_name = 
+# Action to apply for periodic events
+# [remove, (to be added)]
+action = remove
 
 # Temporal filter filename for 'periodic-whole'
 # Automatically made and removed if process successfully works
@@ -228,6 +228,13 @@ self_corr_diff = 1h, 1d
 
 # Bin size to discretize event appearance data in calculating self-correlation
 self_corr_bin = 10s
+
+# Allowed error rate of periodic sequence extraction in event replacement
+seq_error = 0.01
+
+# If true, allow duplication in separating periodic event sequences
+# in event replacement
+seq_duplication = false
 
 
 [visual]

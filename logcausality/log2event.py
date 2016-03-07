@@ -9,6 +9,27 @@ import log_db
 import evfilter
 
 
+#class EventDefinition(object):
+#
+#
+#class VirtualEventDefinition(EventDefinition):
+#
+#
+#
+#class EventDefinitionMap():
+#
+#    def __init__(self, evdef_style):
+#        """
+#        Args:
+#            evdef (str): one of [ltgid-host, ltid-host].
+#
+#        """
+#        self.evdef_style = evdef_style
+#        self.emap = {} # key : eid, val : eventdef
+#
+#
+##TODO
+#
 class LogEventIDMap():
 
     def __init__(self):
@@ -102,18 +123,36 @@ def log2event(conf, top_dt, end_dt, area):
 
 
 def filter_edict(conf, edict, evmap):
-    l_filter = conf.gettuple("dag", "use_filter")
-    if len(l_filter) == 0:
-        return edict, evmap
-    l_eid = evfilter.filtered(conf, edict, evmap, l_filter)
+    l_result = evfilter.periodic_events(conf, edict, evmap)
 
     temp_edict = edict.copy()
     temp_evmap = _copy_evmap(evmap)
-    for eid in l_eid:
+    for eid, interval in l_result:
         temp_edict.pop(eid)
         temp_evmap.pop(eid)
     return _remap_eid(temp_edict, temp_evmap)
 
+
+#def replace_edict(conf, edict, evmap):
+#    l_filter = conf.gettuple("dag", "use_filter")
+#    if len(l_filter) == 0:
+#        return edict, evmap
+#    l_result = evfilter.periodic_events(conf, edict, evmap, l_filter)
+#
+#    err = conf.get("filter", "seq_error")
+#    dup = conf.get("filter", "seq_duplication") 
+#
+#    temp_edict = edict.copy()
+#    temp_evmap = _copy_evmap(evmap)
+#    for eid, interval in l_result:
+#        l_dt = edict[eid]
+#        if dup:
+#            l_pe, npe = separate_periodic_dup(l_dt, interval, err)
+#        else:
+#            l_pe, npe = separate_periodic(l_dt, interval, err)
+#        
+#
+#    #TODO
 
 def _remap_eid(edict, evmap):
     new_eid = 0

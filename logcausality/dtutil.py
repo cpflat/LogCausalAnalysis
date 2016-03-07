@@ -166,7 +166,7 @@ def separate_periodic(data, dur, err):
     Returns:
         List[List[datetime.datetime]]: A set of sequences
             of periodic timestamps.
-        List[datetime.datetime]: A set of timestamps that do not belong to
+        List[datetime.datetime]: A set of timestamps that does not belong to
             periodic timestamp sequences.
     
     """

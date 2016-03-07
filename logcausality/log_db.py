@@ -710,7 +710,7 @@ class LogDB():
         l_key = ["max(ltgid)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
-        return int(cursor.fetchone()[0])
+        return int(cursor.fetchone()[0]) + 1
 
     def iter_ltg_def(self):
         table_name = "ltg"
@@ -770,7 +770,7 @@ class LogDB():
 
 
 def process_line(conf, msg, ld, lp, isnew_check = False, latest = None):
-    """Add given log message to DB.
+    """Add a log message to DB.
     
     Args:
         conf (config.ExtendedConfigParser): A common configuration object.
@@ -859,6 +859,11 @@ def info(conf):
     print("Hosts : {0}".format(len(ld.whole_host())))
 
 
+def show_lt(conf):
+    ld = LogData(conf)
+    print ld.show_all_ltgroup()
+
+
 def migrate(conf):
     ld = LogData(conf, edit = True)
     ld.db._init_index()
@@ -897,6 +902,7 @@ args:
   add FILES : add all log data in FILES to existing DB
   update FILES : add newer log data found in FILES to existing DB
   info : show abstruction of DB status
+  show-lt : show all log templates in DB
   remake-area : reconstruct area definiton of hosts in DB
   remake-ltgroup : Remake ltgroup definition for existing log templates.
                    Ltgroups made with this process will be usually
@@ -951,6 +957,8 @@ args:
         process_files(conf, targets, False, diff = True)
     elif mode == "info":
         info(conf)
+    elif mode == "show-lt":
+        show_lt(conf)
     elif mode == "remake-area":
         remake_area(conf)
     elif mode == "remake-ltgroup":
