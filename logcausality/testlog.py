@@ -23,7 +23,7 @@ class TestLogGenerator():
         else:
             random.seed(SEED)
 
-        self.conf = config.ExtendedConfigParser(noopterror = False)
+        self.conf = config.ExtendedConfigParser()
         self.conf.read(conf_fn)
         self.term = self.conf.getterm("main", "term")
         self.top_dt, self.end_dt = self.term
