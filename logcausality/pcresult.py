@@ -82,14 +82,14 @@ class PCOutput():
         return self.filename.rpartition("/")[-1]
 
     def _print_lt(self, eid, header = "lt"):
-        ltgid, host = self.evmap.info(eid)
+        info = self.evmap.info(eid)
         print("{0}>")
         print("\n ".join(
-            [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
+            [str(ltline) for ltline in self.ld.ltg_members(info.ltgid)]))
 
     def _print_edge(self, edge, label):
-        src_ltgid, src_host = self.evmap.info(edge[0])
-        dst_ltgid, dst_host = self.evmap.info(edge[1])
+        src_info = self.evmap.info(edge[0])
+        dst_info = self.evmap.info(edge[1])
         if label == "directed":
             arrow = "->"
         elif label == "undirected":
@@ -97,17 +97,18 @@ class PCOutput():
         else:
             raise ValueError
         print("{0} [{1}] ({2}) {6} {3}[{4}] ({5})".format(
-                src_ltgid, self._label_ltg(src_ltgid), src_host, 
-                dst_ltgid, self._label_ltg(dst_ltgid), dst_host,
+                src_info.ltgid, self._label_ltg(src_info.ltgid), src_info.host, 
+                dst_info.ltgid, self._label_ltg(dst_info.ltgid), dst_info.host,
                 arrow))
     
     def _print_edge_lt(self, edge):
         for eid, header in zip(edge, ("src", "dst")):
-            ltgid, host = self.evmap.info(eid)
+            info = self.evmap.info(eid)
             print("{0}> ltgid {1} [label {2}] (host {3})".format(
-                    header, ltgid, self._label_ltg(ltgid), host))
+                    header, info.ltgid,
+                    self._label_ltg(info.ltgid), info.host))
             print("\n".join(
-                [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
+                [str(ltline) for ltline in self.ld.ltg_members(info.ltgid)]))
             print
     
     def _print_edge_detail(self, edge, limit = None):
@@ -119,10 +120,12 @@ class PCOutput():
             area = self.area
         
         for eid, header in zip(edge, ("src", "dst")):
-            ltgid, host = self.evmap.info(eid)
-            print("{0}> ltgid {1} (host {2})".format(header, ltgid, host))
-            self.ld.show_log_repr(limit, None, ltgid,
-                    self.top_dt, self.end_dt, host, area)
+            info = self.evmap.info(eid)
+            print("{0}> ltgid {1} (host {2})".format(header,
+                    info.ltgid, info.host))
+            self.ld.show_log_repr(head = limit, ltgid = info.ltgid,
+                    top_dt = self.top_dt, end_dt = self.end_dt,
+                    host = info.host, area = area)
         print
 
     def print_env(self):
@@ -183,7 +186,7 @@ class PCOutput():
         return tuple(self._node_info(node) for node in edge)
 
     def _has_node(self, info):
-        return self.evmap.ermap.has_key(info)
+        return self.evmap.has_info(info)
 
     def _node_id(self, info):
         # return node id of given labeled information

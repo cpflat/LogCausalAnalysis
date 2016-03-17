@@ -24,7 +24,7 @@ class CompareVariable():
         self.d_result = None
 
     def add(self, line):
-        eid = self.evmap.eid(line)
+        eid = self.evmap.process_line(line)
         for vid, var in enumerate(line.var()):
             self._add_var(eid, line.lt.ltid, vid, var)
 

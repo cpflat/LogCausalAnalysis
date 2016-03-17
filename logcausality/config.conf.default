@@ -153,6 +153,9 @@ ltgroup_mem_ngram = true
 
 
 [dag]
+# IDs for grouping criterion of log messages to define DAG node
+# [ltgid, ltid] is available
+event_gid = ltgid
 
 # Target term of log messages to construct DAG
 # Divided into unit terms by "default_term" before processing
@@ -236,6 +239,11 @@ seq_error = 0.01
 # in event replacement
 seq_duplication = false
 
+# if filter.action = replace, add virtual event on the start of periodic appearance
+replace_top = true
+
+# if filter.action = replace, add virtual event on the end of periodic appearance
+replace_end = true
 
 [visual]
 

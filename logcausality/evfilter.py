@@ -190,12 +190,12 @@ def init_evfilter(conf, verbose = False):
     # construct filter object
     corr_diff = corr_diff + new_corr_diff
     for eid, l_dt in edict.iteritems():
-        ltgid, host = evmap.info(eid)
+        info = evmap.info(eid)
         dur, corr = self_correlation(l_dt, corr_diff, corr_bin)
-        evf.add(ltgid, host, dur, corr)
+        evf.add(info.gid, info.host, dur, corr)
         if verbose:
-            print("event [ltgid {0}, host {1}] : {2}".format(
-                    ltgid, host, corr))
+            print("event [{0} {1}, host {2}] : {3}".format(
+                    evmap.gid_name, info.gid, info.host, corr))
 
     evf.dump()
     _logger.info("initializing evfilter done")
@@ -226,9 +226,9 @@ def periodic_events(conf, edict, evmap):
     per_term = conf.getdur("filter", "periodic_term")
     for eid, l_dt in edict.iteritems():
         if periodic_term(l_dt, per_count, per_term):
-            ltgid, host = evmap.info(eid)
-            if pf.filtered(ltgid, host, corr_th):
-                interval = pf.interval(ltgid, host)
+            info = evmap.info(eid)
+            if pf.filtered(info.gid, info.host, corr_th):
+                interval = pf.interval(info.gid, info.host)
                 ret.append((eid, interval))
     return ret
 
@@ -262,7 +262,9 @@ def periodic_events(conf, edict, evmap):
 #        #        continue
 #        if periodic_term(l_dt, per_count, per_term):
 #            if "periodic-whole" in l_filter:
-#                ltgid, host = evmap.info(eid)
+#                info = evmap.info(eid)
+#                ltgid = info.ltgid
+#                host = info.host
 #                if pf.filtered(ltgid, host, corr_th):
 #                    interval = pf.interval(ltgid, host)
 #                    result.append((interval, eid))
@@ -400,11 +402,12 @@ def test_filter(conf, area = "all", limit = 10):
         s_eid = set()
         edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
         for eid, l_dt in edict.iteritems():
-            ltgid, host = evmap.info(eid)
+            info = evmap.info(eid)
             print("Event {0} : ltgid {1} in host {2} ({3})".format(eid,
-                    ltgid, host, len(l_dt)))
-            ld.show_log_repr(limit = limit, ltgid = ltgid,
-                    top_dt = top_dt, end_dt = end_dt, host = host, area = area)
+                    info.ltgid, info.host, len(l_dt)))
+            print ld.show_log_repr(head = limit, ltgid = info.ltgid,
+                    top_dt = top_dt, end_dt = end_dt,
+                    host = info.host, area = area)
             #if "file" in l_filter:
             #    if ff.isremoved(eid):
             #        print("found in definition file, removed")

@@ -57,6 +57,19 @@ class LogMessage():
         return " ".join((str(self.dt), self.host, str(self.lt.ltid),\
                 str(self.l_w)))
 
+    def get(self, name):
+        """Return value for given attribute."""
+        if name == "lid":
+            return self.lid
+        elif name == "ltid":
+            return self.lt.ltid
+        elif name == "ltgid":
+            return self.lt.ltgid
+        elif name == "host":
+            return self.host
+        else:
+            raise NotImplementedError
+
     def var(self):
         """str: Get sequence of all variable words in this message.
         Variable words are presented with mask (defaults **) in log template.
@@ -154,7 +167,8 @@ class LogData():
         return self.db.iter_lines(lid = lid, ltid = ltid, ltgid = ltgid,
                 top_dt = top_dt, end_dt = end_dt, host = host, area = area)
 
-    def show_log_repr(self, limit = None, ltid = None, ltgid = None,
+    def show_log_repr(self, head = 0, foot = 0,
+            ltid = None, ltgid = None,
             top_dt = None, end_dt = None, host = None, area = None):
         """Show representative log messages in DB
         that satisfy conditions given in arguments.
@@ -162,37 +176,34 @@ class LogData():
         Results will be shown in Standard Output.
 
         Args:
-            limit (Optional[int]): A number of messages to show.
-                Defaults to None, and then all messages satisfying conditions
-                will be output. (not recommended)
+            head (Optional[int]): Show leading lines of log messages.
+            foot (Optional[int]): Show trailing lines of log messages.
+                if both head and foot are 0, all lines are shown.
             lid (Optional[int]): A message identifier in DB.
             ltid (Optional[int]): A log template identifier.
             ltgid (Optional[int]): A log template grouping identifier.
             top_dt (Optional[datetime.datetime]): Condition for timestamp.
-                Messages output after 'top_dt' will be yield.
+                Messages output after 'top_dt' will be yielded.
             end_dt (Optional[datetime.datetime]): Condition for timestamp.
-                Messages output before 'end_dt' will be yield.
+                Messages output before 'end_dt' will be yielded.
             host (Optional[str]): A source hostname of the message.
             area (Optional[str]): An area name of source hostname.
-
         """
-        buf = []
-        cnt = 0
-        limit_flag = False
-        for line in self.iter_lines(lid = None, ltid = ltid, ltgid = ltgid,
-                top_dt = top_dt, end_dt = end_dt, host = host, area = area):
-            if limit is not None and cnt >= limit:
-                limit_flag = True
-            else:
-                buf.append(line.restore_line())
-            cnt += 1
+        l_line = [line for line in self.iter_lines(lid = None,
+            ltid = ltid, ltgid = ltgid, top_dt = top_dt, end_dt = end_dt,
+            host = host, area = area)]
+        if (head <= 0 and foot <= 0) or \
+                (len(l_line) <= head + foot):
+            buf = [line.restore_line() for line in l_line]
         else:
-            length = cnt
-        if limit_flag:
-            buf.append("... ({0})".format(length))
-        else:
-            buf.append("({0})".format(length))
-        print "\n".join(buf)
+            buf = []
+            if head > 0:
+                buf += [line.restore_line() for line in l_line[:head]]
+            buf += ["..."]
+            if foot > 0:
+                buf += [line.restore_line() for line in l_line[-foot:]]
+            buf.append("({0})".format(len(l_line)))
+        return "\n".join(buf)
 
     def count_lines(self):
         """int: Number of all messages in DB."""

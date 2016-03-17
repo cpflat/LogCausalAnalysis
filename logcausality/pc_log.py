@@ -32,7 +32,8 @@ def pc_log(conf, top_dt, end_dt, dur, area):
         if act == "remove":
             edict, evmap = log2event.filter_edict(conf, edict, evmap)
         elif act == "replace":
-            raise NotImplementedError
+            edict, evmap = log2event.replace_edict(conf, edict, evmap,
+                    top_dt, end_dt)
         else:
             raise NotImplementedError
 
