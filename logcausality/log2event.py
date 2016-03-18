@@ -137,7 +137,7 @@ class EventDefinitionMap():
 
     def info_repr(self, ld, eid, limit = 5):
         info = self._emap[eid]
-        d = {"limit" : limit, "head" : True, "foot" : True,
+        d = {"head" : limit, "foot" : limit,
                 "top_dt" : self.top_dt, "end_dt" : self.end_dt}
         d[self.gid_name] = info.gid
         d["host"] = info.host
@@ -310,6 +310,8 @@ def test_log2event(conf):
         end_dt = args[2]
         dur = args[3]
         area = args[4]
+        print("testing log2event({0} - {1} in {2})".format(
+                top_dt, end_dt, area))
         edict, evmap = log2event(conf, top_dt, end_dt, area)
         if usefilter:
             act = conf.get("filter", "action")
