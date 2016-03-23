@@ -4,6 +4,7 @@
 import sys
 import datetime
 import copy
+import logging
 from collections import namedtuple
 
 import config
@@ -11,6 +12,7 @@ import dtutil
 import log_db
 import evfilter
 
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 EvDef = namedtuple("EvDef", ["type", "note", "gid", "host"])
 
 
@@ -54,6 +56,7 @@ class EventDefinitionMap():
     type_normal = 0
     type_periodic_top = 1
     type_periodic_end = 2
+    type_periodic_remainder = 3
 
     def __init__(self, top_dt, end_dt, gid_name = "ltgid"):
         """
@@ -63,6 +66,7 @@ class EventDefinitionMap():
         """
         self.top_dt = top_dt
         self.end_dt = end_dt
+        assert gid_name in ("ltid", "ltgid")
         self.gid_name = gid_name
         self.l_attr = ["gid", "host"]
 
@@ -107,6 +111,17 @@ class EventDefinitionMap():
         self._ermap[evdef] = eid
         return eid
 
+    def update_event(self, eid, info, type_id, note):
+        d = {"type" : type_id,
+             "note" : note,
+             "gid" : info.gid,
+             "host" : info.host}
+        evdef = EvDef(**d)
+
+        self._emap[eid] = evdef
+        self._ermap[evdef] = eid
+        return eid
+
     def has_eid(self, eid):
         return self._emap.has_key(eid)
 
@@ -131,6 +146,8 @@ class EventDefinitionMap():
             return "start[{0}]({1}sec)".format(string, info.note)
         elif info.type == self.type_periodic_end:
             return "end[{0}]({1}sec)".format(string, info.note)
+        elif info.type == self.type_periodic_remainder:
+            return "remain[{0}]({1}sec)".format(string, info.note)
         else:
             # NotImplemented
             return "({0})".format(string)
@@ -199,7 +216,7 @@ def log2event(conf, top_dt, end_dt, area):
 def filter_edict(conf, edict, evmap):
     l_result = evfilter.periodic_events(conf, edict, evmap)
 
-    temp_edict = edict.copy()
+    temp_edict = copy.deepcopy(edict)
     temp_evmap = _copy_evmap(evmap)
     for eid, interval in l_result:
         temp_edict.pop(eid)
@@ -232,10 +249,11 @@ def replace_edict(conf, edict, evmap, top_dt, end_dt):
     err = conf.getfloat("filter", "seq_error")
     dup = conf.getboolean("filter", "seq_duplication") 
     pcnt = conf.getint("filter", "periodic_count") 
+    pterm = conf.getdur("filter", "periodic_term") 
     repl_top = conf.getboolean("filter", "replace_top")
     repl_end = conf.getboolean("filter", "replace_end")
 
-    temp_edict = edict.copy()
+    temp_edict = copy.deepcopy(edict)
     temp_evmap = _copy_evmap(evmap)
     for eid, interval in l_result:
         l_dt = edict[eid]
@@ -243,38 +261,63 @@ def replace_edict(conf, edict, evmap, top_dt, end_dt):
             l_pe, npe = dtutil.separate_periodic_dup(l_dt, interval, err)
         else:
             l_pe, npe = dtutil.separate_periodic(l_dt, interval, err)
-        
+        _logger.info("Event {0} ({1}) -> pseq * {2} ({3}) + {4}".format(
+                eid, len(l_dt), len(l_pe),
+                [len(pe) for pe in l_pe], len(npe)))
+
         l_remain = []
         l_top = []
         l_end = []
         for pe in l_pe:
-            if len(pe) > pcnt:
-                if repl_top and \
-                        not _across_term_top(l_dt, pe, top_dt, interval, err):
-                    l_top.append(min(pe))
-                if repl_end and \
-                        not _across_term_end(l_dt, pe, end_dt, interval, err):
-                    l_end.append(max(pe))
+            if len(pe) < pcnt:
+                l_remain += pe
+            elif repl_top and \
+                    not _across_term_top(l_dt, pe, top_dt, interval, err):
+                l_top.append(min(pe))
+            elif repl_end and \
+                    not _across_term_end(l_dt, pe, end_dt, interval, err):
+                l_end.append(max(pe))
             else:
                 l_remain += pe
-        
-        if len(l_remain) > 0:
-            temp_edict[eid] = l_remain
+        l_remain += npe
+
+        if len(l_remain) == len(l_dt):
+            pass
+        elif len(l_remain) > 0:
+            temp_evmap.update_event(eid, evmap.info(eid),
+                    EventDefinitionMap.type_periodic_remainder,
+                    int(interval.total_seconds()))
+            temp_edict[eid] = sorted(l_remain)
+            _logger.info(
+                    "periodic event {0} ({1}) is filtered".format(
+                    eid, evmap.info_str(eid)) + \
+                    " and left (-> {0})".format(temp_evmap.info_str(eid)))
         else:
             temp_edict.pop(eid)
             temp_evmap.pop(eid)
+            _logger.info("periodic event {0} ({1}) is removed ".format(
+                    eid, evmap.info_str(eid)))
         if len(l_top) > 0:
             new_eid = temp_evmap.add_virtual_event(evmap.info(eid),
                     EventDefinitionMap.type_periodic_top,
                     int(interval.total_seconds()))
-            temp_edict[new_eid] = l_top
+            temp_edict[new_eid] = sorted(l_top)
+            _logger.info("virtual event {0} ({1}) added".format(
+                    new_eid, temp_evmap.info_str(new_eid)) + \
+                    " from event {0} ({1})".format(
+                    eid, evmap.info_str(eid)))
         if len(l_end) > 0:
             new_eid = temp_evmap.add_virtual_event(evmap.info(eid),
                     EventDefinitionMap.type_periodic_end,
                     int(interval.total_seconds()))
-            temp_edict[new_eid] = l_end
+            temp_edict[new_eid] = sorted(l_end)
+            _logger.info("virtual event {0} ({1}) added".format(
+                    new_eid, temp_evmap.info_str(new_eid)) + \
+                    " from event {0} ({1})".format(
+                    eid, evmap.info_str(eid)))
     
-    return _remap_eid(temp_edict, temp_evmap)
+    #return _remap_eid(temp_edict, temp_evmap)
+    return temp_edict, temp_evmap
 
 
 def _remap_eid(edict, evmap):
@@ -310,9 +353,11 @@ def test_log2event(conf):
         end_dt = args[2]
         dur = args[3]
         area = args[4]
-        print("testing log2event({0} - {1} in {2})".format(
+        _logger.info("testing log2event({0} - {1} in {2})".format(
                 top_dt, end_dt, area))
         edict, evmap = log2event(conf, top_dt, end_dt, area)
+        assert len(edict) == len(evmap)
+        _logger.info("{0} events found before filtering".format(len(edict)))
         if usefilter:
             act = conf.get("filter", "action")
             if act == "remove":
@@ -322,16 +367,20 @@ def test_log2event(conf):
                         top_dt, end_dt)
             else:
                 raise NotImplementedError
-        
+
         assert len(edict) == len(evmap)
         for eid in edict.keys():
             print("Event {0} : {1}".format(eid, evmap.info_str(eid)))
-            print(evmap.info_repr(ld, eid))
+            if evmap.info(eid).type == EventDefinitionMap.type_normal:
+                print(evmap.info_repr(ld, eid))
+            else:
+                print("\n".join([str(dt) for dt in edict[eid]]))
+                print("\n".join(["#" + w for w
+                        in evmap.info_repr(ld, eid).split("\n")]))
             print
 
 
 if __name__ == "__main__":
-    import sys
     usage = "usage: {0} [options]".format(sys.argv[0])
     import optparse
     op = optparse.OptionParser(usage)
@@ -341,6 +390,7 @@ if __name__ == "__main__":
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
+    config.set_common_logging(conf, _logger, ["pc_log", "evfilter"])
     test_log2event(conf)
 
 

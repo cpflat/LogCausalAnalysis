@@ -182,7 +182,8 @@ def init_evfilter(conf, verbose = False):
     new_corr_diff = [datetime.timedelta(seconds = sec) for sec in s_interval]
     mes = "interval candidates : given ({0}), found ({1})".format(\
             ", ".join([str(a).partition(",")[0] for a in corr_diff]),
-            ", ".join([str(a).partition(",")[0] for a in new_corr_diff]))
+            ", ".join([str(a).partition(",")[0] for a
+                in sorted(new_corr_diff, key = lambda x: x.total_seconds())]))
     _logger.info(mes)
     if verbose:
         print(mes)
@@ -190,12 +191,23 @@ def init_evfilter(conf, verbose = False):
     # construct filter object
     corr_diff = corr_diff + new_corr_diff
     for eid, l_dt in edict.iteritems():
-        info = evmap.info(eid)
-        dur, corr = self_correlation(l_dt, corr_diff, corr_bin)
+        _logger.info("processing event {0}".format("eid"))
+        data = discretize_dt(l_dt, corr_bin)
+        l_ret = [(diff, self_corr(data, diff, corr_bin)) for diff in corr_diff]
+        if len(l_ret) > 0:
+            dur, corr = max(l_ret, key = lambda x: x[1])
+        else:
+            dur, corr = (None, None)
+        for dur, corr in l_ret:
+            _logger.info("lag {0} : {1}".format(dur, corr))
+
+        info = evmap.info(eid) 
         evf.add(info.gid, info.host, dur, corr)
+        mes = "event [{0} {1}, host {2}] : {3} ({4})".format(
+                    evmap.gid_name, info.gid, info.host, corr, dur)
+        _logger.info(mes)
         if verbose:
-            print("event [{0} {1}, host {2}] : {3}".format(
-                    evmap.gid_name, info.gid, info.host, corr))
+            print(mes)
 
     evf.dump()
     _logger.info("initializing evfilter done")
@@ -336,36 +348,58 @@ def interval(l_dt, threshold = 0.5, verbose = False):
         return None
 
 
-def self_correlation(l_dt, l_diff, binsize):
+#def self_correlation(l_dt, l_diff, binsize):
+#    """
+#    Returns:
+#        float: Interval of periodicity.
+#        float: Maximum correlation value with given time lag.
+#    """
+#    data = discretize_dt(l_dt, binsize)
+#
+#    l_ret = []
+#    for diff in l_diff:
+#        val = self_corr(data, diff, binsize)
+#        l_ret.append((diff, val))
+#
+#    if len(l_ret) > 0:
+#        return max(l_ret, key = lambda x: x[1])
+#    else:
+#        return None, None
+
+
+def self_corr(data, diff, binsize):
     """
+    Args:
+        data (List[datetime.datetime])
+        diff (datetime.timedelta)
+        binsize (datetime.timedelta)
+
     Returns:
-        float: Interval of periodicity.
-        float: Maximum correlation value with given time lag.
+        float: Self-correlation coefficient with given lag.
+    """
+    binnum = int(diff.total_seconds() / binsize.total_seconds())
+    if len(data) <= binnum * 2:
+        return 0.0
+    else:
+        data1 = data[:len(data) - binnum]
+        data2 = data[binnum:]
+        assert len(data1) == len(data2)
+        return np.corrcoef(np.array(data1), np.array(data2))[0, 1]
+
+
+def discretize_dt(l_dt, binsize):
+    """
+    Args:
+        l_dt (List[datetime.datetime])
+        binsize (datetime.timedelta)
     """
     if binsize == datetime.timedelta(seconds = 1):
-        data = l_dt
+        return l_dt
     else:
         top_dt = dtutil.adj_sep(min(l_dt), binsize)
         end_dt = dtutil.radj_sep(max(l_dt), binsize)
         l_label = dtutil.label(top_dt, end_dt, binsize)
-        data = dtutil.discretize(l_dt, l_label, binarize = False)
-
-    l_ret = []
-    for diff in l_diff:
-        binnum = int(diff.total_seconds() / binsize.total_seconds())
-        if len(data) <= binnum * 2:
-            pass
-        else:
-            data1 = data[:len(data) - binnum]
-            data2 = data[binnum:]# + [0] * binnum
-            assert len(data1) == len(data2)
-            l_ret.append((diff,
-                    np.corrcoef(np.array(data1), np.array(data2))[0, 1]))
-
-    if len(l_ret) > 0:
-        return max(l_ret, key = lambda x: x[1])
-    else:
-        return None, None
+        return dtutil.discretize(l_dt, l_label, binarize = False)
 
 
 #def test_init_filter(conf):
@@ -420,12 +454,15 @@ def test_filter(conf, area = "all", limit = 10):
                         print("interval : {0}".format(temp))
                         s_eid.add(eid)
                 if "self-corr" in l_filter:
-                    dur, corr = self_correlation(l_dt, corr_diff, corr_bin)
-                    if corr is not None:
-                        print("self-correlation : {0}".format(corr))
-                        if corr > corr_th:
-                            print("rule [self-corr] satisfied, removed")
-                            s_eid.add(eid)
+                    #dur, corr = self_correlation(l_dt, corr_diff, corr_bin)
+                    data = discretize_dt(l_dt, corr_bin)
+                    l_val = [self_corr(data, diff, corr_bin)
+                            for diff in corr_diff]
+                    corr = max(l_val)
+                    print("self-correlation : {0}".format(corr))
+                    if corr > corr_th:
+                        print("rule [self-corr] satisfied, removed")
+                        s_eid.add(eid)
             print
         print("[Summary in term {0} - {1}]".format(top_dt, end_dt))
         print("  {0} events found, {1} events filtered, {2} remains".format(\

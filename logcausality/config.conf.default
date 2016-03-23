@@ -227,7 +227,7 @@ periodic_th = 0.5
 self_corr_th = 0.5
 
 # Difference duration candidates to calculate self-correlation
-self_corr_diff = 1h, 1d
+self_corr_diff = 1m, 1h, 1d
 
 # Bin size to discretize event appearance data in calculating self-correlation
 self_corr_bin = 10s

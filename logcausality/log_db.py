@@ -189,9 +189,9 @@ class LogData():
             host (Optional[str]): A source hostname of the message.
             area (Optional[str]): An area name of source hostname.
         """
-        l_line = [line for line in self.iter_lines(lid = None,
+        l_line = sorted([line for line in self.iter_lines(lid = None,
             ltid = ltid, ltgid = ltgid, top_dt = top_dt, end_dt = end_dt,
-            host = host, area = area)]
+            host = host, area = area)], key = lambda x: x.dt)
         if (head <= 0 and foot <= 0) or \
                 (len(l_line) <= head + foot):
             buf = [line.restore_line() for line in l_line]
