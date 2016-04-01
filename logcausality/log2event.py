@@ -76,6 +76,9 @@ class EventDefinitionMap():
     def __len__(self):
         return len(self._emap)
 
+    def _eids(self):
+        return self._emap.keys()
+
     def _next_eid(self):
         eid = len(self._emap)
         while self._emap.has_key(eid):

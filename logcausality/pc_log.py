@@ -74,14 +74,20 @@ def thread_name(conf, top_dt, end_dt, dur, area):
     return "".join(l_header)
 
 
-def pc_all_args(conf):
-    ld = log_db.LogData(conf)
-    
+def whole_term(conf, ld = None):
     w_term = conf.getterm("dag", "whole_term")
     if w_term is None:
-        w_top_dt, w_end_dt = ld.whole_term()
+        if ld is None:
+            ld = log_db.LogData(conf)
+        return ld.whole_term()
     else:
-        w_top_dt, w_end_dt = w_term
+        return w_term
+
+
+def pc_all_args(conf):
+    ld = log_db.LogData(conf)
+    w_top_dt, w_end_dt = whole_term(conf, ld)
+
     evfilter.init_evfilter(conf)
     term = conf.getdur("dag", "unit_term")
     diff = conf.getdur("dag", "unit_diff")

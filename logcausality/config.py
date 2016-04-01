@@ -181,6 +181,14 @@ class GroupDef():
 
 
 def str2dur(string):
+    """
+    Note:
+        \d+s: \d seconds
+        \d+m: \d minutes
+        \d+h: \d hours
+        \d+d: \d days
+        \d+w: \d * 7 days
+    """
     if "s" in string:
         num = int(string.partition("s")[0])
         return datetime.timedelta(seconds = num)
@@ -195,7 +203,7 @@ def str2dur(string):
         return datetime.timedelta(days = num)
     elif "w" in string:
         num = int(string.partition("w")[0])
-        return datetime.timedelta(days = num)
+        return datetime.timedelta(days = num * 7)
     else:
         raise ValueError("Duration string invalid")
 
