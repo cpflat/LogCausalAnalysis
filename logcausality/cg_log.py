@@ -144,9 +144,10 @@ def similar_block_log(conf, top_dt, end_dt, area):
     return result
 
 
-def test_dag_search(conf):
+def test_dag_search(conf, method):
     import cg_dag
-    method = conf.get("search", "method")
+    if method is None:
+        method = conf.get("search", "method")
     src_dir = conf.get("dag", "output_dir")
     l_area = pcresult.result_areas(conf)
     for area in l_area:
@@ -182,10 +183,13 @@ if __name__ == "__main__":
     op = optparse.OptionParser(usage)
     op.add_option("-i", "--init", action="store_true",
             dest="init", default=False,
-            help="Only initialize comparizon object (for speedup searching)")
+            help="Only initialize comparizon object (for method \"log\")")
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
+    op.add_option("-m", "--method", action="store",
+            dest="method", type="string", default=None,
+            help="method to compare data blocks / dags")
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
@@ -193,6 +197,6 @@ if __name__ == "__main__":
     if options.init:
         test_init_searchobj(conf)
     else:
-        test_dag_search(conf)
+        test_dag_search(conf, options.method)
 
 
