@@ -252,3 +252,14 @@ replace_end = true
 ltlabel = 
 
 
+[search]
+
+temp_fn = .cg_temp
+
+# [log, dag_ed, dag_mcs]
+method = log
+
+dag_ig_direction = true
+
+dag_weight = true
+

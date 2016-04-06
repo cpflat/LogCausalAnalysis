@@ -11,6 +11,7 @@ import log_db
 import log2event
 import pc_log
 import pcresult
+from ex_sort import ex_sorted
 
 
 class DAGComparison():
@@ -26,7 +27,7 @@ class DAGComparison():
     """
 
     def __init__(self, conf, area, reset = False):
-        self.fn_header = "compare_graph_temp_" #TODO
+        self.fn_header = conf.get("search", "temp_fn") + "_"
         self.log_base = 2
         self.area = area
         self.fn = self.fn_header + "area"
@@ -115,10 +116,11 @@ def _evv_distance(evv1, evv2):
         return scipy.spatial.distance.cosine(evv1, evv2)
 
 
-def search_similar_dag(conf, top_dt, end_dt, area):
+def similar_block_log(conf, top_dt, end_dt, area):
+    #assert conf.get("search", "method") == "log"
     ld = log_db.LogData(conf)
     dagc = DAGComparison(conf, area)
-    
+
     edict = {}
     for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area):
         weid = dagc.w_evmap.process_line(line)
@@ -143,17 +145,25 @@ def search_similar_dag(conf, top_dt, end_dt, area):
 
 
 def test_dag_search(conf):
+    import cg_dag
+    method = conf.get("search", "method")
     src_dir = conf.get("dag", "output_dir")
     l_area = pcresult.result_areas(conf)
     for area in l_area:
         l_r = pcresult.results_in_area(conf, src_dir, area)
         result = []
         for r in l_r:
-            result = search_similar_dag(conf, r.top_dt, r.end_dt, r.area)
+            if method == "log":
+                result = similar_block_log(conf, r.top_dt, r.end_dt, r.area)
+            elif method in ("dag_ed", "dag_mcs"):
+                result = cg_dag.similar_block_dag(conf,
+                        r.top_dt, r.end_dt, r.area, method)
+            else:
+                raise NotImplementedError
             print r.cond_str()
             if len(result) > 10:
-                result = sorted(result,
-                        key = lambda x: x[1], reverse = True)[:10]
+                result = ex_sorted(result,
+                        key = lambda x: x[1], reverse = False)[:10]
             for r_found, val in result:
                 print val, r_found.cond_str() 
             print

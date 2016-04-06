@@ -12,6 +12,7 @@ import networkx as nx
 import fslib
 import config
 import lt_label
+from ex_sort import ex_sorted
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
@@ -388,6 +389,8 @@ def mcs_size_ratio(r1, r2, ig_direction = False, weight = None):
         size = sum([1.0 * weight.idf(cedge, r1) for cedge in mcs_cedges])
             # if use tf, fail for edges only in r2
 
+    if size == 0:
+        return None
     return (len(r1.graph.edges()) + len(r2.graph.edges())) / (2.0 * size)
 
 
@@ -665,7 +668,8 @@ def similar_graph(conf, result, area, alg, cand = 20):
             raise ValueError()
         data.append((dist, r))
 
-    data = sorted(data, key = lambda x: x[0], reverse = False)
+    #data = sorted(data, key = lambda x: x[0], reverse = False)
+    data = ex_sorted(data, key = lambda x: x[0], reverse = False)
     for d in data[:cand]:
         print d[0], d[1].filename
 

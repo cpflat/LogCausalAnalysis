@@ -19,7 +19,7 @@ import pcresult
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-def pc_log(conf, top_dt, end_dt, dur, area):
+def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
     
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
 
@@ -39,8 +39,9 @@ def pc_log(conf, top_dt, end_dt, dur, area):
 
     _logger.info("{0} events found in given term of log data".format(
             len(edict)))
-    with open(tempfn, 'w') as f:
-        pickle.dump((edict, evmap), f)
+    if dump:
+        with open(tempfn, 'w') as f:
+            pickle.dump((edict, evmap), f)
 
     if len(edict) > 2:
         threshold = conf.getfloat("dag", "threshold")
@@ -53,9 +54,10 @@ def pc_log(conf, top_dt, end_dt, dur, area):
 
     output = pcresult.PCOutput(conf)
     output.make(graph, evmap, top_dt, end_dt, dur, area)
-    output.dump()
+    if dump:
+        output.dump()
+        fslib.rm(tempfn)
 
-    fslib.rm(tempfn)
     _logger.info("job done, output {0}".format(output.filename))
     return output
 
