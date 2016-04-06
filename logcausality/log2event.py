@@ -201,13 +201,14 @@ def log2event(conf, top_dt, end_dt, area):
     evmap = EventDefinitionMap(top_dt, end_dt, gid_name)
     edict = {} # key : eid, val : list(datetime.datetime)
 
-    if area == "all":
-        iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt)
-    elif area[:5] == "host_":
-        host = area[5:]
-        iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, host = host)
-    else:
-        iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
+    #if area == "all":
+    #    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt)
+    #elif area[:5] == "host_":
+    #    host = area[5:]
+    #    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, host = host)
+    #else:
+    #    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
+    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
 
     for line in iterobj:
         eid = evmap.process_line(line)

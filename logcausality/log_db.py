@@ -157,13 +157,15 @@ class LogData():
                 Messages output before 'end_dt' will be yield.
             host (Optional[str]): A source hostname of the message.
             area (Optional[str]): An area name of source hostname.
+                Some reserved area-name is available;
+                \"all\" to use whole data for 1 area,
+                \"host_*\" to use 1 hostname as 1 area.
+                (\"each\" is only used for pc_log argument initialization)
 
         Yields:
             LogMessage: An annotated log message instance
                 which satisfies all given conditions.
         """
-        if area == "all":
-            area = None
         return self.db.iter_lines(lid = lid, ltid = ltid, ltgid = ltgid,
                 top_dt = top_dt, end_dt = end_dt, host = host, area = area)
 
@@ -500,10 +502,17 @@ class LogDB():
         if ltgid is not None: d_cond["ltgid"] = ltgid
         if top_dt is not None: d_cond["top_dt"] = top_dt
         if end_dt is not None: d_cond["end_dt"] = end_dt
+        if area is None or area == "all":
+            pass
+        elif area[:5] == "host_":
+            d_cond["host"] = area[5:]
+        else:
+            d_cond["area"] = area
         if host is not None: d_cond["host"] = host
-        if area is not None: d_cond["area"] = area
+
         if len(d_cond) == 0:
             raise ValueError("More than 1 argument should NOT be None")
+
         for row in self._select_log(d_cond):
             lid = int(row[0])
             ltid = int(row[1])
