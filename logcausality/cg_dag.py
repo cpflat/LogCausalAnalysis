@@ -26,10 +26,10 @@ def similar_block_dag(conf, top_dt, end_dt, area, method, ignore_same = True):
     weight = None
     if wflag:
         weight = pcresult.EdgeTFIDF(l_r)
-    
+
     result = []
     for r in l_r:
-        if r.end_dt > top_dt and r.top_dt < end_dt:
+        if ignore_same and (r.end_dt > top_dt and r.top_dt < end_dt):
             # ignore if common term included
             pass
         else:

@@ -17,11 +17,11 @@ def generate_cmap(colors):
 
 def dump(fn, datas):
     with open(fn, "w") as f:
-        pickle.dump(f, datas)
+        pickle.dump(datas, f)
 
 
 def load(fn):
     with open(fn, "r") as f:
-        r = pickle.load(f, datas)
+        r = pickle.load(f)
     return r
 
