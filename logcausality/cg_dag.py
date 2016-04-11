@@ -9,7 +9,7 @@ import pc_log
 import pcresult
 
 
-def similar_block_dag(conf, top_dt, end_dt, area, method):
+def similar_block_dag(conf, top_dt, end_dt, area, method, ignore_same = True):
     src_dir = conf.get("dag", "output_dir")
     ig_direction = conf.getboolean("search", "dag_ig_direction")
     wflag = conf.getboolean("search", "dag_weight")

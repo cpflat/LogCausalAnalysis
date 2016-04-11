@@ -3,6 +3,7 @@
 
 import sys
 import math
+import numpy as np
 import scipy.spatial.distance
 import cPickle as pickle
 
@@ -12,6 +13,7 @@ import log2event
 import pc_log
 import pcresult
 from ex_sort import ex_sorted
+import explot
 
 
 class DAGComparison():
@@ -116,7 +118,7 @@ def _evv_distance(evv1, evv2):
         return scipy.spatial.distance.cosine(evv1, evv2)
 
 
-def similar_block_log(conf, top_dt, end_dt, area):
+def similar_block_log(conf, top_dt, end_dt, area, ignore_same = True):
     #assert conf.get("search", "method") == "log"
     ld = log_db.LogData(conf)
     dagc = DAGComparison(conf, area)
@@ -132,7 +134,7 @@ def similar_block_log(conf, top_dt, end_dt, area):
     l_r = pcresult.results_in_area(conf, src_dir, area)
     result = []
     for r in l_r:
-        if r.end_dt > top_dt and r.top_dt < end_dt:
+        if ignore_same and (r.end_dt > top_dt and r.top_dt < end_dt):
             # ignore if common term included
             pass
         else:
@@ -144,21 +146,71 @@ def similar_block_log(conf, top_dt, end_dt, area):
     return result
 
 
-def test_dag_search(conf, method):
+def heatmap(conf, method, area, fn):
+
+    def result2data(result, l_label):
+        d_temp = {}
+        for r, dist in result:
+            d_temp[r.get_fn()] = dist
+        return [d_temp[label] for label in l_label]
+
     import cg_dag
     if method is None:
         method = conf.get("search", "method")
+    if area is None:
+        area = "all"
+
     src_dir = conf.get("dag", "output_dir")
-    l_area = pcresult.result_areas(conf)
+    l_r = pcresult.results_in_area(conf, src_dir, area)
+    l_label = [r.get_fn() for r in l_r]
+    l_result = []
+    for r in l_r:
+        if method == "log":
+            result = similar_block_log(conf, r.top_dt, r.end_dt,
+                    r.area, ignore_same = False)
+        elif method in ("dag_ed", "dag_mcs"):
+            result = cg_dag.similar_block_dag(conf,
+                    r.top_dt, r.end_dt, r.area, method, ignore_same = False)
+        else:
+            raise NotImplementedError
+        l_result.append(result2data(result, l_label))
+
+    data = np.array(l_result)
+    n = len(l_r)
+    assert data.shape == (n, n)
+    x, y = np.meshgrid(np.arange(n + 1), np.arange(n + 1)) 
+
+    explot.dump(fn + ".temp", (x, y, data))
+
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    cm = explot.generate_cmap(["orangered", "white"])
+    plt.pcolor(x, y, data, cmap = cm)
+    plt.colorbar()
+    plt.savefig(fn)
+
+
+def test_dag_search(conf, method, area = None):
+    import cg_dag
+    if method is None:
+        method = conf.get("search", "method")
+
+    src_dir = conf.get("dag", "output_dir")
+    if area is None:
+        l_area = pcresult.result_areas(conf)
+    else:
+        l_area = [area]
     for area in l_area:
         l_r = pcresult.results_in_area(conf, src_dir, area)
         result = []
         for r in l_r:
             if method == "log":
-                result = similar_block_log(conf, r.top_dt, r.end_dt, r.area)
+                result = similar_block_log(conf, r.top_dt, r.end_dt, r.area,
+                        ignore_same = True)
             elif method in ("dag_ed", "dag_mcs"):
-                result = cg_dag.similar_block_dag(conf,
-                        r.top_dt, r.end_dt, r.area, method)
+                result = cg_dag.similar_block_dag(conf, r.top_dt, r.end_dt,
+                        r.area, method, ignore_same = True)
             else:
                 raise NotImplementedError
             print r.cond_str()
@@ -181,12 +233,18 @@ if __name__ == "__main__":
     usage = "usage: {0} [options]".format(sys.argv[0])
     import optparse
     op = optparse.OptionParser(usage)
+    op.add_option("-a", "--area", action="store",
+            dest="area", type="string", default=None,
+            help="target area")
     op.add_option("-i", "--init", action="store_true",
             dest="init", default=False,
             help="Only initialize comparizon object (for method \"log\")")
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
+    op.add_option("-g", "--graph", action="store",
+            dest="graph_fn", type="string", default=None,
+            help="output graph pdf")
     op.add_option("-m", "--method", action="store",
             dest="method", type="string", default=None,
             help="method to compare data blocks / dags")
@@ -196,7 +254,9 @@ if __name__ == "__main__":
     #config.set_common_logging(conf, _logger)
     if options.init:
         test_init_searchobj(conf)
+    elif options.graph_fn is not None:
+        heatmap(conf, options.method, options.area, options.graph_fn)
     else:
-        test_dag_search(conf, options.method)
+        test_dag_search(conf, options.method, options.area)
 
 
