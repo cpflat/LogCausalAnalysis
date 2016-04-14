@@ -89,6 +89,13 @@ class DAGComparison():
     def data_for_r(self, r):
         return self.d_ev[(r.top_dt, r.end_dt, r.area)]
 
+    def data_for_cond(self, top_dt, end_dt, area):
+        cond = (top_dt, end_dt, area)
+        if self.d_ev.has_key(conf):
+            return self.d_ev[(r.top_dt, r.end_dt, r.area)]
+        else:
+            return None
+
     def load(self, fn = None):
         if fn is None:
             fn = self.fn
@@ -123,10 +130,13 @@ def similar_block_log(conf, top_dt, end_dt, area, ignore_same = True):
     ld = log_db.LogData(conf)
     dagc = DAGComparison(conf, area)
 
-    edict = {}
-    for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area):
-        weid = dagc.w_evmap.process_line(line)
-        edict[weid] = edict.get(weid, 0) + 1
+    edict = dagc.data_for_cond(top_dt, end_dt, area)
+    if edict is None:
+        edict = {}
+        for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt,
+                area = area):
+            weid = dagc.w_evmap.process_line(line)
+            edict[weid] = edict.get(weid, 0) + 1
     l_weid = edict.keys()
     src_evv = _event_vector(l_weid, edict, dagc)
 
@@ -175,7 +185,11 @@ def heatmap(conf, method, area, fn):
             raise NotImplementedError
         l_result.append(result2data(result, l_label))
 
-    data = np.array(l_result)
+    # replace None to max value of whole result
+    mval = max([max(result) for result in l_result])
+    data = np.array([[mval if i is None else i for i in result] for result
+            in l_result])
+    # data = np.array(l_result)
     n = len(l_r)
     assert data.shape == (n, n)
     x, y = np.meshgrid(np.arange(n + 1), np.arange(n + 1)) 
