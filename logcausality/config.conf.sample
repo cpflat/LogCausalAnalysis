@@ -1,0 +1,56 @@
+
+# Configuration file for logcausality
+# If some options does not given in this file,
+# logcausality will use defaults defined in config.conf.default
+
+
+[general]
+
+# Source log data path
+# Less priority than command option of log_db
+src_path = test.temp
+
+# Processing log output path (not dataset but log of this system)
+# If empty, output log on stderr
+info_log = auto.log
+
+# Another configparser filename, to add any options without warnings
+# Use this to define new options for private use
+# In imported configparser file, existing options in defaults will be ignored
+import = 
+
+
+[database]
+
+# Database management system to use
+# [sqlite3, mysql] is available
+# mysql : Require MySQL for PYTHON (MySQLdb) package
+database = sqlite3
+
+# Classified log database for sqlite3
+sqlite3_filename = log.db
+
+# Database hostname for mysql
+mysql_host = localhost
+
+# Database name for mysql
+mysql_dbname = logcausality
+
+# Mysql username
+mysql_user = test
+
+# Mysql user password
+mysql_passwd = test
+
+# If no year string in log message, add following year
+# (Use this year of localtime with empty value)
+# For example:
+# default_year = 2112
+default_year = 
+
+
+[dag]
+
+# Found DAG object data
+output_dir = pc_output
+
