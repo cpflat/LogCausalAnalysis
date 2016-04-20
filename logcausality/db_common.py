@@ -266,14 +266,6 @@ class mysql(database):
     def _ph(self, varname):
         return "%({0})s".format(varname)
 
-    def _set_state(self, l_setstate):
-        if len(l_setstate) == 0:
-            raise ValueError("empty setstates")
-        l_buf = []
-        for setstate in l_setstate:
-            l_buf.append("{0.key} = {0.val}".format(setstate))
-        return ", ".join(l_buf)
-
     def _table_key_type(self, type_str):
         if type_str == "integer":
             return "int"
