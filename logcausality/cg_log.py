@@ -126,6 +126,7 @@ def _evv_distance(evv1, evv2):
 
 
 def similar_block_log(conf, top_dt, end_dt, area, ignore_same = True):
+    
     #assert conf.get("search", "method") == "log"
     ld = log_db.LogData(conf)
     dagc = DAGComparison(conf, area)
@@ -139,6 +140,7 @@ def similar_block_log(conf, top_dt, end_dt, area, ignore_same = True):
             edict[weid] = edict.get(weid, 0) + 1
     l_weid = edict.keys()
     src_evv = _event_vector(l_weid, edict, dagc)
+    print("{0} - {1} ({2}) : {3}".format(top_dt, end_dt, area, src_evv))
 
     src_dir = conf.get("dag", "output_dir")
     l_r = pcresult.results_in_area(conf, src_dir, area)
@@ -150,6 +152,8 @@ def similar_block_log(conf, top_dt, end_dt, area, ignore_same = True):
         else:
             edict_r = dagc.data_for_r(r)
             r_evv = _event_vector(l_weid, edict_r, dagc)
+            print("{0} - {1} ({2}) : {3}".format(r.top_dt, r.end_dt,
+                    r.area, r_evv))
             dist = _evv_distance(src_evv, r_evv)
             result.append((r, dist))
 
