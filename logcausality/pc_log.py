@@ -19,18 +19,29 @@ import pcresult
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-def pc_log(conf, top_dt, end_dt, dur, area):
-
+def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
+    
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
 
     tempfn = thread_name(conf, top_dt, end_dt, dur, area) + ".temp"
     edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
-    edict, evmap = log2event.filter_edict(conf, edict, evmap)
+
+    usefilter = conf.getboolean("dag", "usefilter")
+    if usefilter:
+        act = conf.get("filter", "action")
+        if act == "remove":
+            edict, evmap = log2event.filter_edict(conf, edict, evmap)
+        elif act == "replace":
+            edict, evmap = log2event.replace_edict(conf, edict, evmap,
+                    top_dt, end_dt)
+        else:
+            raise NotImplementedError
 
     _logger.info("{0} events found in given term of log data".format(
             len(edict)))
-    with open(tempfn, 'w') as f:
-        pickle.dump((edict, evmap), f)
+    if dump:
+        with open(tempfn, 'w') as f:
+            pickle.dump((edict, evmap), f)
 
     if len(edict) > 2:
         threshold = conf.getfloat("dag", "threshold")
@@ -43,9 +54,10 @@ def pc_log(conf, top_dt, end_dt, dur, area):
 
     output = pcresult.PCOutput(conf)
     output.make(graph, evmap, top_dt, end_dt, dur, area)
-    output.dump()
+    if dump:
+        output.dump()
+        fslib.rm(tempfn)
 
-    fslib.rm(tempfn)
     _logger.info("job done, output {0}".format(output.filename))
     return output
 
@@ -64,14 +76,20 @@ def thread_name(conf, top_dt, end_dt, dur, area):
     return "".join(l_header)
 
 
-def pc_all_args(conf):
-    ld = log_db.LogData(conf)
-    
+def whole_term(conf, ld = None):
     w_term = conf.getterm("dag", "whole_term")
     if w_term is None:
-        w_top_dt, w_end_dt = ld.whole_term()
+        if ld is None:
+            ld = log_db.LogData(conf)
+        return ld.whole_term()
     else:
-        w_top_dt, w_end_dt = w_term
+        return w_term
+
+
+def pc_all_args(conf):
+    ld = log_db.LogData(conf)
+    w_top_dt, w_end_dt = whole_term(conf, ld)
+
     evfilter.init_evfilter(conf)
     term = conf.getdur("dag", "unit_term")
     diff = conf.getdur("dag", "unit_diff")
@@ -164,7 +182,6 @@ if __name__ == "__main__":
 
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, ["evfilter"])
-
 
     fslib.mkdir(conf.get("dag", "output_dir"))
     l_args = pc_all_args(conf)

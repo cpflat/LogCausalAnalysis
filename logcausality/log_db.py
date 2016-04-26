@@ -57,6 +57,19 @@ class LogMessage():
         return " ".join((str(self.dt), self.host, str(self.lt.ltid),\
                 str(self.l_w)))
 
+    def get(self, name):
+        """Return value for given attribute."""
+        if name == "lid":
+            return self.lid
+        elif name == "ltid":
+            return self.lt.ltid
+        elif name == "ltgid":
+            return self.lt.ltgid
+        elif name == "host":
+            return self.host
+        else:
+            raise NotImplementedError
+
     def var(self):
         """str: Get sequence of all variable words in this message.
         Variable words are presented with mask (defaults **) in log template.
@@ -144,17 +157,20 @@ class LogData():
                 Messages output before 'end_dt' will be yield.
             host (Optional[str]): A source hostname of the message.
             area (Optional[str]): An area name of source hostname.
+                Some reserved area-name is available;
+                \"all\" to use whole data for 1 area,
+                \"host_*\" to use 1 hostname as 1 area.
+                (\"each\" is only used for pc_log argument initialization)
 
         Yields:
             LogMessage: An annotated log message instance
                 which satisfies all given conditions.
         """
-        if area == "all":
-            area = None
         return self.db.iter_lines(lid = lid, ltid = ltid, ltgid = ltgid,
                 top_dt = top_dt, end_dt = end_dt, host = host, area = area)
 
-    def show_log_repr(self, limit = None, ltid = None, ltgid = None,
+    def show_log_repr(self, head = 0, foot = 0,
+            ltid = None, ltgid = None,
             top_dt = None, end_dt = None, host = None, area = None):
         """Show representative log messages in DB
         that satisfy conditions given in arguments.
@@ -162,37 +178,34 @@ class LogData():
         Results will be shown in Standard Output.
 
         Args:
-            limit (Optional[int]): A number of messages to show.
-                Defaults to None, and then all messages satisfying conditions
-                will be output. (not recommended)
+            head (Optional[int]): Show leading lines of log messages.
+            foot (Optional[int]): Show trailing lines of log messages.
+                if both head and foot are 0, all lines are shown.
             lid (Optional[int]): A message identifier in DB.
             ltid (Optional[int]): A log template identifier.
             ltgid (Optional[int]): A log template grouping identifier.
             top_dt (Optional[datetime.datetime]): Condition for timestamp.
-                Messages output after 'top_dt' will be yield.
+                Messages output after 'top_dt' will be yielded.
             end_dt (Optional[datetime.datetime]): Condition for timestamp.
-                Messages output before 'end_dt' will be yield.
+                Messages output before 'end_dt' will be yielded.
             host (Optional[str]): A source hostname of the message.
             area (Optional[str]): An area name of source hostname.
-
         """
-        buf = []
-        cnt = 0
-        limit_flag = False
-        for line in self.iter_lines(lid = None, ltid = ltid, ltgid = ltgid,
-                top_dt = top_dt, end_dt = end_dt, host = host, area = area):
-            if limit is not None and cnt >= limit:
-                limit_flag = True
-            else:
-                buf.append(line.restore_line())
-            cnt += 1
+        l_line = sorted([line for line in self.iter_lines(lid = None,
+            ltid = ltid, ltgid = ltgid, top_dt = top_dt, end_dt = end_dt,
+            host = host, area = area)], key = lambda x: x.dt)
+        if (head <= 0 and foot <= 0) or \
+                (len(l_line) <= head + foot):
+            buf = [line.restore_line() for line in l_line]
         else:
-            length = cnt
-        if limit_flag:
-            buf.append("... ({0})".format(length))
-        else:
-            buf.append("({0})".format(length))
-        print "\n".join(buf)
+            buf = []
+            if head > 0:
+                buf += [line.restore_line() for line in l_line[:head]]
+            buf += ["..."]
+            if foot > 0:
+                buf += [line.restore_line() for line in l_line[-foot:]]
+            buf.append("({0})".format(len(l_line)))
+        return "\n".join(buf)
 
     def count_lines(self):
         """int: Number of all messages in DB."""
@@ -489,10 +502,17 @@ class LogDB():
         if ltgid is not None: d_cond["ltgid"] = ltgid
         if top_dt is not None: d_cond["top_dt"] = top_dt
         if end_dt is not None: d_cond["end_dt"] = end_dt
+        if area is None or area == "all":
+            pass
+        elif area[:5] == "host_":
+            d_cond["host"] = area[5:]
+        else:
+            d_cond["area"] = area
         if host is not None: d_cond["host"] = host
-        if area is not None: d_cond["area"] = area
+
         if len(d_cond) == 0:
             raise ValueError("More than 1 argument should NOT be None")
+
         for row in self._select_log(d_cond):
             lid = int(row[0])
             ltid = int(row[1])
@@ -710,7 +730,7 @@ class LogDB():
         l_key = ["max(ltgid)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
-        return int(cursor.fetchone()[0])
+        return int(cursor.fetchone()[0]) + 1
 
     def iter_ltg_def(self):
         table_name = "ltg"
@@ -770,7 +790,7 @@ class LogDB():
 
 
 def process_line(conf, msg, ld, lp, isnew_check = False, latest = None):
-    """Add given log message to DB.
+    """Add a log message to DB.
     
     Args:
         conf (config.ExtendedConfigParser): A common configuration object.
@@ -859,6 +879,11 @@ def info(conf):
     print("Hosts : {0}".format(len(ld.whole_host())))
 
 
+def show_lt(conf):
+    ld = LogData(conf)
+    print ld.show_all_ltgroup()
+
+
 def migrate(conf):
     ld = LogData(conf, edit = True)
     ld.db._init_index()
@@ -897,6 +922,7 @@ args:
   add FILES : add all log data in FILES to existing DB
   update FILES : add newer log data found in FILES to existing DB
   info : show abstruction of DB status
+  show-lt : show all log templates in DB
   remake-area : reconstruct area definiton of hosts in DB
   remake-ltgroup : Remake ltgroup definition for existing log templates.
                    Ltgroups made with this process will be usually
@@ -951,6 +977,8 @@ args:
         process_files(conf, targets, False, diff = True)
     elif mode == "info":
         info(conf)
+    elif mode == "show-lt":
+        show_lt(conf)
     elif mode == "remake-area":
         remake_area(conf)
     elif mode == "remake-ltgroup":

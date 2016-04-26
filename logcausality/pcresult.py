@@ -12,6 +12,7 @@ import networkx as nx
 import fslib
 import config
 import lt_label
+from ex_sort import ex_sorted
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
@@ -68,10 +69,10 @@ class PCOutput():
                 ltconf_path = lt_label.DEFAULT_LABEL_CONF
             self.ll = lt_label.LTLabel(ltconf_path)
 
-    def _label_ltg(self, ltgid):
+    def _label_ltg(self, gid):
         self._init_ld()
         self._init_ll()
-        return self.ll.get_ltg_label(ltgid, self.ld.ltg_members(ltgid))
+        return self.ll.get_ltg_label(gid, self.ld.ltg_members(gid))
 
     def get_fn(self):
         import pc_log
@@ -82,14 +83,14 @@ class PCOutput():
         return self.filename.rpartition("/")[-1]
 
     def _print_lt(self, eid, header = "lt"):
-        ltgid, host = self.evmap.info(eid)
+        info = self.evmap.info(eid)
         print("{0}>")
         print("\n ".join(
-            [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
+            [str(ltline) for ltline in self.ld.ltg_members(info.gid)]))
 
     def _print_edge(self, edge, label):
-        src_ltgid, src_host = self.evmap.info(edge[0])
-        dst_ltgid, dst_host = self.evmap.info(edge[1])
+        src_info = self.evmap.info(edge[0])
+        dst_info = self.evmap.info(edge[1])
         if label == "directed":
             arrow = "->"
         elif label == "undirected":
@@ -97,17 +98,18 @@ class PCOutput():
         else:
             raise ValueError
         print("{0} [{1}] ({2}) {6} {3}[{4}] ({5})".format(
-                src_ltgid, self._label_ltg(src_ltgid), src_host, 
-                dst_ltgid, self._label_ltg(dst_ltgid), dst_host,
+                src_info.gid, self._label_ltg(src_info.gid), src_info.host, 
+                dst_info.gid, self._label_ltg(dst_info.gid), dst_info.host,
                 arrow))
     
     def _print_edge_lt(self, edge):
         for eid, header in zip(edge, ("src", "dst")):
-            ltgid, host = self.evmap.info(eid)
-            print("{0}> ltgid {1} [label {2}] (host {3})".format(
-                    header, ltgid, self._label_ltg(ltgid), host))
+            info = self.evmap.info(eid)
+            print("{0}> gid {1} [label {2}] (host {3})".format(
+                    header, info.gid,
+                    self._label_ltg(info.gid), info.host))
             print("\n".join(
-                [str(ltline) for ltline in self.ld.ltg_members(ltgid)]))
+                [str(ltline) for ltline in self.ld.ltg_members(info.gid)]))
             print
     
     def _print_edge_detail(self, edge, limit = None):
@@ -119,11 +121,16 @@ class PCOutput():
             area = self.area
         
         for eid, header in zip(edge, ("src", "dst")):
-            ltgid, host = self.evmap.info(eid)
-            print("{0}> ltgid {1} (host {2})".format(header, ltgid, host))
-            self.ld.show_log_repr(limit, None, ltgid,
-                    self.top_dt, self.end_dt, host, area)
+            info = self.evmap.info(eid)
+            print("{0}> gid {1} (host {2})".format(header,
+                    info.gid, info.host))
+            print self.evmap.info_repr(self.ld, eid, limit = limit)
         print
+
+    def cond_str(self):
+        self._none_caution()
+        return "[{0} - {1} ({2}) in area {3}]".format(self.top_dt, self.end_dt,
+                self.dur, self.area)
 
     def print_env(self):
         self._none_caution()
@@ -183,11 +190,9 @@ class PCOutput():
         return tuple(self._node_info(node) for node in edge)
 
     def _has_node(self, info):
-        return self.evmap.ermap.has_key(info)
+        return self.evmap.has_info(info)
 
     def _node_id(self, info):
-        # return node id of given labeled information
-        # info : (ltgid, host)
         return self.evmap.get_eid(info)
 
     def _edge_id(self, t_info):
@@ -221,9 +226,9 @@ class PCOutput():
         l_diff = []
         for edge in l_edge:
             src_node, dst_node = edge
-            src_ltgid, src_host = self._node_info(src_node)
-            dst_ltgid, dst_host = self._node_info(dst_node)
-            if src_host == dst_host:
+            src_info = self._node_info(src_node)
+            dst_info = self._node_info(dst_node)
+            if src_info.host == dst_info.host:
                 l_same.append(edge)
             else:
                 l_diff.append(edge)
@@ -240,10 +245,10 @@ class PCOutput():
         l_diff = []
         for edge in l_edge:
             src_node, dst_node = edge
-            src_ltgid, src_host = self._node_info(src_node)
-            src_label = self._label_ltg(src_ltgid)
-            dst_ltgid, dst_host = self._node_info(dst_node)
-            dst_label = self._label_ltg(dst_ltgid)
+            src_info = self._node_info(src_node)
+            src_label = self._label_ltg(src_info.gid)
+            dst_info = self._node_info(dst_node)
+            dst_label = self._label_ltg(dst_info.gid)
             if src_label == dst_label:
                 l_same.append(edge)
             else:
@@ -259,12 +264,13 @@ class PCOutput():
 
         mapping = {}
         for node in graph.nodes():
-            ltgid, host = self._node_info(node)
-            label = self._label_ltg(ltgid)
+            info = self._node_info(node)
+            label = self._label_ltg(info.gid)
             if label is None:
-                mapping[node] = "{0}, {1}".format(ltgid, host)
+                mapping[node] = "{0}, {1}".format(info.gid, info.host)
             else:
-                mapping[node] = "{0}({1}), {2}".format(ltgid, label, host)
+                mapping[node] = "{0}({1}), {2}".format(info.gid,
+                        label, info.host)
         return nx.relabel_nodes(graph, mapping, copy=True)
 
     def show_graph(self, fn, graph = None, eflag = False):
@@ -346,20 +352,15 @@ class EdgeTFIDF():
 
 # functions for graph
 
-
 def equal_edge(cedge1, cedge2, ig_host = False):
     # return True if the adjacent nodes of cedge1 is same as that of cedge2
     # If ig_host is True, ignore difference of hosts
     src_info1, dst_info1 = cedge1
     src_info2, dst_info2 = cedge2
     if ig_host:
-        src_ltgid1, src_host1 = src_info1
-        dst_ltgid1, dst_host1 = dst_info1
-        src_ltgid2, src_host2 = src_info2
-        dst_ltgid2, dst_host2 = dst_info2
-        if (src_ltgid1, dst_ltgid1) == (src_ltgid2, dst_ltgid2):
+        if (src_info1.gid, dst_info1.gid) == (src_info2.gid, dst_info2.gid):
             return True
-        elif (src_ltgid1, dst_ltgid1) == (dst_ltgid2, src_ltgid2):
+        elif (src_info1.gid, dst_info1.gid1) == (dst_info2.gid, src_info2.gid):
             return True
         else:
             return False
@@ -388,6 +389,8 @@ def mcs_size_ratio(r1, r2, ig_direction = False, weight = None):
         size = sum([1.0 * weight.idf(cedge, r1) for cedge in mcs_cedges])
             # if use tf, fail for edges only in r2
 
+    if size == 0:
+        return None
     return (len(r1.graph.edges()) + len(r2.graph.edges())) / (2.0 * size)
 
 
@@ -530,6 +533,15 @@ def result_areas(conf):
     return list(s_area)
 
 
+def results_in_area(conf, src_dir, area):
+    l_result = []
+    for fp in fslib.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        if r.area == area:
+            l_result.append(r)
+    return l_result
+
+
 # functions for visualization
 
 def list_results(conf):
@@ -656,7 +668,8 @@ def similar_graph(conf, result, area, alg, cand = 20):
             raise ValueError()
         data.append((dist, r))
 
-    data = sorted(data, key = lambda x: x[0], reverse = False)
+    #data = sorted(data, key = lambda x: x[0], reverse = False)
+    data = ex_sorted(data, key = lambda x: x[0], reverse = False)
     for d in data[:cand]:
         print d[0], d[1].filename
 
