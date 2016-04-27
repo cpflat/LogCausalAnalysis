@@ -17,6 +17,7 @@ import fslib
 import db_common
 import logparser
 import lt_common
+import host_alias
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
@@ -789,7 +790,7 @@ class LogDB():
         return [row[0] for row in cursor]
 
 
-def process_line(conf, msg, ld, lp, isnew_check = False, latest = None):
+def process_line(conf, msg, ld, lp, ha, isnew_check = False, latest = None):
     """Add a log message to DB.
     
     Args:
@@ -808,9 +809,10 @@ def process_line(conf, msg, ld, lp, isnew_check = False, latest = None):
     """
     line = None
 
-    dt, host, l_w, l_s = lp.process_line(msg)
+    dt, org_host, l_w, l_s = lp.process_line(msg)
     if latest is not None and dt < latest: return None
     if l_w is None: return None
+    host = ha.host(org_host)
 
     ltline = ld.ltm.process_line(l_w, l_s)
     if ltline is None:
@@ -835,9 +837,10 @@ def process_files(conf, targets, reset_db, isnew_check = False):
     Raises:
         IOError: If a file in targets not found.
     """
-    lp = logparser.LogParser(conf)
     ld = LogData(conf, edit = True, reset_db = reset_db)
     ld.init_ltmanager()
+    lp = logparser.LogParser(conf)
+    ha = host_alias.HostAlias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
 
     start_dt = datetime.datetime.now()
@@ -855,7 +858,7 @@ def process_files(conf, targets, reset_db, isnew_check = False):
             with open(fp, 'r') as f:
                 _logger.info("log_db processing {0}".format(fp))
                 for line in f:
-                    process_line(conf, line, ld, lp, isnew_check, latest)
+                    process_line(conf, line, ld, lp, ha, isnew_check, latest)
     ld.commit_db()
 
     end_dt = datetime.datetime.now()

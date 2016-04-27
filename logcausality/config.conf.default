@@ -57,6 +57,13 @@ split_symbol = @@
 # If empty, no group defined
 area_filename = 
 
+# Hostname alias definition file
+# Description example:
+#   host 192.168.0.1 host.domain    <- host will be recorded in DB
+# If empty, no host will be replaced
+host_alias_filename = 
+
+
 # If no year string in log message, add following year
 # (Use this year of localtime with empty value)
 # For example:
