@@ -24,7 +24,8 @@ def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
 
     tempfn = thread_name(conf, top_dt, end_dt, dur, area) + ".temp"
-    edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
+    ld = log_db.LogData(conf)
+    edict, evmap = log2event.log2event(conf, ld, top_dt, end_dt, area)
 
     usefilter = conf.getboolean("dag", "usefilter")
     if usefilter:

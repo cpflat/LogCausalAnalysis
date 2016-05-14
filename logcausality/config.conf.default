@@ -199,6 +199,21 @@ usefilter = false
 ## use_filter : outdated
 
 
+[changepoint]
+
+temp_changepoint_data = change.temp
+
+# 1 bin must be able to divide 1 day
+#cf_bin = 10s
+cf_bin = 1m
+
+#cf_r = 0.0001
+cf_r = 0.001
+
+cf_smooth = 5
+
+
+
 [filter]
 # Filters for log events
 # [file, periodic, self-corr, periodic-whole] is available

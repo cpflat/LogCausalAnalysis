@@ -4,14 +4,39 @@
 import datetime
 
 
-def discretize(l_dt, l_label, binarize = False):
+def dtrange(top_dt, end_dt, duration, include_end = False):
+    """
+    """
+    temp_dt = top_dt
+    while temp_dt < end_dt or (include_end is True and temp_dt == end_dt):
+        yield temp_dt
+        temp_dt = temp_dt + duration
+
+
+def discretize(l_dt, l_label = None, binarize = False):
+    """
+    Args:
+        l_dt (List[datetime.datetime]): An input datetime sequence.
+        l_label (List[datetime.datetime]): A sequence of separating times
+                of data bins. The number of labels is equal to
+                number of bins + 1. (Including the end of data term)
+        binarize (bool): If True, return 0 or 1 for each bin. 1 means
+                some datetime found in l_dt.
+    """
     l_val = []
-    l_dt_temp = l_dt[:]
+    l_dt_temp = sorted(l_dt)
     if len(l_dt_temp) > 0:
         new_dt = l_dt_temp.pop(0)
-    for label in l_label:
+
+    # remove data before label term
+    while new_dt < l_label[0]:
+        if len(l_dt_temp) > 0:
+            new_dt = l_dt_temp.pop(0)
+        else:
+            raise ValueError("all datetime values are out of given label term")
+    for label_dt in l_label[1:]:
         cnt = 0
-        while new_dt is not None and new_dt < label:
+        while new_dt is not None and new_dt < label_dt:
             cnt += 1
             if len(l_dt_temp) > 0:
                 new_dt = l_dt_temp.pop(0)
@@ -26,17 +51,38 @@ def discretize(l_dt, l_label, binarize = False):
                 l_val.append(cnt)
         else:
             l_val.append(0)
+    # data after label term is ignored
     return l_val
+
+
+def auto_discretize(l_dt, binsize, binarize = False):
+    """
+    Args:
+        l_dt (List[datetime.datetime])
+        binsize (datetime.timedelta)
+    """
+    if binsize == datetime.timedelta(seconds = 1):
+        return l_dt
+    else:
+        top_dt = adj_sep(min(l_dt), binsize)
+        end_dt = radj_sep(max(l_dt), binsize)
+        l_label = label(top_dt, end_dt, binsize)
+        return dtutil.discretize(l_dt, l_label, binarize)
 
 
 def label(top_dt, end_dt, duration):
     l_label = []
-    temp_dt = top_dt + duration
+    #temp_dt = top_dt + duration
+    temp_dt = top_dt
     while temp_dt < end_dt:
         l_label.append(temp_dt)
         temp_dt += duration
     l_label.append(end_dt)
     return l_label
+
+
+def is_sep(dt, duration):
+    return adj_sep(dt, duration) == dt
 
 
 def adj_sep(dt, duration):
@@ -52,7 +98,10 @@ def adj_sep(dt, duration):
 
 
 def radj_sep(dt, duration):
-    return adj_sep(dt, duration) + duration
+    if is_sep(dt, duration):
+        return dt
+    else:
+        return adj_sep(dt, duration) + duration
 
 
 def iter_term(whole_term, term_length, term_diff):
@@ -232,6 +281,43 @@ def separate_periodic(data, dur, err):
     return ret, remain_dt
 
 
+def test_discretize():
+    test_data = [
+            "2112-07-16 00:00:00",
+            "2112-07-16 00:00:00",
+            "2112-07-16 00:00:01",
+            "2112-07-16 00:57:18",
+            "2112-07-16 01:57:18",
+            "2112-07-16 02:57:17",
+            "2112-07-16 02:57:18",
+            "2112-07-16 03:57:18",
+            "2112-07-16 04:57:18",
+            "2112-07-16 15:17:01",
+            "2112-07-16 16:17:01",
+            "2112-07-16 18:17:01",
+            "2112-07-16 19:17:01",
+            "2112-07-16 20:17:01",
+            "2112-07-16 20:17:01",
+            "2112-07-16 20:17:02",
+            "2112-07-16 20:17:21",
+            "2112-07-16 20:18:00",
+            "2112-07-16 21:17:01",
+            "2112-07-16 22:17:01",
+            "2112-07-16 23:17:01",
+            "2112-07-17 00:00:00",
+            "2112-07-17 00:00:04"]
+    l_dt = [datetime.datetime.strptime(i, '%Y-%m-%d %H:%M:%S')
+            for i in test_data]
+    binsize = datetime.timedelta(hours = 1)
+    top_dt = adj_sep(min(l_dt), binsize)
+    end_dt = radj_sep(max(l_dt), binsize)
+    l_label = label(top_dt, end_dt, binsize)
+    data = discretize(l_dt, l_label, binarize = False)
+    print "result"
+    for l, cnt in zip(l_label, data):
+        print l, cnt
+
+
 def test_separate_periodic():
     test_data = [
             "2112-07-16 00:00:00",
@@ -274,6 +360,7 @@ def test_separate_periodic():
 
 
 if __name__ == "__main__":
-    test_separate_periodic()
+    #test_separate_periodic()
+    test_discretize()
 
 

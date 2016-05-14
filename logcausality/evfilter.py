@@ -172,7 +172,7 @@ def init_evfilter(conf, verbose = False):
         top_dt, end_dt = term
 
     # generate interval candidates with periodic-check
-    edict, evmap = log2event.log2event(conf, top_dt, end_dt, "all")
+    edict, evmap = log2event.log2event(conf, ld, top_dt, end_dt, "all")
     s_interval = set()
     for eid, l_dt in edict.iteritems():
         if periodic_term(l_dt, per_count, per_term):
@@ -192,7 +192,7 @@ def init_evfilter(conf, verbose = False):
     corr_diff = corr_diff + new_corr_diff
     for eid, l_dt in edict.iteritems():
         _logger.info("processing event {0}".format("eid"))
-        data = discretize_dt(l_dt, corr_bin)
+        data = dtutil.auto_discretize(l_dt, corr_bin)
         l_ret = [(diff, self_corr(data, diff, corr_bin)) for diff in corr_diff]
         if len(l_ret) > 0:
             dur, corr = max(l_ret, key = lambda x: x[1])
@@ -354,7 +354,7 @@ def interval(l_dt, threshold = 0.5, verbose = False):
 #        float: Interval of periodicity.
 #        float: Maximum correlation value with given time lag.
 #    """
-#    data = discretize_dt(l_dt, binsize)
+#    data = auto_discretize(l_dt, binsize)
 #
 #    l_ret = []
 #    for diff in l_diff:
@@ -387,19 +387,19 @@ def self_corr(data, diff, binsize):
         return np.corrcoef(np.array(data1), np.array(data2))[0, 1]
 
 
-def discretize_dt(l_dt, binsize):
-    """
-    Args:
-        l_dt (List[datetime.datetime])
-        binsize (datetime.timedelta)
-    """
-    if binsize == datetime.timedelta(seconds = 1):
-        return l_dt
-    else:
-        top_dt = dtutil.adj_sep(min(l_dt), binsize)
-        end_dt = dtutil.radj_sep(max(l_dt), binsize)
-        l_label = dtutil.label(top_dt, end_dt, binsize)
-        return dtutil.discretize(l_dt, l_label, binarize = False)
+#def discretize_dt(l_dt, binsize):
+#    """
+#    Args:
+#        l_dt (List[datetime.datetime])
+#        binsize (datetime.timedelta)
+#    """
+#    if binsize == datetime.timedelta(seconds = 1):
+#        return l_dt
+#    else:
+#        top_dt = dtutil.adj_sep(min(l_dt), binsize)
+#        end_dt = dtutil.radj_sep(max(l_dt), binsize)
+#        l_label = dtutil.label(top_dt, end_dt, binsize)
+#        return dtutil.discretize(l_dt, l_label, binarize = False)
 
 
 #def test_init_filter(conf):
@@ -434,7 +434,7 @@ def test_filter(conf, area = "all", limit = 10):
     for top_dt, end_dt in dtutil.iter_term(w_term, term, diff):
         print("[Testing {0} - {1}]".format(top_dt, end_dt))
         s_eid = set()
-        edict, evmap = log2event.log2event(conf, top_dt, end_dt, area)
+        edict, evmap = log2event.log2event(conf, ld, top_dt, end_dt, area)
         for eid, l_dt in edict.iteritems():
             info = evmap.info(eid)
             print("Event {0} : ltgid {1} in host {2} ({3})".format(eid,
@@ -455,7 +455,7 @@ def test_filter(conf, area = "all", limit = 10):
                         s_eid.add(eid)
                 if "self-corr" in l_filter:
                     #dur, corr = self_correlation(l_dt, corr_diff, corr_bin)
-                    data = discretize_dt(l_dt, corr_bin)
+                    data = dtutil.auto_discretize(l_dt, corr_bin)
                     l_val = [self_corr(data, diff, corr_bin)
                             for diff in corr_diff]
                     corr = max(l_val)

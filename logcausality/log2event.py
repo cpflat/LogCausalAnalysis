@@ -85,7 +85,7 @@ class EventDefinitionMap():
             eid += 1
         else:
             return eid
-    
+
     def process_line(self, line):
         gid = line.get(self.gid_name)
         d = {"type" : self.type_normal,
@@ -195,21 +195,12 @@ def _copy_evmap(evmap):
     return new_evmap
 
 
-def log2event(conf, top_dt, end_dt, area):
-    ld = log_db.LogData(conf)
+def log2event(conf, ld, top_dt, end_dt, area):
     gid_name = conf.get("dag", "event_gid")
     evmap = EventDefinitionMap(top_dt, end_dt, gid_name)
     edict = {} # key : eid, val : list(datetime.datetime)
 
-    #if area == "all":
-    #    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt)
-    #elif area[:5] == "host_":
-    #    host = area[5:]
-    #    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, host = host)
-    #else:
-    #    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
     iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
-
     for line in iterobj:
         eid = evmap.process_line(line)
         edict.setdefault(eid, []).append(line.dt)
