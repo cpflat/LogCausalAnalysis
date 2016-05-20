@@ -42,9 +42,8 @@ class EventDefinitionMap():
         note (any): Some paramaters to show the event characteristics.
             In the case of periodic_*, this attributes requires the interval
             of periodic appearance (seconds(int)) of log messages.
-        ltgid: If ltgid-host used.
-        ltid: If ltid-host used.
-        host: If ltgid-host or ltid-host used.
+        gid (int): 
+        host (str):
 
     Attributes:
         type_normal (int): 0.
@@ -85,6 +84,29 @@ class EventDefinitionMap():
             eid += 1
         else:
             return eid
+
+    def generate(self, ld, top_dt = None, end_dt = None):
+        l = len(self)
+        if self.gid_name == "ltid":
+            iterobj = ld.whole_host_lt(top_dt, end_dt)
+        elif self.gid_name == "ltgid":
+            iterobj = ld.whole_host_ltg(top_dt, end_dt)
+        else:
+            raise NotImplementedError
+        for host, gid in iterobj:
+            d = {"type" : self.type_normal,
+                 "note" : None,
+                 "gid" : gid,
+                 "host" : host}
+            evdef = EvDef(**d)
+
+            if self._ermap.has_key(evdef):
+                pass
+            else:
+                eid = self._next_eid()
+                self._emap[eid] = evdef
+                self._ermap[evdef] = eid
+        return len(self) - l
 
     def process_line(self, line):
         gid = line.get(self.gid_name)
@@ -163,8 +185,23 @@ class EventDefinitionMap():
         d["host"] = info.host
         return ld.show_log_repr(**d)
 
+    def iterline_args(self, eid, top_dt = None, end_dt = None, area = None):
+        evdef = self.info(eid)
+        d = {"top_dt" : top_dt,
+             "end_dt" : end_dt,
+             "host" : evdef.host,
+             "area" : area}
+        d[self.gid_name] = evdef.gid
+        return d
+
     def get_eid(self, info):
         return self._ermap[info]
+
+    def iter_eid(self):
+        return self._emap.iterkeys()
+
+    def iter_evdef(self):
+        return self._ermap.iterkeys()
 
     def pop(self, eid):
         evdef = self._emap.pop(eid)
@@ -206,6 +243,13 @@ def log2event(conf, ld, top_dt, end_dt, area):
         edict.setdefault(eid, []).append(line.dt)
 
     return edict, evmap
+
+
+def generate_evmap(conf, ld, top_dt, end_dt):
+    gid_name = conf.get("dag", "event_gid")
+    evmap = EventDefinitionMap(top_dt, end_dt, gid_name)
+    evmap.generate(ld, top_dt, end_dt)
+    return evmap
 
 
 def filter_edict(conf, edict, evmap):

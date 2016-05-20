@@ -27,6 +27,8 @@ def discretize(l_dt, l_label = None, binarize = False):
     l_dt_temp = sorted(l_dt)
     if len(l_dt_temp) > 0:
         new_dt = l_dt_temp.pop(0)
+    else:
+        raise ValueError("l_dt is empty")
 
     # remove data before label term
     while new_dt < l_label[0]:

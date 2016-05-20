@@ -201,7 +201,7 @@ usefilter = false
 
 [changepoint]
 
-temp_changepoint_data = change.temp
+temp_cp_data = cp_temp
 
 # 1 bin must be able to divide 1 day
 #cf_bin = 10s

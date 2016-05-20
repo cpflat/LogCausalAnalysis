@@ -18,14 +18,12 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 class ChangePointData():
 
-    def __init__(self, conf):
-        self.fn = conf.get("changepoint", "temp_changepoint_data")
-        self._binsize = conf.getdur("changepoint", "cf_bin")
-        self._cf_r = conf.getfloat("changepoint", "cf_r")
-        self._cf_smooth = conf.getint("changepoint", "cf_smooth")
-        self._d_cf = {}  # key = evdef, val = changefinder.ChangeFinder
-        self._d_data = {}  # key = evdef, val = [cnt, ...]
-        self._d_score = {}  # key = evdef, val = [score, ...]
+    def __init__(self, dirname):
+        self.dirname = dirname
+        self._binsize = None
+        self._cf_r = None
+        self._cf_smooth = None
+        self._evmap = None
         self._top_dt = None
         self._end_dt = None
         self._dt_label = []
@@ -41,10 +39,79 @@ class ChangePointData():
         return self._binsize
 
     def len_evdef(self):
-        return len(self._d_cf)
+        return len(self._evmap)
 
     def iter_evdef(self):
-        return self._d_cf.iterkeys()
+        return self._evmap.iter_evdef()
+
+    def _path_cf(self, evdef):
+        return self._path(evdef, "cf")
+
+    def _path_data(self, evdef):
+        return self._path(evdef, "dat")
+
+    def _path(self, evdef, footer):
+        fn = "{0}_{1}".format(evdef.host, evdef.gid)
+        if footer == "":
+            return "{0}/{1}".format(self.dirname, fn)
+        else:
+            return "{0}/{1}.{2}".format(self.dirname, fn, footer)
+
+    def _load_cf(self, evdef):
+        path = self._path_cf(evdef)
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                cf = pickle.load(f)
+            _logger.info("{0} loaded".format(path))
+            return cf
+        else:
+            return None
+
+    def _dump_cf(self, evdef, cf):
+        path = self._path_cf(evdef)
+        with open(path, 'w') as f:
+            pickle.dump(cf, f)
+        _logger.info("{0} saved".format(path))
+
+    def _load_data(self, evdef):
+        path = self._path_data(evdef)
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                l_data, l_score = pickle.load(f)
+            _logger.info("{0} loaded".format(path))
+            return l_data, l_score
+        else:
+            return None, None
+
+    def _dump_data(self, evdef, l_data, l_score):
+        path = self._path_data(evdef)
+        obj = (l_data, l_score)
+        with open(path, 'w') as f:
+            pickle.dump(obj, f)
+        _logger.info("{0} saved".format(path))
+
+    def _path_common(self):
+        return "{0}/{1}".format(self.dirname, "common")
+
+    def init(self, binsize, cf_r, cf_smooth):
+        self._binsize = binsize
+        self._cf_r = cf_r
+        self._cf_smooth = cf_smooth
+
+    def load(self, check_notexist = False):
+        path = self._path_common()
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                obj = pickle.load(f)
+            self.__dict__.update(obj)
+        else:
+            if check_notexist:
+                raise IOError
+
+    def dump(self):
+        obj = self.__dict__
+        with open(self._path_common(), 'w') as f:
+            pickle.dump(obj, f)
 
     def get(self, evdef, top_dt = None, end_dt = None):
         if top_dt is None:
@@ -52,8 +119,9 @@ class ChangePointData():
         if end_dt is None:
             end_dt = self._end_dt
         l_label = self._dt_label
-        l_data = self._d_data[evdef]
-        l_score = self._d_score[evdef]
+        l_data, l_score = self._load_data(evdef)
+        if len(l_data) == 0:
+            return None
         if dtutil.is_sep(top_dt, self._binsize):
             top_index = l_label.index(top_dt)
         else:
@@ -72,8 +140,7 @@ class ChangePointData():
             _logger.warning("New data is too small or not found")
             return
 
-        edict, evmap = log2event.log2event(conf, ld, top_dt = self._end_dt,
-                end_dt = db_end_dt, area = "all")
+        self._evmap = log2event.generate_evmap(conf, ld, None, None)
 
         if self._end_dt is None:
             top_dt = dtutil.adj_sep(db_top_dt, self._binsize)
@@ -82,21 +149,34 @@ class ChangePointData():
         # The last bin will not be added, because it may be uncompleted
         end_dt = dtutil.adj_sep(db_end_dt, self._binsize)
         l_label = dtutil.label(top_dt, end_dt, self._binsize)
-        _logger.info("new data : {0} - {1}".format(top_dt, end_dt))
+        _logger.info("updating changepoint data ({0} - {1})".format(
+                top_dt, end_dt))
 
-        for eid, l_dt in edict.iteritems():
-            evdef = evmap.info(eid)
-            _logger.info("processing {0}".format(evmap.info_str(eid)))
-            if not self._d_cf.has_key(evdef):
-                self._d_cf[evdef] = self._new_cf()
-                self._d_data[evdef] = []
-                self._d_score[evdef] = []
+        for eid in self._evmap.iter_eid():
+            evdef = self._evmap.info(eid)
+            _logger.info("processing {0}".format(self._evmap.info_str(eid)))
 
-            l_val = dtutil.discretize(l_dt, l_label, binarize = False)
-            for val in l_val:
-                self._d_data[evdef].append(val)
-                score = self._d_cf[evdef].update(val)
-                self._d_score[evdef].append(score)
+            cf = self._load_cf(evdef)
+            l_data, l_score = self._load_data(evdef)
+            if cf is None:
+                cf = self._new_cf()
+                l_data = []
+                l_score = []
+
+            l_dt = [line.dt for line in ld.iter_lines(
+                    **self._evmap.iterline_args(eid, top_dt, end_dt))]
+            if len(l_dt) > 0:
+                _logger.info("{0} messages in given term".format(len(l_dt)))
+                l_val = dtutil.discretize(l_dt, l_label, binarize = False)
+                for val in l_val:
+                    l_data.append(val)
+                    score = cf.update(val)
+                    l_score.append(score)
+                self._dump_cf(evdef, cf)
+                self._dump_data(evdef, l_data, l_score)
+            else:
+                _logger.info("no message found in processing term, passed")
+
 
         self._end_dt = end_dt
         self._dt_label += l_label
@@ -104,27 +184,12 @@ class ChangePointData():
             self._top_dt = top_dt
         _logger.info("task completed")
 
-    def dump(self, fn = None):
-        if fn is None:
-            fn = self.fn
-        obj = self.__dict__
-        with open(fn, "w") as f:
-            pickle.dump(obj, f)
 
-    def load(self, fn = None):
-        if fn is None:
-            fn = self.fn
-        if os.path.exists(fn):
-            with open(fn, "r") as f:
-                obj = pickle.load(f)
-            self.__dict__.update(obj)
-        return self
-
-
-def graph_cp(conf, dur, dirname):
-    fslib.mkdir(dirname)
+def graph_cp(conf, dur, output_dirname):
+    fslib.mkdir(output_dirname)
     length = config.str2dur(dur)
-    cpd = ChangePointData(conf)
+    dirname = conf.get("changepoint", "temp_cp_data")
+    cpd = ChangePointData(dirname)
     cpd.load()
     cpd_top_dt, cpd_end_dt = cpd.term()
     top_dt = cpd_end_dt - length
@@ -134,7 +199,10 @@ def graph_cp(conf, dur, dirname):
 
     for evdef in cpd.iter_evdef():
         fn = "{0}_{1}.pdf".format(evdef.host, evdef.gid)
-        l_label, l_data, l_score = zip(*cpd.get(evdef, top_dt, end_dt))
+        ret = cpd.get(evdef, top_dt, end_dt)
+        if ret is None:
+            continue
+        l_label, l_data, l_score = zip(*ret)
 
         import matplotlib
         matplotlib.use('Agg')
@@ -149,14 +217,15 @@ def graph_cp(conf, dur, dirname):
         daysFmt = mdates.DateFormatter('%m-%d')
         ax.xaxis.set_major_locator(days)
         ax.xaxis.set_major_formatter(daysFmt)
-        plt.savefig(dirname + "/" + fn)
+        plt.savefig(output_dirname + "/" + fn)
         plt.close()
 
 
 def heat_score(conf, dur, filename):
     import numpy as np
     length = config.str2dur(dur)
-    cpd = ChangePointData(conf)
+    dirname = conf.get("changepoint", "temp_cp_data")
+    cpd = ChangePointData(dirname)
     cpd.load()
     cpd_top_dt, cpd_end_dt = cpd.term()
     top_dt = cpd_end_dt - length
@@ -216,17 +285,24 @@ args:
     options, args = op.parse_args()
 
     conf = config.open_config(options.conf)
-    config.set_common_logging(conf, _logger)
+    config.set_common_logging(conf, _logger, ["log_db",])
+    dirname = conf.get("changepoint", "temp_cp_data")
 
     if len(args) == 0:
         sys.exit(usage)
     mode = args.pop(0)
     if mode == "make":
-        cpd = ChangePointData(conf)
+        cpd = ChangePointData(dirname)
+        binsize = conf.getdur("changepoint", "cf_bin")
+        cf_r = conf.getfloat("changepoint", "cf_r")
+        cf_smooth = conf.getint("changepoint", "cf_smooth")
+        cpd.init(binsize, cf_r, cf_smooth)
+        fslib.mkdir(cpd.dirname)
+        fslib.rm_dirchild(cpd.dirname)
         cpd.update(conf)
         cpd.dump()
     elif mode == "update":
-        cpd = ChangePointData(conf)
+        cpd = ChangePointData(dirname)
         cpd.load()
         cpd.update(conf)
         cpd.dump()

@@ -143,8 +143,9 @@ class LogData():
         else:
             raise ValueError("lt_alg({0}) invalid".format(lt_alg))
 
-    def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
-            end_dt = None, host = None, area = None):
+    #def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
+    #        end_dt = None, host = None, area = None):
+    def iter_lines(self, **kargs):
         """Generate log messages in DB that satisfy conditions
         given in arguments. All arguments are defaults to None, and ignored.
 
@@ -167,8 +168,10 @@ class LogData():
             LogMessage: An annotated log message instance
                 which satisfies all given conditions.
         """
-        return self.db.iter_lines(lid = lid, ltid = ltid, ltgid = ltgid,
-                top_dt = top_dt, end_dt = end_dt, host = host, area = area)
+        _logger.info("iter_lines called ({0})".format(" ".join(
+                ["{0}:{1}".format(k, v) for k, v in kargs.iteritems()
+                if v is not None])))
+        return self.db.iter_lines(**kargs)
 
     def show_log_repr(self, head = 0, foot = 0,
             ltid = None, ltgid = None,
@@ -228,6 +231,19 @@ class LogData():
                 datetime.timedelta(days = 1)
         return top_dt, end_dt
 
+    def whole_host_lt(self, top_dt = None, end_dt = None):
+        """List[str, str]: Sequence of all combinations of 
+        hostname and ltids in DB."""
+        return self.db.whole_host_lt(top_dt = top_dt, end_dt = end_dt)
+
+    def whole_host_ltg(self, top_dt = None, end_dt = None):
+        """List[str, str]: Sequence of all combinations of 
+        hostname and ltids in DB."""
+        ret = set()
+        for host, ltid in self.whole_host_lt(top_dt = top_dt, end_dt = end_dt):
+            ret.add((host, self.ltgid_from_ltid(ltid))) 
+        return list(ret)
+
     def whole_host(self, top_dt = None, end_dt = None):
         """List[str]: Sequence of all source hostname in DB."""
         return self.db.whole_host(top_dt = top_dt, end_dt = end_dt)
@@ -260,6 +276,10 @@ class LogData():
     def iter_ltgid(self):
         """Yields int: Get all identifiers of log template groups."""
         return self.db.iter_ltgid()
+
+    def ltgid_from_ltid(self, ltid):
+        lt = self.table[ltid]
+        return lt.ltgid
 
     def ltg_members(self, ltgid):
         """Get all log templates in given log template group.
@@ -620,6 +640,21 @@ class LogDB():
         if None in (top_dtstr, end_dtstr):
             raise ValueError("No data found in DB")
         return self.db.datetime(top_dtstr), self.db.datetime(end_dtstr)
+
+    def whole_host_lt(self, top_dt = None, end_dt = None):
+        table_name = "log"
+        l_key = ["host", "ltid"]
+        l_cond = []
+        args = {}
+        if top_dt is not None:
+            l_cond.append(db_common.cond("dt", ">=", "top_dt"))
+            args["top_dt"] = top_dt
+        if end_dt is not None:
+            l_cond.append(db_common.cond("dt", "<", "end_dt"))
+            args["end_dt"] = end_dt
+        sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
+        cursor = self.db.execute(sql, args)
+        return [(row[0], row[1]) for row in cursor]
 
     def whole_host(self, top_dt = None, end_dt = None):
         table_name = "log"
