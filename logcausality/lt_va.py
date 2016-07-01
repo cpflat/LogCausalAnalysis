@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""DEAD"""
+
+
 import sys
 import math
 import cPickle as pickle
@@ -8,6 +11,7 @@ import cPickle as pickle
 import config
 import fslib
 import lt_common
+import lt_misc
 import logparser
 
 
@@ -25,7 +29,7 @@ class LTManager(lt_common.LTManager):
 
         self._init_ltgen()
         if self.searchtree is None:
-            self.searchtree = lt_common.LTSearchTree(self.sym)
+            self.searchtree = lt_misc.LTSearchTree(self.sym)
 
     def _init_ltgen(self):
         if self.ltgen is None:

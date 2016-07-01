@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""DEAD"""
+
+
 import logging
 
 import lt_common
+import lt_misc
 import logparser
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
@@ -19,7 +23,7 @@ class LTManager(lt_common.LTManager):
         self.def_path = conf.get("log_template_import", "def_path")
         self.mode = conf.get("log_template_import", "mode")
         if self.searchtree is None:
-            self.searchtree = lt_common.LTSearchTree(self.sym)
+            self.searchtree = lt_misc.LTSearchTree(self.sym)
 
         self._open_def()
 
