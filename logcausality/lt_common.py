@@ -6,9 +6,24 @@ import cPickle as pickle
 
 
 class LTManager(object):
+    """
+    A log template manager. This class define log templates from messages.
+    In addition, this class update log template table on memory and DB.
+
+    Log template generation process can be classified to following 2 types.
+        Grouping : Classify messages into groups, and generate template from
+                the common parts of group members.
+        Templating : Estimate log template from messages by classifying words,
+                and make groups that have common template.
+
+    Attributes:
+        #TODO
+    
+    """
+
     # adding lt to db (ltgen do not add)
 
-    def __init__(self, conf, db, table, reset_db, ltg_alg):
+    def __init__(self, conf, db, table, reset_db, lt_alg, ltg_alg, post_alg):
         self.reset_db = reset_db
         self.conf = conf
         self.sym = conf.get("log_template", "variable_symbol")
@@ -16,36 +31,25 @@ class LTManager(object):
 
         self.db = db # log_db.LogDB
         self.table = table # LTTable
-        self.ltgroup = self._init_ltgroup(ltg_alg) # LTGroup
+        #self.ltgroup = self._init_ltgroup(ltg_alg) # LTGroup
+        self.ltgen = None
+        self.ltspl = None
+        self.ltgroup = None
 
-        if os.path.exists(self.filename) and not reset_db:
-            self.load()
+    def _set_ltgen(self, ltgen):
+        self.ltgen = ltgen
 
-    def _init_ltgroup(self, ltg_alg):
-        if ltg_alg == "shiso":
-            import lt_shiso
-            ltgroup = lt_shiso.LTGroupSHISO(self.table,
-                    ngram_length = self.conf.getint(
-                        "log_template_shiso", "ltgroup_ngram_length"),
-                    th_lookup = self.conf.getfloat(
-                        "log_template_shiso", "ltgroup_th_lookup"),
-                    th_distance = self.conf.getfloat(
-                        "log_template_shiso", "ltgroup_th_distance"),
-                    mem_ngram = self.conf.getboolean(
-                        "log_template_shiso", "ltgroup_mem_ngram")
-                    )
-        elif ltg_alg == "none":
-            ltgroup = LTGroup()
-        else:
-            raise ValueError("ltgroup_alg({0}) invalid".format(ltg_alg))
+    def _set_ltgroup(self, ltgroup):
+        self.ltgroup = ltgroup
         if not self.reset_db:
-            ltgroup.restore_ltg(self.db, self.table)
-        return ltgroup
+            self.ltgroup.restore_ltg(self.db, self.table)
 
     def process_line(self, l_w, l_s):
+        ltline, added_flag = self.ltgen.process_line(l_w, l_s)
+        return ltline
         # return ltline object
         # if ltline is None, it means lt not found in pre-defined table
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def add_lt(self, l_w, l_s, cnt = 1):
         # add new lt to db and table
@@ -88,18 +92,27 @@ class LTManager(object):
         assert self.ltgroup.table.ltdict == temp_table.ltdict
 
     def load(self):
-        pass
+        with open(self.filename, 'r') as f:
+            obj = pickle.load(f)
+        ltgen_data, ltgroup_data = obj
+        self.ltgen.load(ltgen_data)
+        self.ltgroup.load(ltgroup_data)
 
     def dump(self):
-        pass
-
-    def _load_pickle(self):
-        with open(self.filename, 'r') as f:
-            return pickle.load(f)
-
-    def _dump_pickle(self, obj):
+        ltgen_data = self.ltgen.dumpobj()
+        #ltspl_data = None
+        ltgroup_data = self.ltgroup.dumpobj()
+        obj = (ltgen_data, ltgroup_data)
         with open(self.filename, 'w') as f:
             pickle.dump(obj, f)
+
+    #def _load_pickle(self):
+    #    with open(self.filename, 'r') as f:
+    #        return pickle.load(f)
+
+    #def _dump_pickle(self, obj):
+    #    with open(self.filename, 'w') as f:
+    #        pickle.dump(obj, f)
 
 
 class LTTable():
@@ -214,6 +227,12 @@ class LTGroup(object):
         for ltid, ltgid in db.iter_ltg_def():
             self.d_group.setdefault(ltgid, []).append(table[ltid])
             self.d_rgroup[ltid] = ltgid
+
+    def load(self, loadobj):
+        pass
+
+    def dumpobj(self, dumpobj):
+        return None
 
 
 class LTSearchTree():
@@ -369,6 +388,60 @@ class LTSearchTreeNode():
         return (len(self.windex) == 0) and \
                 (self.wild is None) and \
                 (self.end is None)
+
+
+def init_ltmanager(conf, db, table, reset_db):
+    """Initializing ltmanager by loading argument parameters."""
+    lt_alg = conf.get("log_template", "lt_alg")
+    ltg_alg = conf.get("log_template", "ltgroup_alg")
+    post_alg = "" #TODO
+    # ltg_alg : used in lt_common.LTManager._init_ltgroup
+    ltm = LTManager(conf, db, table, reset_db,
+            lt_alg, ltg_alg, post_alg)
+
+    if lt_alg == "shiso":
+        import lt_shiso
+        ltgen = lt_shiso.LTGen(ltm, table,
+                threshold = conf.getfloat(
+                    "log_template_shiso", "ltgen_threshold"),
+                max_child = conf.getint(
+                    "log_template_shiso", "ltgen_max_child")
+                )
+        #TODO ltgen should not use ltm...
+    #elif lt_alg == "va":
+    #    import lt_va
+    #    ltm = lt_va.LTManager(conf, self.db, self.table,
+    #            self._reset_db, ltg_alg)
+    #elif lt_alg == "import":
+    #    import lt_import
+    #    ltm = lt_import.LTManager(conf, self.db, self.table,
+    #            self._reset_db, ltg_alg)
+    else:
+        raise ValueError("lt_alg({0}) invalid".format(lt_alg))
+    ltm._set_ltgen(ltgen)
+
+    if ltg_alg == "shiso":
+        import lt_shiso
+        ltgroup = lt_shiso.LTGroupSHISO(table,
+                ngram_length = conf.getint(
+                    "log_template_shiso", "ltgroup_ngram_length"),
+                th_lookup = conf.getfloat(
+                    "log_template_shiso", "ltgroup_th_lookup"),
+                th_distance = conf.getfloat(
+                    "log_template_shiso", "ltgroup_th_distance"),
+                mem_ngram = conf.getboolean(
+                    "log_template_shiso", "ltgroup_mem_ngram")
+                )
+    elif ltg_alg == "none":
+        ltgroup = LTGroup()
+    else:
+        raise ValueError("ltgroup_alg({0}) invalid".format(ltg_alg))
+    ltm._set_ltgroup(ltgroup)
+
+    if os.path.exists(ltm.filename) and not reset_db:
+        ltm.load()
+
+    return ltm
 
 
 def merge_lt(m1, m2, sym):

@@ -24,35 +24,35 @@ import lt_common
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-class LTManager(lt_common.LTManager):
-
-    def __init__(self, conf, db, table, reset_db, ltg_alg):
-        self.ltgen = None
-        super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
-        
-        self._init_ltgen()
-
-    def _init_ltgen(self):
-        if self.ltgen is None:
-            self.ltgen = LTGen(self, self.table,
-                    threshold = self.conf.getfloat(
-                        "log_template_shiso", "ltgen_threshold"),
-                    max_child = self.conf.getint(
-                        "log_template_shiso", "ltgen_max_child")
-                    )
-        
-    def process_line(self, l_w, l_s):
-        ltline, added_flag = self.ltgen.process_line(l_w, l_s)
-        return ltline
-
-    def load(self):
-        if self.ltgen is None:
-            self._init_ltgen()
-        self.ltgen.n_root = self._load_pickle()
-
-    def dump(self):
-        obj = self.ltgen.n_root
-        self._dump_pickle(obj)
+#class LTManager(lt_common.LTManager):
+#
+#    def __init__(self, conf, db, table, reset_db, ltg_alg):
+#        self.ltgen = None
+#        super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
+#
+#        self._init_ltgen()
+#
+#    def _init_ltgen(self):
+#        if self.ltgen is None:
+#            self.ltgen = LTGen(self, self.table,
+#                    threshold = self.conf.getfloat(
+#                        "log_template_shiso", "ltgen_threshold"),
+#                    max_child = self.conf.getint(
+#                        "log_template_shiso", "ltgen_max_child")
+#                    )
+#
+#    def process_line(self, l_w, l_s):
+#        ltline, added_flag = self.ltgen.process_line(l_w, l_s)
+#        return ltline
+#
+#    def load(self):
+#        if self.ltgen is None:
+#            self._init_ltgen()
+#        self.ltgen.n_root = self._load_pickle()
+#
+#    def dump(self):
+#        obj = self.ltgen.n_root
+#        self._dump_pickle(obj)
 
 
 class LTGenNode():
@@ -80,6 +80,12 @@ class LTGen():
         self.n_root = self._new_node()
         self.threshold = threshold
         self.max_child = max_child
+
+    def load(self, loadobj):
+        self.n_root = loadobj
+
+    def dumpobj(self):
+        return self.n_root
 
     def _new_node(self, l_w = None, l_s = None):
         n = LTGenNode()
@@ -285,6 +291,12 @@ class LTGroupSHISO(lt_common.LTGroup):
             if ng in self._get_ngram(ltline):
                 ret.append((ltline, ng))
         return ret
+
+    def load(self, obj):
+        pass
+
+    def dumpobj(self):
+        return None
 
 
 def edit_distance(m1, m2, sym):

@@ -125,26 +125,9 @@ class LogData():
         Call this before adding new log message in original
         plain string format (not classified with log template) to DB.
         """
-        lt_alg = self.conf.get("log_template", "lt_alg")
-        ltg_alg = self.conf.get("log_template", "ltgroup_alg")
-        # ltg_alg : used in lt_common.LTManager._init_ltgroup
-        if lt_alg == "shiso":
-            import lt_shiso
-            self.ltm = lt_shiso.LTManager(self.conf, self.db, self.table,
-                    self._reset_db, ltg_alg)
-        elif lt_alg == "va":
-            import lt_va
-            self.ltm = lt_va.LTManager(self.conf, self.db, self.table,
-                    self._reset_db, ltg_alg)
-        elif lt_alg == "import":
-            import lt_import
-            self.ltm = lt_import.LTManager(self.conf, self.db, self.table,
-                    self._reset_db, ltg_alg)
-        else:
-            raise ValueError("lt_alg({0}) invalid".format(lt_alg))
+        self.ltm = lt_common.init_ltmanager(self.conf, self.db, self.table,
+                    self._reset_db)
 
-    #def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
-    #        end_dt = None, host = None, area = None):
     def iter_lines(self, **kargs):
         """Generate log messages in DB that satisfy conditions
         given in arguments. All arguments are defaults to None, and ignored.
