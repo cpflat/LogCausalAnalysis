@@ -847,7 +847,7 @@ def process_line(conf, msg, ld, lp, ha, isnew_check = False, latest = None):
     dt, org_host, l_w, l_s = lp.process_line(msg)
     if latest is not None and dt < latest: return None
     if l_w is None: return None
-    host = ha.host(org_host)
+    host = ha.resolve_host(org_host)
 
     ltline = ld.ltm.process_line(l_w, l_s)
     if ltline is None:
