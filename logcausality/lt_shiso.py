@@ -59,7 +59,7 @@ class LTGenNode():
 
     def __init__(self):
         self.l_child = []
-        self.lt = None
+        self.tid = None
 
     def __len__(self):
         return len(self.l_child)
@@ -71,9 +71,10 @@ class LTGenNode():
         self.l_child.append(node)
 
 
-class LTGen():
+class LTGen(lt_common.LTGenGrouping):
 
     def __init__(self, ltm, table, threshold, max_child):
+        super(lt_common.LTGenGrouping, self).__init__()
         self.ltm = ltm
         self.table = table
         self.sym = self.table.sym
@@ -90,10 +91,9 @@ class LTGen():
     def _new_node(self, l_w = None, l_s = None):
         n = LTGenNode()
         if l_w is not None:
-            ltline = self.ltm.add_lt(l_w, l_s)
-            #ltid = self.table.add_lt(l_w, l_s)
-            n.lt = ltline
-            #_logger.debug("added as ltid {0}".format(ltid))
+            #ltline = self.ltm.add_lt(l_w, l_s)
+            n.tid = self.table.add(l_w)
+            _logger.debug("added as tid {0}".format(n.tid))
         return n
 
     def process_line(self, l_w, l_s):
@@ -101,24 +101,26 @@ class LTGen():
         while True:
             for n_child in n_parent:
                 _logger.debug(
-                        "comparing with ltid {0}".format(n_child.lt.ltid))
-                nc_lt = n_child.lt.ltw
-                sr = self.seq_ratio(nc_lt, l_w)
+                        "comparing with tid {0}".format(n_child.tid))
+                #nc_tpl = n_child.lt.ltw
+                nc_tpl = self.table[n_child.tid]
+                sr = self.seq_ratio(nc_tpl, l_w)
                 _logger.debug("seq_ratio : {0}".format(sr))
                 if sr >= self.threshold:
                     _logger.debug(
-                            "merged with ltid {0}".format(n_child.lt.ltid))
-                    new_lt = lt_common.merge_lt(nc_lt, l_w, self.sym)
-                    if new_lt == nc_lt:
-                        self.ltm.count_lt(n_child.lt.ltid)
-                    else:
-                        self.ltm.replace_and_count_lt(n_child.lt.ltid, new_lt)
-                        _logger.debug(
-                                "ltid {0} replaced".format(n_child.lt.ltid))
-                        _logger.debug("-> {0}".format(str(n_child.lt)))
-                    return n_child.lt, False
+                            "merged with tid {0}".format(n_child.tid))
+                    #new_lt = lt_common.merge_lt(nc_tpl, l_w, self.sym)
+                    #if new_lt == nc_tpl:
+                    #    self.ltm.count_lt(n_child.tid)
+                    #else:
+                    #    self.ltm.replace_and_count_lt(n_child.tid, new_lt)
+                    #    _logger.debug(
+                    #            "ltid {0} replaced".format(n_child.tid))
+                    #    _logger.debug("-> {0}".format(str(n_child.tid)))
+                    #return n_child.lt, False
+                    return n_child.tid, False
                 else:
-                    if self.equal(nc_lt, l_w):
+                    if self.equal(nc_tpl, l_w):
                         _logger.warning(
                             "comparing same line, but seqratio is small...")
             else:
@@ -126,15 +128,16 @@ class LTGen():
                     _logger.debug("no node to be merged, add new node")
                     n = self._new_node(l_w, l_s)
                     n_parent.join(n)
-                    return n.lt, True
+                    #return n.lt, True
+                    return n.tid, True
                 else:
                     _logger.debug("children : {0}".format(
-                            [e.lt.ltid for e in n_parent.l_child]))
-                    l_sim = [(edit_distance(n_child.lt.ltw, l_w, self.sym),
-                            n_child) for n_child in n_parent]
+                            [e.tid for e in n_parent.l_child]))
+                    l_sim = [(edit_distance(self.table[n_child.tid], l_w,
+                            self.sym), n_child) for n_child in n_parent]
                     n_parent = max(l_sim, key=lambda x: x[0])[1]
-                    _logger.debug("go down to node(ltid {0})".format(
-                            n_parent.lt.ltid))
+                    _logger.debug("go down to node(tid {0})".format(
+                            n_parent.tid))
 
     def seq_ratio(self, m1, m2):
 

@@ -961,7 +961,8 @@ args:
 
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, 
-            ["lt_common", "lt_shiso", "lt_va", "lt_import"])
+            ["lt_common", "lt_shiso", "lt_va", "lt_import"],
+            lv = logging.INFO)
 
     if len(args) == 0:
         sys.exit(usage)
