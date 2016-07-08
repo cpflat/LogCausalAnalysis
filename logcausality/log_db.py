@@ -20,6 +20,7 @@ import lt_common
 import host_alias
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
+ESC_LETTER = "*@" # including back slash
 
 
 class LogMessage():
@@ -846,6 +847,7 @@ def process_line(conf, msg, ld, lp, ha, isnew_check = False, latest = None):
     dt, org_host, l_w, l_s = lp.process_line(msg)
     if latest is not None and dt < latest: return None
     if l_w is None: return None
+    l_w = [strutil.add_esc(w) for w in l_w]
     host = ha.resolve_host(org_host)
 
     ltline = ld.ltm.process_line(l_w, l_s)
@@ -912,6 +914,7 @@ def process_init_data(conf, targets, isnew_check = False):
         dt, org_host, l_w, l_s = lp.process_line(line)
         if latest is not None and dt < latest: continue
         if l_w is None: continue
+        l_w = [strutil.add_esc(w) for w in l_w]
         host = ha.resolve_host(org_host)
         l_line.append((l_w, l_s))
         l_data.append((dt, host))

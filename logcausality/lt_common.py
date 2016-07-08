@@ -5,6 +5,8 @@ import os
 import cPickle as pickle
 from collections import defaultdict
 
+import strutil
+
 
 class LTManager(object):
     """
@@ -102,7 +104,6 @@ class LTManager(object):
             ltid = self.ltspl.search(tid, ltw)
             if ltid is None:
                 # tpl exists, but no lt matches
-                import pdb; pdb.set_trace()
                 ltline = self.add_lt(ltw, l_s)
                 self.table.addcand(tid, ltline.ltid)
             else:
@@ -228,7 +229,9 @@ class LogTemplate():
     def __init__(self, ltid, ltgid, ltw, lts, count, sym):
         self.ltid = ltid
         self.ltgid = ltgid
+        print ltw, len(ltw)
         self.ltw = ltw
+        print lts, len(lts)
         self.lts = lts
         self.cnt = count
         self.sym = sym
@@ -244,6 +247,10 @@ class LogTemplate():
         return [i for i, w_lt in enumerate(self.ltw) if w_lt == self.sym]
 
     def restore_message(self, l_w):
+        print l_w, len(l_w)
+        l_w = [strutil.restore_esc(w) for w in l_w]
+        print l_w, len(l_w)
+        print self.lts, len(self.lts)
         if self.lts is None:
             return "".join(l_w)
         else:
