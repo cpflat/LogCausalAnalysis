@@ -13,6 +13,7 @@ import sqlite3
 import logging
 
 import config
+import strutil
 import fslib
 import db_common
 import logparser
@@ -526,7 +527,8 @@ class LogDB():
             if row[4] == "":
                 l_w = []
             else:
-                l_w = row[4].split(self.splitter)
+                #l_w = row[4].split(self.splitter)
+                l_w = strutil.split_igesc(row[4], self.splitter)
             yield LogMessage(lid, self.table[ltid], dt, host, l_w)
 
     def iter_words(self, lid = None, ltid = None, ltgid = None, top_dt = None,
