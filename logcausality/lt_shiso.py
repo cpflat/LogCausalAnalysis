@@ -24,42 +24,11 @@ import lt_common
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-#class LTManager(lt_common.LTManager):
-#
-#    def __init__(self, conf, db, table, reset_db, ltg_alg):
-#        self.ltgen = None
-#        super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
-#
-#        self._init_ltgen()
-#
-#    def _init_ltgen(self):
-#        if self.ltgen is None:
-#            self.ltgen = LTGen(self, self.table,
-#                    threshold = self.conf.getfloat(
-#                        "log_template_shiso", "ltgen_threshold"),
-#                    max_child = self.conf.getint(
-#                        "log_template_shiso", "ltgen_max_child")
-#                    )
-#
-#    def process_line(self, l_w, l_s):
-#        ltline, added_flag = self.ltgen.process_line(l_w, l_s)
-#        return ltline
-#
-#    def load(self):
-#        if self.ltgen is None:
-#            self._init_ltgen()
-#        self.ltgen.n_root = self._load_pickle()
-#
-#    def dump(self):
-#        obj = self.ltgen.n_root
-#        self._dump_pickle(obj)
-
-
 class LTGenNode():
 
-    def __init__(self):
+    def __init__(self, tid = None):
         self.l_child = []
-        self.tid = None
+        self.tid = tid
 
     def __len__(self):
         return len(self.l_child)
@@ -78,7 +47,7 @@ class LTGen(lt_common.LTGenGrouping):
         self.ltm = ltm
         self.table = table
         self.sym = self.table.sym
-        self.n_root = self._new_node()
+        self.n_root = LTGenNode()
         self.threshold = threshold
         self.max_child = max_child
 
@@ -88,37 +57,20 @@ class LTGen(lt_common.LTGenGrouping):
     def dumpobj(self):
         return self.n_root
 
-    def _new_node(self, l_w = None, l_s = None):
-        n = LTGenNode()
-        if l_w is not None:
-            #ltline = self.ltm.add_lt(l_w, l_s)
-            n.tid = self.table.add(l_w)
-            _logger.debug("added as tid {0}".format(n.tid))
-        return n
-
     def process_line(self, l_w, l_s):
         n_parent = self.n_root
         while True:
             for n_child in n_parent:
                 _logger.debug(
                         "comparing with tid {0}".format(n_child.tid))
-                #nc_tpl = n_child.lt.ltw
                 nc_tpl = self.table[n_child.tid]
                 sr = self.seq_ratio(nc_tpl, l_w)
                 _logger.debug("seq_ratio : {0}".format(sr))
                 if sr >= self.threshold:
                     _logger.debug(
                             "merged with tid {0}".format(n_child.tid))
-                    #new_lt = lt_common.merge_lt(nc_tpl, l_w, self.sym)
-                    #if new_lt == nc_tpl:
-                    #    self.ltm.count_lt(n_child.tid)
-                    #else:
-                    #    self.ltm.replace_and_count_lt(n_child.tid, new_lt)
-                    #    _logger.debug(
-                    #            "ltid {0} replaced".format(n_child.tid))
-                    #    _logger.debug("-> {0}".format(str(n_child.tid)))
-                    #return n_child.lt, False
-                    return n_child.tid, False
+                    state = self.update_table(l_w, n_child.tid, False)
+                    return n_child.tid, state
                 else:
                     if self.equal(nc_tpl, l_w):
                         _logger.warning(
@@ -126,10 +78,10 @@ class LTGen(lt_common.LTGenGrouping):
             else:
                 if len(n_parent) < self.max_child:
                     _logger.debug("no node to be merged, add new node")
-                    n = self._new_node(l_w, l_s)
-                    n_parent.join(n)
-                    #return n.lt, True
-                    return n.tid, True
+                    n_child = LTGenNode(self.table.next_tid())
+                    n_parent.join(n_child)
+                    state = self.update_table(l_w, n_child.tid, True)
+                    return n_child.tid, state
                 else:
                     _logger.debug("children : {0}".format(
                             [e.tid for e in n_parent.l_child]))

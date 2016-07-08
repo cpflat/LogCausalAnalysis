@@ -2,6 +2,33 @@
 # coding: utf-8
 
 import os
+import datetime
+import logging
+
+
+class Timer():
+
+    def __init__(self, header, output = None):
+        self.start_dt = None
+        self.header = header
+        self.output = output
+
+    def _output(self, string):
+        if isinstance(self.output, logging.Logger):
+            self.output.info(string)
+        else:
+            print string
+
+    def start(self):
+        self.start_dt = datetime.datetime.now()
+        self._output("{0} start".format(self.header))
+
+    def stop(self):
+        if self.start_dt is None:
+            raise AssertionError("call start() before stop()")
+        self.end_dt = datetime.datetime.now()
+        self._output("{0} done ({1})".format(self.header,
+                self.end_dt - self.start_dt))
 
 
 def rep_dir(args):

@@ -808,6 +808,22 @@ class LogDB():
         return [row[0] for row in cursor]
 
 
+def _iter_line_from_files(targets):
+    for fp in targets:
+        if os.path.isdir(fp):
+            sys.stderr.write(
+                    "{0} is a directory, fail to process\n".format(fp))
+            sys.stderr.write(
+                    "Use -r if you need to search log data recursively\n")
+        else:
+            if not os.path.isfile(fp):
+                raise IOError("File {0} not found".format(fp))
+            with open(fp, 'r') as f:
+                _logger.info("log_db processing file {0}".format(fp))
+                for line in f:
+                    yield line
+
+
 def process_line(conf, msg, ld, lp, ha, isnew_check = False, latest = None):
     """Add a log message to DB.
     
@@ -861,26 +877,52 @@ def process_files(conf, targets, reset_db, isnew_check = False):
     ha = host_alias.HostAlias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
 
-    start_dt = datetime.datetime.now()
-    _logger.info("log_db task start")
+    for line in _iter_line_from_files(targets):
+        process_line(conf, line, ld, lp, ha, isnew_check, latest)
 
-    for fp in targets:
-        if os.path.isdir(fp):
-            sys.stderr.write(
-                    "{0} is a directory, fail to process\n".format(fp))
-            sys.stderr.write(
-                    "Use -r if you need to search log data recursively\n")
-        else:
-            if not os.path.isfile(fp):
-                raise IOError("File {0} not found".format(fp))
-            with open(fp, 'r') as f:
-                _logger.info("log_db processing {0}".format(fp))
-                for line in f:
-                    process_line(conf, line, ld, lp, ha, isnew_check, latest)
     ld.commit_db()
 
-    end_dt = datetime.datetime.now()
-    _logger.info("log_db task done ({0})".format(end_dt - start_dt))
+
+def process_init_data(conf, targets, isnew_check = False):
+    """Add log messages to DB from files. This function do NOT process
+    messages incrementally. Use this to avoid bad-start problem of
+    log template generation with clustering or training methods.
+
+    Note:
+        This function needs large memory space.
+
+    Args:
+        conf (config.ExtendedConfigParser): A common configuration object.
+        targets (List[str]): A sequence of filepaths to process.
+        isnew_check (Optional[bool]): If True, add message to DB
+            only if its timestamp is newest of existing messages in DB.
+
+    Raises:
+        IOError: If a file in targets not found.
+    """
+    ld = LogData(conf, edit = True, reset_db = True)
+    ld.init_ltmanager()
+    lp = logparser.LogParser(conf)
+    ha = host_alias.HostAlias(conf)
+    latest = ld.dt_term()[1] if isnew_check else None
+
+    l_line = []
+    l_data = []
+    for line in _iter_line_from_files(targets):
+        dt, org_host, l_w, l_s = lp.process_line(line)
+        if latest is not None and dt < latest: continue
+        if l_w is None: continue
+        host = ha.resolve_host(org_host)
+        l_line.append((l_w, l_s))
+        l_data.append((dt, host))
+
+    for ltline, line, data in zip(ld.ltm.process_init_data(l_line),
+                                  l_line, l_data):
+        l_w, l_s = line
+        dt, host = data
+        ld.add_line(ltline.ltid, dt, host, l_w)
+
+    ld.commit_db()
 
 
 def info(conf):
@@ -933,6 +975,20 @@ def remake_area(conf):
     ld.commit_db()
 
 
+def _get_targets(conf, args, recur):
+    if len(args) == 0:
+        if conf.getboolean("general", "src_recur") or recur:
+            targets = fslib.recur_dir(conf.getlist("general", "src_path"))
+        else:
+            targets = fslib.rep_dir(conf.getlist("general", "src_path"))
+    else:
+        if recur:
+            targets = fslib.recur_dir(args)
+        else:
+            targets = fslib.rep_dir(args)
+    return targets
+
+
 if __name__ == "__main__":
 
     usage = """
@@ -962,23 +1018,23 @@ args:
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, 
             ["lt_common", "lt_shiso", "lt_va", "lt_import"],
-            lv = logging.INFO)
+            lv = logging.DEBUG)
 
     if len(args) == 0:
         sys.exit(usage)
     mode = args.pop(0)
     if mode == "make":
-        if len(args) == 0:
-            if conf.getboolean("general", "src_recur") or options.recur:
-                targets = fslib.recur_dir(conf.getlist("general", "src_path"))
-            else:
-                targets = fslib.rep_dir(conf.getlist("general", "src_path"))
-        else:
-            if options.recur:
-                targets = fslib.recur_dir(args)
-            else:
-                targets = fslib.rep_dir(args)
+        targets = _get_targets(conf, args, options.recur)
+        timer = fslib.Timer("log_db make", output = _logger)
+        timer.start()
         process_files(conf, targets, True)
+        timer.stop()
+    elif mode == "make-init":
+        targets = _get_targets(conf, args, options.recur)
+        timer = fslib.Timer("log_db make-init", output = _logger)
+        timer.start()
+        process_init_data(conf, targets)
+        timer.stop()
     elif mode == "add":
         if len(args) == 0:
             sys.exit("give me filenames of log data to add to DB")
@@ -987,7 +1043,10 @@ args:
                 targets = fslib.recur_dir(args)
             else:
                 targets = fslib.rep_dir(args)
+        timer = fslib.Timer("log_db add", output = _logger)
+        timer.start()
         process_files(conf, targets, False)
+        timer.stop()
     elif mode == "update":
         if len(args) == 0:
             sys.exit("give me filenames of log data to add to DB")
@@ -996,7 +1055,10 @@ args:
                 targets = fslib.recur_dir(args)
             else:
                 targets = fslib.rep_dir(args)
+        timer = fslib.Timer("log_db update", output = _logger)
+        timer.start()
         process_files(conf, targets, False, diff = True)
+        timer.stop()
     elif mode == "info":
         info(conf)
     elif mode == "show-lt":

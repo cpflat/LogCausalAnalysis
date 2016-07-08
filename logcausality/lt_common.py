@@ -49,32 +49,80 @@ class LTManager(object):
     def _set_ltspl(self, ltspl):
         self.ltspl = ltspl
 
-    def process_line(self, l_w, l_s):
-        tid, added_flag = self.ltgen.process_line(l_w, l_s)
-        if added_flag:
-            ltw = self.ltspl.replace(l_w)
-            ltline = self.add_lt(ltw, l_s)
-            self.table.addcand(tid, ltline.ltid)
-        else:
-            old_tpl = self.table[tid]
-            new_tpl = merge_lt(old_tpl, l_w, self.sym)
-            ltw = self.ltspl.replace(new_tpl)
+    def process_init_data(self, l_line):
+        """
+        Args:
+            lines [List[Tuple[str]]]: A sequence of lines which is
+                    presented in a tuple of l_w and l_s.
+        """
+        d = self.ltgen.process_init_data(l_line)
+        for mid, line in enumerate(l_line):
+            l_w, l_s = line
+            tid = d[mid]
+            tpl = self.table[tid]
+            ltw = self.ltspl.replace(tpl)
             ltid = self.ltspl.search(tid, ltw)
             if ltid is None:
                 ltline = self.add_lt(ltw, l_s)
                 self.table.addcand(tid, ltline.ltid)
             else:
-                if old_tpl == new_tpl:
+                self.count_lt(ltid)
+                ltline = self.lttable[ltid]
+            yield ltline
+
+    def process_line(self, l_w, l_s):
+
+        def lt_diff(ltid, ltw):
+            d_diff = {}
+            for wid, new_w, old_w in zip(range(len(ltw)), ltw,
+                    self.lttable[ltid].ltw):
+                if new_w == old_w:
+                    pass
+                else:
+                    d_diff[wid] = new_w
+            return d_diff
+
+        def lt_repl(ltw, d_diff):
+            ret = []
+            for wid, w in enumerate(ltw):
+                if d_diff.has_key(wid):
+                    ret.append(d_diff[wid])
+                else:
+                    ret.append(w)
+            return ret
+
+        tid, state = self.ltgen.process_line(l_w, l_s)
+
+        tpl = self.table[tid]
+        ltw = self.ltspl.replace(tpl)
+        if state == LTGen.state_added:
+            ltline = self.add_lt(ltw, l_s)
+            self.table.addcand(tid, ltline.ltid)
+        else:
+            ltid = self.ltspl.search(tid, ltw)
+            if ltid is None:
+                # tpl exists, but no lt matches
+                import pdb; pdb.set_trace()
+                ltline = self.add_lt(ltw, l_s)
+                self.table.addcand(tid, ltline.ltid)
+            else:
+                if state == LTGen.state_changed:
+                    # update all lt that belong to the edited tpl
+                    d_diff = lt_diff(ltid, ltw)
+                    for temp_ltid in self.table.getcand(tid):
+                        if temp_ltid == ltid:
+                            self.replace_and_count_lt(ltid, ltw)
+                        else:
+                            old_ltw = self.lttable[temp_ltid]
+                            new_ltw = lt_repl(old_ltw, d_diff)
+                            self.replace_lt(ltid, new_ltw)
+                elif state == LTGen.state_unchanged:
                     self.count_lt(ltid)
                 else:
-                    self.table.replace(tid, new_tpl)
-                    self.replace_and_count_lt(ltid, ltw)
+                    raise AssertionError
                 ltline = self.lttable[ltid]
+    
         return ltline
-
-        # return ltline object
-        # if ltline is None, it means lt not found in pre-defined table
-        #raise NotImplementedError
 
     def add_lt(self, l_w, l_s, cnt = 1):
         # add new lt to db and table
@@ -132,14 +180,6 @@ class LTManager(object):
         obj = (table_data, ltgen_data, ltgroup_data)
         with open(self.filename, 'w') as f:
             pickle.dump(obj, f)
-
-    #def _load_pickle(self):
-    #    with open(self.filename, 'r') as f:
-    #        return pickle.load(f)
-
-    #def _dump_pickle(self, obj):
-    #    with open(self.filename, 'w') as f:
-    #        pickle.dump(obj, f)
 
 
 class LTTable():
@@ -230,13 +270,20 @@ class TemplateTable():
         self.d_cand = defaultdict(list) # key = tid, val = List[ltid]
         self.sym = sym
 
+    def __iter__(self):
+        return self._generator()
+
+    def _generator(self):
+        for tid in self.d_tpl.keys():
+            yield self.d_tpl[tid]
+    
     def __getitem__(self, key):
         assert isinstance(key, int)
         if not self.d_tpl.has_key(key):
             raise IndexError("index out of range")
         return self.d_tpl[key]
 
-    def _next_id(self):
+    def next_tid(self):
         cnt = 0
         while self.d_tpl.has_key(cnt):
             cnt += 1 
@@ -250,7 +297,7 @@ class TemplateTable():
         return self.d_rtpl.has_key(self._key_template(template))
 
     def add(self, template):
-        tid = self._next_id()
+        tid = self.next_tid()
         self.d_tpl[tid] = template
         self.d_rtpl[self._key_template(template)] = tid
         return tid
@@ -266,14 +313,44 @@ class TemplateTable():
         self.d_cand[tid].append(ltid)
 
     def load(self, obj):
-        self.d_tpl = obj
+        self.d_tpl, self.d_cand = obj
+        for tid, tpl in self.d_tpl.iteritems():
+            self.d_rtpl[self._key_template(tpl)] = tid
 
     def dumpobj(self):
-        return self.d_tpl
+        return (self.d_tpl, self.d_cand)
 
 
 class LTGen(object):
 
+    state_added = 0
+    state_changed = 1
+    state_unchanged = 2
+
+    def update_table(self, l_w, tid, added_flag):
+        if added_flag:
+            new_tid = self.table.add(l_w)
+            assert new_tid == tid
+            return self.state_added
+        else:
+            old_tpl = self.table[tid]
+            new_tpl = merge_lt(old_tpl, l_w, self.sym)
+            if old_tpl == new_tpl:
+                return self.state_unchanged
+            else:
+                self.table.replace(tid, new_tpl)
+                return self.state_changed
+
+    def process_init_data(self, lines):
+        """If there is no need of special process for init phase,
+        this function simply call process_line multiple times.
+        """
+        d = {}
+        for mid, line in enumerate(lines):
+            l_w, l_s = line
+            tid, state = self.process_line(l_w, l_s)
+            d[mid] = tid
+        return d
 
     def process_line(self, l_w, l_s):
         """Estimate log template for given message.
@@ -285,10 +362,9 @@ class LTGen(object):
 
         Returns:
             tid (int): A template id in TemplateTable.
-            added_flag (bool): True if the template is newly added
-                    in this call. LTManager edit DB with this information.
+            state (int)
         """
-        pass
+        raise NotImplementedError
 
 
 class LTGenGrouping(LTGen):
