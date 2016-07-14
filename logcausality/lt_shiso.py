@@ -42,9 +42,8 @@ class LTGenNode():
 
 class LTGen(lt_common.LTGenGrouping):
 
-    def __init__(self, ltm, table, threshold, max_child):
+    def __init__(self, table, threshold, max_child):
         super(lt_common.LTGenGrouping, self).__init__()
-        self.ltm = ltm
         self.table = table
         self.sym = self.table.sym
         self.n_root = LTGenNode()

@@ -6,6 +6,7 @@ import cPickle as pickle
 from collections import defaultdict
 
 import strutil
+import lt_misc
 
 
 class LTManager(object):
@@ -62,7 +63,7 @@ class LTManager(object):
             l_w, l_s = line
             tid = d[mid]
             tpl = self.table[tid]
-            ltw = self.ltspl.replace(tpl)
+            ltw = self.ltspl.replace_variable(l_w, tpl, self.sym)
             ltid = self.ltspl.search(tid, ltw)
             if ltid is None:
                 ltline = self.add_lt(ltw, l_s)
@@ -96,7 +97,7 @@ class LTManager(object):
         tid, state = self.ltgen.process_line(l_w, l_s)
 
         tpl = self.table[tid]
-        ltw = self.ltspl.replace(tpl)
+        ltw = self.ltspl.replace_variable(l_w, tpl, self.sym)
         if state == LTGen.state_added:
             ltline = self.add_lt(ltw, l_s)
             self.table.addcand(tid, ltline.ltid)
@@ -272,6 +273,12 @@ class TemplateTable():
         self.d_cand = defaultdict(list) # key = tid, val = List[ltid]
         self.sym = sym
 
+    def __str__(self):
+        ret = []
+        for tid, tpl in self.d_tpl.iteritems():
+            ret.append(" ".join([str(tid)] + tpl))
+        return "\n".join(ret)
+
     def __iter__(self):
         return self._generator()
 
@@ -420,40 +427,94 @@ class LTGroup(object):
 
 class LTPostProcess(object):
 
-    def __init__(self, table, lttable):
+    def __init__(self, conf, table, lttable, l_alg):
         self._table = table
         self._lttable = lttable
+        self._rules = []
+        for alg in l_alg:
+            if alg == "dummy":
+                self._rules.append(VariableLabelRule())
+            elif alg == "host":
+                self._rules.append(VariableLabelHost(conf))
+            else:
+                raise NotImplementedError
+        self.sym_header = conf.get("log_template",
+                "labeled_variable_symbol_header")
+        self.sym_footer = conf.get("log_template",
+                "labeled_variable_symbol_footer")
 
-    def replace(self, l_w):
-        return l_w
+    def _labeled_variable(self, w):
+        return "".join((self.sym_header, w, self.sym_footer))
+
+    def replace_variable(self, l_w, tpl, sym):
+        ret = []
+        for org_w, tpl_w in zip(l_w, tpl):
+            if tpl_w == sym:
+                for r in self._rules:
+                    ww = r.replace_word(org_w)
+                    if ww is not None:
+                        ret.append(self._labeled_variable(ww))
+                        break
+                else:
+                    ret.append(tpl_w)
+            else:
+                ret.append(tpl_w)
+        return ret
 
     def search(self, tid, ltw):
         """Search existing candidates of template derivation. Return None
         if no possible candidates found."""
-        if len(self._table.getcand(tid)) == 0:
-            return None
+        l_ltid = self._table.getcand(tid)
+        for ltid in l_ltid:
+            if self._lttable[ltid].ltw == ltw:
+                return ltid
         else:
-            return self._table.getcand(tid)[0]
+            return None
+
+        #if len(self._table.getcand(tid)) == 0:
+        #    return None
+        #else:
+        #    return self._table.getcand(tid)[0]
+
+
+class VariableLabelRule(object):
+
+    def __init__(self):
+        pass
+
+    def replace_word(self, w):
+        return None
+
+
+class VariableLabelHost(VariableLabelRule):
+
+    def __init__(self, conf):
+        import host_alias
+        self.ha = host_alias.HostAlias(conf)
+
+    def replace_word(self, w):
+        if self.ha.has_key(w):
+            return self.ha.get_group(w)
+        else:
+            return None
 
 
 def init_ltmanager(conf, db, table, reset_db):
     """Initializing ltmanager by loading argument parameters."""
     lt_alg = conf.get("log_template", "lt_alg")
     ltg_alg = conf.get("log_template", "ltgroup_alg")
-    post_alg = "" #TODO
-    # ltg_alg : used in lt_common.LTManager._init_ltgroup
+    post_alg = conf.gettuple("log_template", "post_alg")
     ltm = LTManager(conf, db, table, reset_db,
             lt_alg, ltg_alg, post_alg)
 
     if lt_alg == "shiso":
         import lt_shiso
-        ltgen = lt_shiso.LTGen(ltm, ltm.table,
+        ltgen = lt_shiso.LTGen(ltm.table,
                 threshold = conf.getfloat(
                     "log_template_shiso", "ltgen_threshold"),
                 max_child = conf.getint(
                     "log_template_shiso", "ltgen_max_child")
                 )
-        #TODO ltgen should not use ltm...
     #elif lt_alg == "va":
     #    import lt_va
     #    ltm = lt_va.LTManager(conf, self.db, self.table,
@@ -484,7 +545,7 @@ def init_ltmanager(conf, db, table, reset_db):
         raise ValueError("ltgroup_alg({0}) invalid".format(ltg_alg))
     ltm._set_ltgroup(ltgroup)
 
-    ltspl = LTPostProcess(ltm.table, ltm.lttable)
+    ltspl = LTPostProcess(conf, ltm.table, ltm.lttable, post_alg)
     ltm._set_ltspl(ltspl)
 
     if os.path.exists(ltm.filename) and not reset_db:
@@ -494,7 +555,7 @@ def init_ltmanager(conf, db, table, reset_db):
 
 
 def merge_lt(m1, m2, sym):
-    #return common area of log message (to be log template)
+    """Return common area of log message (to be log template)"""
     ret = []
     for w1, w2 in zip(m1, m2):
         if w1 == w2:

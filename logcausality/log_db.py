@@ -296,6 +296,10 @@ class LogData():
         return " ".join((str(ltline.ltid), "({0})".format(ltline.ltgid),
                 str(ltline), "({0})".format(ltline.cnt)))
 
+    def show_template_table(self):
+        """For debugging"""
+        return self.ltm.table
+
     def show_all_lt(self):
         """Show all log templates. Log template identifier
         and its template message will be output.
@@ -852,11 +856,13 @@ def process_line(conf, msg, ld, lp, ha, isnew_check = False, latest = None):
     l_w = [strutil.add_esc(w) for w in l_w]
     host = ha.resolve_host(org_host)
 
+    _logger.info("Processing [{0}]".format(" ".join(l_w)))
     ltline = ld.ltm.process_line(l_w, l_s)
     if ltline is None:
         _logger.warning("Log template not found " + \
                 "for message [{0}]".format(line))
     else:
+        _logger.info("Template [{0}]".format(ltline))
         line = ld.add_line(ltline.ltid, dt, host, l_w)
     return line
 
@@ -952,6 +958,12 @@ def show_lt(conf):
     print ld.show_all_ltgroup()
 
 
+def show_template_table(conf):
+    ld = LogData(conf)
+    ld.init_ltmanager()
+    print ld.show_template_table()
+
+
 def migrate(conf):
     ld = LogData(conf, edit = True)
     ld.db._init_index()
@@ -1023,7 +1035,8 @@ args:
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, 
             ["lt_common", "lt_shiso", "lt_va", "lt_import"],
-            lv = logging.DEBUG)
+            #lv = logging.DEBUG)
+            lv = logging.INFO)
 
     if len(args) == 0:
         sys.exit(usage)
@@ -1068,6 +1081,8 @@ args:
         info(conf)
     elif mode == "show-lt":
         show_lt(conf)
+    elif mode == "show-tpl":
+        show_template_table(conf)
     elif mode == "remake-area":
         remake_area(conf)
     elif mode == "remake-ltgroup":

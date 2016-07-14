@@ -35,7 +35,7 @@ class HostAlias():
                     group = line.strip("[").partition("]")[0]
                 else:
                     names = line.rstrip("\n").split()
-                    if len(names) <= 1:
+                    if len(names) == 0:
                         continue
                     alias = names[0]
                     self.d_host[alias] = names

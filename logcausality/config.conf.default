@@ -88,6 +88,10 @@ lt_alg = shiso
 # (none : with no grouping)
 ltgroup_alg = shiso
 
+# Post process algorithms / methods
+# [host, dummy] are available
+post_alg = host, dummy
+
 # Output filename of internal data for log template generation
 # Do NOT share among multiple log template generation algorithms
 indata_filename = lt.dump
@@ -103,6 +107,8 @@ sym_ignore = true
 # Symbol string to abstract variable strings in log templates
 # that must not appear in raw log messages
 variable_symbol = **
+labeled_variable_symbol_header = *
+labeled_variable_symbol_footer = *
 
 
 [log_template_import]
