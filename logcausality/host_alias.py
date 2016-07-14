@@ -4,8 +4,9 @@
 from collections import defaultdict
 
 import config
+import clsbase
 
-class HostAlias():
+class HostAlias(clsbase.singleton):
 
     """
     Note:

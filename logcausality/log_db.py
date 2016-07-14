@@ -13,6 +13,7 @@ import sqlite3
 import logging
 
 import config
+import clsbase
 import strutil
 import fslib
 import db_common
@@ -21,13 +22,12 @@ import lt_common
 import host_alias
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
-ESC_LETTER = "*@" # including back slash
 
 
 class LogMessage():
     """An annotated log message.
     
-    An instance have information of a log message line,
+    An instance have a set of information about 1 log message line,
     including timestamp, hostname, log template, and message contents.
 
     Attributes:
@@ -93,13 +93,13 @@ class LogMessage():
                 self.restore_message()))
 
 
-class LogData():
+class LogData(clsbase.singleton):
 
     """Interface to get, add or edit log messages in DB.
 
     Attributes:
         conf (config.ExtendedConfigParser): A common configuration object.
-        table (lt_common.LTTable): Log template table object.
+        lttable (lt_common.LTTable): Log template table object.
         db (LogDB): Log database instance.
         ltm (lt_common.LTManager): Log template classifier object.
     """
@@ -118,8 +118,8 @@ class LogData():
         self.conf = conf
         self._reset_db = reset_db
         sym = conf.get("log_template", "variable_symbol")
-        self.table = lt_common.LTTable(sym) # lt_common.LTTable
-        self.db = LogDB(conf, self.table, edit, reset_db) # log_db.LogDB
+        self.lttable = lt_common.LTTable(sym) # lt_common.LTTable
+        self.db = LogDB(conf, self.lttable, edit, reset_db) # log_db.LogDB
         self.ltm = None # lt_common.LTManager
 
     def init_ltmanager(self):
@@ -127,8 +127,9 @@ class LogData():
         Call this before adding new log message in original
         plain string format (not classified with log template) to DB.
         """
-        self.ltm = lt_common.init_ltmanager(self.conf, self.db, self.table,
-                    self._reset_db)
+        if self.ltm is None:
+            self.ltm = lt_common.init_ltmanager(self.conf, self.db,
+                    self.lttable, self._reset_db)
 
     def iter_lines(self, **kargs):
         """Generate log messages in DB that satisfy conditions
@@ -243,7 +244,7 @@ class LogData():
 
     def iter_lt(self):
         """Yields lt_common.LogTemplate: All log template instance in DB."""
-        for ltline in self.table:
+        for ltline in self.lttable:
             yield ltline
 
     def lt(self, ltid):
@@ -256,14 +257,14 @@ class LogData():
             lt_common.LogTemplate: A log template instance.
 
         """
-        return self.table[ltid]
+        return self.lttable[ltid]
 
     def iter_ltgid(self):
         """Yields int: Get all identifiers of log template groups."""
         return self.db.iter_ltgid()
 
     def ltgid_from_ltid(self, ltid):
-        lt = self.table[ltid]
+        lt = self.lttable[ltid]
         return lt.ltgid
 
     def ltg_members(self, ltgid):
@@ -277,7 +278,7 @@ class LogData():
                 instances that belongs to given log template group.
         
         """
-        return [self.table[ltid] for ltid in self.db.get_ltg_members(ltgid)]
+        return [self.lttable[ltid] for ltid in self.db.get_ltg_members(ltgid)]
 
     def host_area(self, host):
         """Get area names that given host belongs to.
@@ -298,6 +299,7 @@ class LogData():
 
     def show_template_table(self):
         """For debugging"""
+        self.init_ltmanager()
         return self.ltm.table
 
     def show_all_lt(self):
@@ -308,7 +310,7 @@ class LogData():
             str: Output message buffer.
         """
         buf = []
-        for ltline in self.table:
+        for ltline in self.lttable:
             buf.append(self._str_ltline(ltline))
         return "\n".join(buf)
 
@@ -338,7 +340,7 @@ class LogData():
         length = len(l_ltid)
         cnt = 0
         for ltid in l_ltid:
-            ltline = self.table[ltid]
+            ltline = self.lttable[ltid]
             cnt += ltline.cnt
             buf.append(self._str_ltline(ltline))
         buf = ["[ltgroup {0} ({1}, {2})]".format(gid, length, cnt)] + buf
@@ -357,7 +359,7 @@ class LogData():
             LogMessage: An annotated log message instance.
         """
         self.db.add_line(ltid, dt, host, l_w)
-        return LogMessage(ltid, self.table[ltid], dt, host, l_w)
+        return LogMessage(ltid, self.lttable[ltid], dt, host, l_w)
 
     def update_area(self):
         self.db._init_area()
@@ -378,20 +380,20 @@ class LogDB():
         Instead, use LogData.
     """
 
-    def __init__(self, conf, table, edit, reset_db):
-        self.table = table
-        self.line_cnt = 0
-        self.db_type = conf.get("database", "database")
+    def __init__(self, conf, lttable, edit, reset_db):
+        self.lttable = lttable
+        self._line_cnt = 0
         self.areafn = conf.get("database", "area_filename")
-        self.splitter = conf.get("database", "split_symbol")
+        self._splitter = conf.get("database", "split_symbol")
 
-        if self.db_type == "sqlite3":
+        db_type = conf.get("database", "database")
+        if db_type == "sqlite3":
             dbpath = conf.get("database", "sqlite3_filename")
             if dbpath is None:
                 # for compatibility
                 dbpath = conf.get("database", "db_filename")
             self.db = db_common.sqlite3(dbpath)
-        elif self.db_type == "mysql":
+        elif db_type == "mysql":
             host = conf.get("database", "mysql_host")
             dbname = conf.get("database", "mysql_dbname")
             user = conf.get("database", "mysql_user")
@@ -399,7 +401,7 @@ class LogDB():
             self.db = db_common.mysql(host, dbname, user, passwd)
         else:
             raise ValueError("invalid database type ({0})".format(
-                    self.db_type))
+                    db_type))
 
         if edit:
             if self.db.db_exists():
@@ -408,7 +410,7 @@ class LogDB():
                     self._init_tables()
                     self._init_area()
                 else:
-                    self.line_cnt = self.count_lines()
+                    self._line_cnt = self.count_lines()
                     self._init_lttable()
             else:
                 if reset_db == True:
@@ -418,13 +420,12 @@ class LogDB():
                 self._init_area()
         else: 
             if self.db.db_exists():
-                self.line_cnt = self.count_lines()
+                self._line_cnt = self.count_lines()
                 self._init_lttable()
             else:
                 raise IOError("database not found")
 
     def _init_tables(self):
-        # init table log
         table_name = "log"
         l_key = [db_common.tablekey("lid", "integer",
                     ("primary_key", "auto_increment", "not_null")),
@@ -435,7 +436,6 @@ class LogDB():
         sql = self.db.create_table_sql(table_name, l_key)
         self.db.execute(sql)
 
-        # init table lt
         table_name = "lt"
         l_key = [db_common.tablekey("ltid", "integer", ("primary_key",)),
                  db_common.tablekey("ltw", "text"),
@@ -444,14 +444,12 @@ class LogDB():
         sql = self.db.create_table_sql(table_name, l_key)
         self.db.execute(sql)
 
-        # init table ltg
         table_name = "ltg"
         l_key = [db_common.tablekey("ltid", "integer", ("primary_key",)),
                  db_common.tablekey("ltgid", "integer")]
         sql = self.db.create_table_sql(table_name, l_key)
         self.db.execute(sql)
 
-        # init table area
         table_name = "area"
         l_key = [db_common.tablekey("defid", "integer",
                     ("primary_key", "auto_increment", "not_null")),
@@ -497,7 +495,7 @@ class LogDB():
             "ltid" : ltid,
             "dt" : self.db.strftime(dt),
             "host" : host,
-            "words" : self.splitter.join(l_w),
+            "words" : self._splitter.join(l_w),
         }
         l_ss = [db_common.setstate(k, k) for k in d_val.keys()]
         sql = self.db.insert_sql(table_name, l_ss)
@@ -531,9 +529,8 @@ class LogDB():
             if row[4] == "":
                 l_w = []
             else:
-                #l_w = row[4].split(self.splitter)
-                l_w = strutil.split_igesc(row[4], self.splitter)
-            yield LogMessage(lid, self.table[ltid], dt, host, l_w)
+                l_w = strutil.split_igesc(row[4], self._splitter)
+            yield LogMessage(lid, self.lttable[ltid], dt, host, l_w)
 
     def iter_words(self, lid = None, ltid = None, ltgid = None, top_dt = None,
             end_dt = None, host = None, area = None):
@@ -551,7 +548,7 @@ class LogDB():
             if row[4] == "":
                 yield []
             else:
-                yield row[4].split(self.splitter)
+                yield strutil.split_igesc(row[4], self._splitter)
 
     def _select_log(self, d_cond):
         if len(d_cond) == 0:
@@ -671,10 +668,10 @@ class LogDB():
         if ltline.lts is None:
             lts = None
         else:
-            lts = self.splitter.join(ltline.lts)
+            lts = self._splitter.join(ltline.lts)
         args = {
             "ltid" : ltline.ltid,
-            "ltw" : self.splitter.join(ltline.ltw),
+            "ltw" : self._splitter.join(ltline.ltw),
             "lts" : lts,
             "count" : ltline.cnt,
         }
@@ -698,10 +695,10 @@ class LogDB():
         args = {}
         if ltw is not None:
             l_ss.append(db_common.setstate("ltw", "ltw"))
-            args["ltw"] = self.splitter.join(ltw)
+            args["ltw"] = self._splitter.join(ltw)
         if lts is not None:
             l_ss.append(db_common.setstate("lts", "lts"))
-            args["lts"] = self.splitter.join(lts)
+            args["lts"] = self._splitter.join(lts)
         if count is not None:
             l_ss.append(db_common.setstate("count", "count"))
             args["count"] = count
@@ -735,14 +732,14 @@ class LogDB():
         for row in cursor:
             ltid = int(row[0])
             ltgid = int(row[1])
-            ltw = row[2].split(self.splitter)
+            ltw = strutil.split_igesc(row[2], self._splitter)
             temp = row[3]
             if temp is None:
                 lts = None
             else:
-                lts = temp.split(self.splitter)
+                lts = strutil.split_igesc(temp, self._splitter)
             count = int(row[4])
-            self.table.restore_lt(ltid, ltgid, ltw, lts, count)
+            self.lttable.restore_lt(ltid, ltgid, ltw, lts, count)
 
     def count_lt(self):
         table_name = "lt"
@@ -960,8 +957,15 @@ def show_lt(conf):
 
 def show_template_table(conf):
     ld = LogData(conf)
-    ld.init_ltmanager()
     print ld.show_template_table()
+
+
+def show_repr(conf):
+    ld = LogData(conf)
+    for ltgid in ld.iter_ltgid():
+        print ld.show_ltgroup(ltgid)
+        print ld.show_log_repr(head = 5, foot = 5, ltgid = ltgid)
+        print
 
 
 def migrate(conf):
@@ -1083,6 +1087,8 @@ args:
         show_lt(conf)
     elif mode == "show-tpl":
         show_template_table(conf)
+    elif mode == "show-log-repr":
+        show_repr(conf)
     elif mode == "remake-area":
         remake_area(conf)
     elif mode == "remake-ltgroup":
