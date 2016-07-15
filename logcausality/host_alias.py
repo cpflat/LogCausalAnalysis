@@ -22,6 +22,7 @@ class HostAlias(clsbase.singleton):
         self._d_ralias = {} # key = host, val = alias
         self._d_group = defaultdict(list) # key = group, val = List[host]
         self._d_rgroup = {} # key = host, val = group
+        self._l_net = []
         self._open(self.fn)
 
     def _open(self, fn):
@@ -36,57 +37,103 @@ class HostAlias(clsbase.singleton):
                 elif line[0] == "[" and "]" in line:
                     group = line.strip("[").partition("]")[0]
                 elif line[0] == "<" and ">" in line:
-                    names = line.rstrip("\n").split()
-                    if len(names) <= 1:
+                    l_temp = line.strip("<").partition(">")
+                    alias = l_temp[0]
+                    names = l_temp[2].strip().rstrip("\n").split()
+                    if len(names) == 0:
                         continue
-                    alias = names[0]
-                    self._d_alias[alias] = names[1:]
-                    self._d_group[group] += names[1:]
-                    for name in names[1:]:
-                        self._d_ralias[name] = alias
-                        self._d_rgroup[name] = group
+                    self._add_def(names, alias = alias, group = group)
                 else:
                     names = line.rstrip("\n").split()
                     if len(names) == 0:
                         continue
-                    self._d_group[group] += names
-                    for name in names:
-                        self._d_rgroup[name] = group
+                    self._add_def(names, group = group)
+
+    def _add_def(self, l_name, alias = None, group = None):
+
+        def add_alias(key, alias):
+            if alias is not None:
+                self._d_alias[alias].append(key)
+                self._d_ralias[key] = alias
+
+        def add_groupdef(key, group):
+            if group is not None:
+                self._d_group[group].append(key)
+                self._d_rgroup[key] = group
+
+        for name in l_name:
+            if "/" in name:
+                try:
+                    net = ipaddress.ip_network(name)
+                    add_alias(net, alias)
+                    add_groupdef(net, group)
+                    self._l_net.append(net)
+                except ValueError:
+                    add_alias(name, alias)
+                    add_groupdef(name, group)
+            else:
+                try:
+                    addr = ipaddress.ip_address(name)
+                    add_alias(addr, alias)
+                    add_groupdef(addr, group)
+                except ValueError:
+                    add_alias(name, alias)
+                    add_groupdef(name, group)
 
     def print_definitions(self):
         print "[aliases]"
-        for k, v in self._d_alias.iteritems():
-            print k
-            print " ".join(v)
+        for k, val in self._d_alias.iteritems():
+            print("<{0}> ".format(k) + " ".join([str(v) for v in val]))
         print
-        print "[groups]"
-        for k, v in self._d_group.iteritems():
-            print k
-            print " ".join(v)
+        print("[groups]")
+        for k, val in self._d_group.iteritems():
+            print(k)
+            print(" ".join([str(v) for v in val]))
             print
 
     def resolve_host(self, string):
-        if self._d_ralias.has_key(string):
-            return self._d_ralias[string]
-        else:
-            return string
+        try:
+            addr = ipaddress.ip_address(string)
+            for net in self._l_net:
+                if addr in net:
+                    return self._d_ralias[net]
+            else:
+                if addr in self._d_ralias.keys():
+                    return self._d_ralias[addr]
+                else:
+                    return None
+        except ValueError:
+            if self._d_ralias.has_key(string):
+                return self._d_ralias[string]
+            else:
+                return None
 
     def get_group(self, string):
-        if self._d_rgroup.has_key(string):
-            return self._d_rgroup[string]
-        else:
-            return string
-
-    def has_key(self, string):
-        return self._d_ralias.has_key(string)
+        try:
+            addr = ipaddress.ip_address(string)
+            for net in self._l_net:
+                if addr in net:
+                    return self._d_rgroup[net]
+            else:
+                if addr in self._d_rgroup.keys():
+                    return self._d_rgroup[addr]
+                else:
+                    return None
+        except ValueError:
+            if self._d_rgroup.has_key(string):
+                return self._d_rgroup[string]
+            else:
+                return None
 
 
 def test_hostalias(conf):
     names = ["192.168.0.1",
             "www.test.localdomain",
-            "192.168.0.3",
             "localhost",
-            "www3"]
+            "www3",
+            "hoge",
+            "10.100.1.254",
+            "8.8.6.0"]
     #ha = HostAlias("host_alias.txt")
     ha = HostAlias(conf)
     ha.print_definitions()
@@ -95,6 +142,7 @@ def test_hostalias(conf):
     for name in names:
         print name
         print ha.resolve_host(name)
+        print ha.get_group(name)
         print
 
 

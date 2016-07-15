@@ -476,6 +476,8 @@ class VariableLabelRule(object):
         pass
 
     def replace_word(self, w):
+        """str: If the given word is a member of some host group,
+        return the group name. Otherwise, return None."""
         return None
 
 
@@ -486,10 +488,7 @@ class VariableLabelHost(VariableLabelRule):
         self.ha = host_alias.HostAlias(conf)
 
     def replace_word(self, w):
-        if self.ha.has_key(w):
-            return self.ha.get_group(w)
-        else:
-            return None
+        return self.ha.get_group(w)
 
 
 def init_ltmanager(conf, db, table, reset_db):
