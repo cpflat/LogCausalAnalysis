@@ -40,29 +40,27 @@ class LTGenNode():
         self.l_child.append(node)
 
 
-class LTGen(lt_common.LTGenGrouping):
+class LTGenSHISO(lt_common.LTGen):
 
-    def __init__(self, table, threshold, max_child):
-        super(lt_common.LTGenGrouping, self).__init__()
-        self.table = table
-        self.sym = self.table.sym
-        self.n_root = LTGenNode()
+    def __init__(self, table, sym, threshold, max_child):
+        super(LTGenSHISO, self).__init__(table, sym)
+        self._n_root = LTGenNode()
         self.threshold = threshold
         self.max_child = max_child
 
     def load(self, loadobj):
-        self.n_root = loadobj
+        self._n_root = loadobj
 
     def dumpobj(self):
-        return self.n_root
+        return self._n_root
 
     def process_line(self, l_w, l_s):
-        n_parent = self.n_root
+        n_parent = self._n_root
         while True:
             for n_child in n_parent:
                 _logger.debug(
                         "comparing with tid {0}".format(n_child.tid))
-                nc_tpl = self.table[n_child.tid]
+                nc_tpl = self._table[n_child.tid]
                 sr = self.seq_ratio(nc_tpl, l_w)
                 _logger.debug("seq_ratio : {0}".format(sr))
                 if sr >= self.threshold:
@@ -77,15 +75,15 @@ class LTGen(lt_common.LTGenGrouping):
             else:
                 if len(n_parent) < self.max_child:
                     _logger.debug("no node to be merged, add new node")
-                    n_child = LTGenNode(self.table.next_tid())
+                    n_child = LTGenNode(self._table.next_tid())
                     n_parent.join(n_child)
                     state = self.update_table(l_w, n_child.tid, True)
                     return n_child.tid, state
                 else:
                     _logger.debug("children : {0}".format(
                             [e.tid for e in n_parent.l_child]))
-                    l_sim = [(edit_distance(self.table[n_child.tid], l_w,
-                            self.sym), n_child) for n_child in n_parent]
+                    l_sim = [(edit_distance(self._table[n_child.tid], l_w,
+                            self._sym), n_child) for n_child in n_parent]
                     n_parent = max(l_sim, key=lambda x: x[0])[1]
                     _logger.debug("go down to node(tid {0})".format(
                             n_parent.tid))
@@ -131,7 +129,7 @@ class LTGen(lt_common.LTGenGrouping):
 
             sum_dist = 0.0
             for w1, w2 in zip(m1, m2):
-                if w1 == self.sym or w2 == self.sym:
+                if w1 == self._sym or w2 == self._sym:
                     pass
                 else:
                     c_w1 = c_coordinate(w1)
@@ -146,7 +144,7 @@ class LTGen(lt_common.LTGenGrouping):
     def equal(self, m1, m2):
         if len(m1) == len(m2):
             for w1, w2 in zip(m1, m2):
-                if w1 == w2 or w1 == self.sym or w2 == self.sym:
+                if w1 == w2 or w1 == self._sym or w2 == self._sym:
                     pass
                 else:
                     return False
@@ -158,11 +156,11 @@ class LTGen(lt_common.LTGenGrouping):
 
 class LTGroupSHISO(lt_common.LTGroup):
 
-    def __init__(self, table, ngram_length = 3,
+    def __init__(self, lttable, ngram_length = 3,
             th_lookup = 0.3, th_distance = 0.85, mem_ngram = True):
         super(LTGroupSHISO, self).__init__()
-        self.table = table
-        self.sym = table.sym
+        self._lttable = lttable
+        self._sym = lttable.sym
         #self.d_group = {} # key : groupid, val : [ltline, ...]
         #self.d_rgroup = {} # key : ltid, val : groupid
         self.ngram_length = ngram_length
@@ -177,7 +175,7 @@ class LTGroupSHISO(lt_common.LTGroup):
 
         r_max = 0.0
         lt_max = None
-        l_cnt = [0 for i in self.table]
+        l_cnt = [0 for i in self._lttable]
         l_ng1 = self._get_ngram(lt_new)
         for ng in l_ng1:
             for lt_temp, l_ng2 in self._lookup_ngram(ng):
@@ -192,7 +190,7 @@ class LTGroupSHISO(lt_common.LTGroup):
             assert lt_max is not None, "bad threshold for lt group lookup"
             _logger.debug("lt_max ltid : {0}".format(lt_max.ltid))
             ltw2 = lt_max.ltw
-            d = 2.0 * edit_distance(lt_new.ltw, lt_max.ltw, self.sym) / \
+            d = 2.0 * edit_distance(lt_new.ltw, lt_max.ltw, self._sym) / \
                     (len(lt_new.ltw) + len(lt_max.ltw))
             _logger.debug("edit distance ratio : {0}".format(d))
             if d < self.th_distance:
@@ -241,7 +239,7 @@ class LTGroupSHISO(lt_common.LTGroup):
 
     def _lookup_ngram(self, ng):
         ret = []
-        for ltline in self.table:
+        for ltline in self._lttable:
             if ng in self._get_ngram(ltline):
                 ret.append((ltline, ng))
         return ret

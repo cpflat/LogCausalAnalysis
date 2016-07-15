@@ -90,6 +90,8 @@ ltgroup_alg = shiso
 
 # Post process algorithms / methods
 # [host, dummy] are available
+# Note : If you use postprocess to split variables,
+#   it is not recommended to use ltgroup (ltgroup_alg = none)
 post_alg = host, dummy
 
 # Output filename of internal data for log template generation

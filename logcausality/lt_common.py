@@ -28,14 +28,13 @@ class LTManager(object):
     # adding lt to db (ltgen do not add)
 
     def __init__(self, conf, db, lttable, reset_db, lt_alg, ltg_alg, post_alg):
-        self.reset_db = reset_db
-        self.conf = conf
+        self._reset_db = reset_db
         self.sym = conf.get("log_template", "variable_symbol")
         self.filename = conf.get("log_template", "indata_filename")
 
-        self.db = db # log_db.LogDB
-        self.lttable = lttable # LTTable
-        self.table = TemplateTable(self.sym)
+        self._db = db
+        self._lttable = lttable
+        self._table = TemplateTable()
         #self.ltgroup = self._init_ltgroup(ltg_alg) # LTGroup
         self.ltgen = None
         self.ltspl = None
@@ -46,8 +45,8 @@ class LTManager(object):
 
     def _set_ltgroup(self, ltgroup):
         self.ltgroup = ltgroup
-        if not self.reset_db:
-            self.ltgroup.restore_ltg(self.db, self.lttable)
+        if not self._reset_db:
+            self.ltgroup.restore_ltg(self._db, self._lttable)
 
     def _set_ltspl(self, ltspl):
         self.ltspl = ltspl
@@ -62,15 +61,15 @@ class LTManager(object):
         for mid, line in enumerate(l_line):
             l_w, l_s = line
             tid = d[mid]
-            tpl = self.table[tid]
+            tpl = self._table[tid]
             ltw = self.ltspl.replace_variable(l_w, tpl, self.sym)
             ltid = self.ltspl.search(tid, ltw)
             if ltid is None:
                 ltline = self.add_lt(ltw, l_s)
-                self.table.addcand(tid, ltline.ltid)
+                self._table.addcand(tid, ltline.ltid)
             else:
                 self.count_lt(ltid)
-                ltline = self.lttable[ltid]
+                ltline = self._lttable[ltid]
             yield ltline
 
     def process_line(self, l_w, l_s):
@@ -78,7 +77,7 @@ class LTManager(object):
         def lt_diff(ltid, ltw):
             d_diff = {}
             for wid, new_w, old_w in zip(range(len(ltw)), ltw,
-                    self.lttable[ltid].ltw):
+                    self._lttable[ltid].ltw):
                 if new_w == old_w:
                     pass
                 else:
@@ -96,88 +95,87 @@ class LTManager(object):
 
         tid, state = self.ltgen.process_line(l_w, l_s)
 
-        tpl = self.table[tid]
+        tpl = self._table[tid]
         ltw = self.ltspl.replace_variable(l_w, tpl, self.sym)
         if state == LTGen.state_added:
             ltline = self.add_lt(ltw, l_s)
-            self.table.addcand(tid, ltline.ltid)
+            self._table.addcand(tid, ltline.ltid)
         else:
             ltid = self.ltspl.search(tid, ltw)
             if ltid is None:
                 # tpl exists, but no lt matches
                 ltline = self.add_lt(ltw, l_s)
-                self.table.addcand(tid, ltline.ltid)
+                self._table.addcand(tid, ltline.ltid)
             else:
                 if state == LTGen.state_changed:
                     # update all lt that belong to the edited tpl
                     d_diff = lt_diff(ltid, ltw)
-                    for temp_ltid in self.table.getcand(tid):
+                    for temp_ltid in self._table.getcand(tid):
                         if temp_ltid == ltid:
                             self.replace_and_count_lt(ltid, ltw)
                         else:
-                            old_ltw = self.lttable[temp_ltid]
+                            old_ltw = self._lttable[temp_ltid]
                             new_ltw = lt_repl(old_ltw, d_diff)
                             self.replace_lt(ltid, new_ltw)
                 elif state == LTGen.state_unchanged:
                     self.count_lt(ltid)
                 else:
                     raise AssertionError
-                ltline = self.lttable[ltid]
+                ltline = self._lttable[ltid]
     
         return ltline
 
     def add_lt(self, l_w, l_s, cnt = 1):
         # add new lt to db and table
-        ltid = self.lttable.next_ltid()
+        ltid = self._lttable.next_ltid()
         ltline = LogTemplate(ltid, None, l_w, l_s, cnt, self.sym)
         ltgid = self.ltgroup.add(ltline)
         ltline.ltgid = ltgid
-        self.lttable.add_lt(ltline)
-        self.db.add_lt(ltline)
+        self._lttable.add_lt(ltline)
+        self._db.add_lt(ltline)
         return ltline
 
     def replace_lt(self, ltid, l_w, l_s = None, cnt = None):
-        self.lttable[ltid].replace(l_w, l_s, cnt)
-        self.db.update_lt(ltid, l_w, l_s, cnt)
+        self._lttable[ltid].replace(l_w, l_s, cnt)
+        self._db.update_lt(ltid, l_w, l_s, cnt)
     
     def replace_and_count_lt(self, ltid, l_w, l_s = None):
-        cnt = self.lttable[ltid].count()
-        self.lttable[ltid].replace(l_w, l_s, None)
-        self.db.update_lt(ltid, l_w, l_s, cnt)
+        cnt = self._lttable[ltid].count()
+        self._lttable[ltid].replace(l_w, l_s, None)
+        self._db.update_lt(ltid, l_w, l_s, cnt)
 
     def count_lt(self, ltid):
-        cnt = self.lttable[ltid].count()
-        self.db.update_lt(ltid, None, None, cnt)
+        cnt = self._lttable[ltid].count()
+        self._db.update_lt(ltid, None, None, cnt)
 
     def remove_lt(self, ltid):
-        self.lttable.remove_lt(ltid)
-        self.db.remove_lt(ltid)
+        self._lttable.remove_lt(ltid)
+        self._db.remove_lt(ltid)
 
     def remake_ltg(self):
-        self.db.reset_ltg()
+        self._db.reset_ltg()
         self.ltgroup.init_dict()
-        temp_lttable = self.lttable
-        self.ltgroup.lttable = LTTable(self.sym)
+        temp_lttable = self._lttable
+        self.ltgroup._lttable = LTTable(self.sym)
 
         for ltline in temp_lttable:
             ltgid = self.ltgroup.add(ltline)
             ltline.ltgid = ltgid
-            self.ltgroup.lttable.add_lt(ltline)
-            self.db.add_ltg(ltline.ltid, ltgid)
-        assert self.ltgroup.lttable.ltdict == temp_lttable.ltdict
+            self.ltgroup._lttable.add_lt(ltline)
+            self._db.add_ltg(ltline.ltid, ltgid)
+        assert self.ltgroup._lttable.ltdict == temp_lttable.ltdict
 
     def load(self):
         with open(self.filename, 'r') as f:
             obj = pickle.load(f)
         table_data, ltgen_data, ltgroup_data = obj
-        self.table.load(table_data)
+        self._table.load(table_data)
         self.ltgen.load(ltgen_data)
         self.ltgroup.load(ltgroup_data)
 
     def dump(self):
-        table_data = self.table.dumpobj()
+        table_data = self._table.dumpobj()
         ltgen_data = self.ltgen.dumpobj()
-        #ltspl_data = None
         ltgroup_data = self.ltgroup.dumpobj()
         obj = (table_data, ltgen_data, ltgroup_data)
         with open(self.filename, 'w') as f:
@@ -267,15 +265,14 @@ class LogTemplate():
 class TemplateTable():
     """Temporal template table for log template generator."""
 
-    def __init__(self, sym):
-        self.d_tpl = {} # key = tid, val = template
-        self.d_rtpl = {} # key = key_template, val = tid
-        self.d_cand = defaultdict(list) # key = tid, val = List[ltid]
-        self.sym = sym
+    def __init__(self):
+        self._d_tpl = {} # key = tid, val = template
+        self._d_rtpl = {} # key = key_template, val = tid
+        self._d_cand = defaultdict(list) # key = tid, val = List[ltid]
 
     def __str__(self):
         ret = []
-        for tid, tpl in self.d_tpl.iteritems():
+        for tid, tpl in self._d_tpl.iteritems():
             ret.append(" ".join([str(tid)] + tpl))
         return "\n".join(ret)
 
@@ -283,18 +280,18 @@ class TemplateTable():
         return self._generator()
 
     def _generator(self):
-        for tid in self.d_tpl.keys():
-            yield self.d_tpl[tid]
+        for tid in self._d_tpl.keys():
+            yield self._d_tpl[tid]
     
     def __getitem__(self, key):
         assert isinstance(key, int)
-        if not self.d_tpl.has_key(key):
+        if not self._d_tpl.has_key(key):
             raise IndexError("index out of range")
-        return self.d_tpl[key]
+        return self._d_tpl[key]
 
     def next_tid(self):
         cnt = 0
-        while self.d_tpl.has_key(cnt):
+        while self._d_tpl.has_key(cnt):
             cnt += 1 
         else:
             return cnt
@@ -303,31 +300,31 @@ class TemplateTable():
         return "@@".join(template)
 
     def exists(self, template):
-        return self.d_rtpl.has_key(self._key_template(template))
+        return self._d_rtpl.has_key(self._key_template(template))
 
     def add(self, template):
         tid = self.next_tid()
-        self.d_tpl[tid] = template
-        self.d_rtpl[self._key_template(template)] = tid
+        self._d_tpl[tid] = template
+        self._d_rtpl[self._key_template(template)] = tid
         return tid
 
     def replace(self, tid, template):
-        self.d_tpl[tid] = template
-        self.d_rtpl[self._key_template(template)] = tid
+        self._d_tpl[tid] = template
+        self._d_rtpl[self._key_template(template)] = tid
 
     def getcand(self, tid):
-        return self.d_cand[tid]
+        return self._d_cand[tid]
 
     def addcand(self, tid, ltid):
-        self.d_cand[tid].append(ltid)
+        self._d_cand[tid].append(ltid)
 
     def load(self, obj):
-        self.d_tpl, self.d_cand = obj
-        for tid, tpl in self.d_tpl.iteritems():
-            self.d_rtpl[self._key_template(tpl)] = tid
+        self._d_tpl, self._d_cand = obj
+        for tid, tpl in self._d_tpl.iteritems():
+            self._d_rtpl[self._key_template(tpl)] = tid
 
     def dumpobj(self):
-        return (self.d_tpl, self.d_cand)
+        return (self._d_tpl, self._d_cand)
 
 
 class LTGen(object):
@@ -336,18 +333,22 @@ class LTGen(object):
     state_changed = 1
     state_unchanged = 2
 
+    def __init__(self, table, sym):
+        self._table = table
+        self._sym = sym
+
     def update_table(self, l_w, tid, added_flag):
         if added_flag:
-            new_tid = self.table.add(l_w)
+            new_tid = self._table.add(l_w)
             assert new_tid == tid
             return self.state_added
         else:
-            old_tpl = self.table[tid]
-            new_tpl = merge_lt(old_tpl, l_w, self.sym)
+            old_tpl = self._table[tid]
+            new_tpl = merge_lt(old_tpl, l_w, self._sym)
             if old_tpl == new_tpl:
                 return self.state_unchanged
             else:
-                self.table.replace(tid, new_tpl)
+                self._table.replace(tid, new_tpl)
                 return self.state_changed
 
     def process_init_data(self, lines):
@@ -374,14 +375,6 @@ class LTGen(object):
             state (int)
         """
         raise NotImplementedError
-
-
-class LTGenGrouping(LTGen):
-    pass
-
-
-class LTGenTemplating(LTGen):
-    pass
 
 
 class LTGroup(object):
@@ -504,12 +497,13 @@ def init_ltmanager(conf, db, table, reset_db):
     lt_alg = conf.get("log_template", "lt_alg")
     ltg_alg = conf.get("log_template", "ltgroup_alg")
     post_alg = conf.gettuple("log_template", "post_alg")
+    sym = conf.get("log_template", "variable_symbol")
     ltm = LTManager(conf, db, table, reset_db,
             lt_alg, ltg_alg, post_alg)
 
     if lt_alg == "shiso":
         import lt_shiso
-        ltgen = lt_shiso.LTGen(ltm.table,
+        ltgen = lt_shiso.LTGenSHISO(ltm._table, sym,
                 threshold = conf.getfloat(
                     "log_template_shiso", "ltgen_threshold"),
                 max_child = conf.getint(
@@ -545,7 +539,7 @@ def init_ltmanager(conf, db, table, reset_db):
         raise ValueError("ltgroup_alg({0}) invalid".format(ltg_alg))
     ltm._set_ltgroup(ltgroup)
 
-    ltspl = LTPostProcess(conf, ltm.table, ltm.lttable, post_alg)
+    ltspl = LTPostProcess(conf, ltm._table, ltm._lttable, post_alg)
     ltm._set_ltspl(ltspl)
 
     if os.path.exists(ltm.filename) and not reset_db:
