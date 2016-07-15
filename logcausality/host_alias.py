@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import ipaddress
 from collections import defaultdict
 
 import config
@@ -17,10 +18,10 @@ class HostAlias(clsbase.singleton):
 
     def __init__(self, conf):
         self.fn = conf.get("database", "host_alias_filename")
-        self.d_host = defaultdict(list) # key = alias, val = List[host]
-        self.d_rhost = {} # key = host, val = alias
-        self.d_group = defaultdict(list) # key = group, val = List[host]
-        self.d_rgroup = {} # key = host, val = group
+        self._d_alias = defaultdict(list) # key = alias, val = List[host]
+        self._d_ralias = {} # key = host, val = alias
+        self._d_group = defaultdict(list) # key = group, val = List[host]
+        self._d_rgroup = {} # key = host, val = group
         self._open(self.fn)
 
     def _open(self, fn):
@@ -34,43 +35,50 @@ class HostAlias(clsbase.singleton):
                     continue
                 elif line[0] == "[" and "]" in line:
                     group = line.strip("[").partition("]")[0]
+                elif line[0] == "<" and ">" in line:
+                    names = line.rstrip("\n").split()
+                    if len(names) <= 1:
+                        continue
+                    alias = names[0]
+                    self._d_alias[alias] = names[1:]
+                    self._d_group[group] += names[1:]
+                    for name in names[1:]:
+                        self._d_ralias[name] = alias
+                        self._d_rgroup[name] = group
                 else:
                     names = line.rstrip("\n").split()
                     if len(names) == 0:
                         continue
-                    alias = names[0]
-                    self.d_host[alias] = names
-                    self.d_group[group] += names
+                    self._d_group[group] += names
                     for name in names:
-                        self.d_rhost[name] = alias
-                        self.d_rgroup[name] = group
+                        self._d_rgroup[name] = group
 
     def print_definitions(self):
         print "[aliases]"
-        for k, v in self.d_host.iteritems():
+        for k, v in self._d_alias.iteritems():
             print k
             print " ".join(v)
         print
         print "[groups]"
-        for k, v in self.d_group.iteritems():
+        for k, v in self._d_group.iteritems():
             print k
             print " ".join(v)
             print
 
     def resolve_host(self, string):
-        if self.d_rhost.has_key(string):
-            return self.d_rhost[string]
+        if self._d_ralias.has_key(string):
+            return self._d_ralias[string]
         else:
             return string
 
     def get_group(self, string):
-        if self.d_rgroup.has_key(string):
-            return self.d_rgroup[string]
+        if self._d_rgroup.has_key(string):
+            return self._d_rgroup[string]
         else:
             return string
 
     def has_key(self, string):
-        return self.d_rhost.has_key(string)
+        return self._d_ralias.has_key(string)
 
 
 def test_hostalias(conf):

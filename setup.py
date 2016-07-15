@@ -19,14 +19,14 @@ re_df = re.compile(r"^.*\.sample$")
 data_files = ["/".join((package_name, fn)) for fn in files if re_df.match(fn)]
 
 setup(name='logcausality',
-    version='0.0.1',
+    version='0.0.2',
     description='',
     long_description=read_md('README.md'),
     author='Satoru Kobayashi',
     author_email='sat@hongo.wide.ad.jp',
     url='https://github.com/cpflat/LogCausalAnalysis/',
     install_requires=['scipy>=0.15.1', 'numpy>=1.9.2', 'networkx>=1.9.1',
-        'gsq>=0.1.5', 'pcalg>=0.1.4'],
+        'py2-ipaddress>=3.4.1', 'gsq>=0.1.5', 'pcalg>=0.1.4'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
