@@ -93,7 +93,7 @@ class LogMessage():
                 self.restore_message()))
 
 
-class LogData(clsbase.singleton):
+class LogData():
 
     """Interface to get, add or edit log messages in DB.
 
@@ -828,11 +828,10 @@ def _iter_line_from_files(targets):
                     yield line
 
 
-def process_line(conf, msg, ld, lp, ha, isnew_check = False, latest = None):
+def process_line(msg, ld, lp, ha, areas, isnew_check = False, latest = None):
     """Add a log message to DB.
     
     Args:
-        conf (config.ExtendedConfigParser): A common configuration object.
         msg (str): A log message to process.
             Line feed code will be ignored.
         ld (LogData): An log database interface opened in edit mode.
@@ -886,7 +885,7 @@ def process_files(conf, targets, reset_db, isnew_check = False):
     latest = ld.dt_term()[1] if isnew_check else None
 
     for line in _iter_line_from_files(targets):
-        process_line(conf, line, ld, lp, ha, isnew_check, latest)
+        process_line(line, ld, lp, ha, isnew_check, latest)
 
     ld.commit_db()
 

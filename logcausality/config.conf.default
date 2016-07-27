@@ -63,6 +63,10 @@ area_filename =
 # If empty, no host will be replaced
 host_alias_filename = 
 
+## A sequence of areas that cover all needed hosts.
+## If a host does not belong to any hosts here,
+## messages from the host is ignored.
+#areas_to_register = 
 
 # If no year string in log message, add following year
 # (Use this year of localtime with empty value)

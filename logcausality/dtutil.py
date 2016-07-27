@@ -69,7 +69,7 @@ def auto_discretize(l_dt, binsize, binarize = False):
         top_dt = adj_sep(min(l_dt), binsize)
         end_dt = radj_sep(max(l_dt), binsize)
         l_label = label(top_dt, end_dt, binsize)
-        return dtutil.discretize(l_dt, l_label, binarize)
+        return discretize(l_dt, l_label, binarize)
 
 
 def label(top_dt, end_dt, duration):
