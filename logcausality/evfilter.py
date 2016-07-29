@@ -106,10 +106,8 @@ class EventFilter():
         assert self.d_ev.has_key(key)
         val = self.d_ev[key][1]
         _logger.debug("corr : {0}, th : {1}".format(val, th))
-        if val is None:
-            return False
-        else:
-            return self.d_ev[key] > th
+        
+        return val > th if (val is not None) else False
 
     def interval(self, ltgid, host):
         """Get most reasonable periodicity interval. This function returns
