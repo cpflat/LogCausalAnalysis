@@ -105,6 +105,7 @@ class EventFilter():
         key = (ltgid, host)
         assert self.d_ev.has_key(key)
         val = self.d_ev[key][1]
+        _logger.debug("corr : {0}, th : {1}".format(val, th))
         if val is None:
             return False
         else:
