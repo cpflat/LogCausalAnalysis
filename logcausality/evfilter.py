@@ -234,13 +234,13 @@ def periodic_events(conf, edict, evmap):
     per_term = conf.getdur("filter", "periodic_term")
     for eid, l_dt in edict.iteritems():
         _logger.debug("event {0} ({1})".format(eid, evmap.info_str(eid)))
-        if periodic_term(l_dt, per_count, per_term):
-            info = evmap.info(eid)
-            if pf.filtered(info.gid, info.host, corr_th):
-                interval = pf.interval(info.gid, info.host)
-                _logger.debug("event {0} is periodic (interval : {1})".format(
-                        eid, interval))
-                ret.append((eid, interval))
+        #if periodic_term(l_dt, per_count, per_term):
+        info = evmap.info(eid)
+        if pf.filtered(info.gid, info.host, corr_th):
+            interval = pf.interval(info.gid, info.host)
+            _logger.debug("event {0} is periodic (interval : {1})".format(
+                    eid, interval))
+            ret.append((eid, interval))
     return ret
 
 
