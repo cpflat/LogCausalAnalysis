@@ -1035,13 +1035,14 @@ args:
             help="configuration file path")
     op.add_option("-r", action="store_true", dest="recur",
             default=False, help="search log file recursively")
+    op.add_option("--debug", action="store_true", dest="debug",
+            default=False, help="set logging level to DEBUG")
     options, args = op.parse_args()
 
     conf = config.open_config(options.conf)
+    lv = logging.DEBUG if options.debug else logging.INFO
     config.set_common_logging(conf, _logger, 
-            ["lt_common", "lt_shiso", "lt_va", "lt_import"],
-            #lv = logging.DEBUG)
-            lv = logging.INFO)
+            ["lt_common", "lt_shiso", "lt_va", "lt_import"], lv = lv)
 
     if len(args) == 0:
         sys.exit(usage)

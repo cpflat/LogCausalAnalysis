@@ -19,11 +19,7 @@ import pcresult
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
-    
-    _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
-
-    tempfn = thread_name(conf, top_dt, end_dt, dur, area) + ".temp"
+def get_edict(conf, top_dt, end_dt, dur, area):
     ld = log_db.LogData(conf)
     edict, evmap = log2event.log2event(conf, ld, top_dt, end_dt, area)
 
@@ -38,9 +34,19 @@ def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
         else:
             raise NotImplementedError
 
+    return edict, evmap
+
+
+def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
+    
+    _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
+
+    edict, evmap = get_edict(conf, top_dt, end_dt, dur, area)
+
     _logger.info("{0} events found in given term of log data".format(
             len(edict)))
     if dump:
+        tempfn = thread_name(conf, top_dt, end_dt, dur, area) + ".temp"
         with open(tempfn, 'w') as f:
             pickle.dump((edict, evmap), f)
 
@@ -161,6 +167,10 @@ def pc_mthread(l_args, pal=1):
     _logger.info("pc_log task done ({0})".format(end_dt - start_dt))
 
 
+def test_edict(l_args):
+    for args in l_args:
+        edict, evmap = get_edict(*args)
+
 def test_pc(l_args):
     pc_log(*(l_args[0]))
 
@@ -173,21 +183,28 @@ if __name__ == "__main__":
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
+    op.add_option("-e", action="store_true", dest="make_event",
+            default=False, help="only making event set")
     op.add_option("-p", "--parallel", action="store", dest="pal", type="int",
             default=1, help="multithreading")
     op.add_option("-r", action="store_true", dest="rflag",
             default=False, help="using pcalg library in R")
     op.add_option("--test", action="store_true", dest="test",
             default=False, help="test pc_log; do with first term")
+    op.add_option("--debug", action="store_true", dest="debug",
+            default=False, help="set logging level to DEBUG")
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
-    config.set_common_logging(conf, _logger, ["evfilter"])
+    lv = logging.DEBUG if options.debug else logging.INFO
+    config.set_common_logging(conf, _logger, ["evfilter"], lv = lv)
 
     fslib.mkdir(conf.get("dag", "output_dir"))
     l_args = pc_all_args(conf)
     if options.test:
         test_pc(l_args); sys.exit()
+    elif options.make_event:
+        test_edict(l_args); sys.exit()
 
     if options.pal == 1:
         pc_sthread(l_args)
