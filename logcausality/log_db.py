@@ -853,13 +853,13 @@ def process_line(msg, ld, lp, ha, areas, isnew_check = False, latest = None):
     host = ha.resolve_host(org_host)
     if host is None: host = org_host
 
-    _logger.info("Processing [{0}]".format(" ".join(l_w)))
+    _logger.debug("Processing [{0}]".format(" ".join(l_w)))
     ltline = ld.ltm.process_line(l_w, l_s)
     if ltline is None:
         _logger.warning("Log template not found " + \
                 "for message [{0}]".format(line))
     else:
-        _logger.info("Template [{0}]".format(ltline))
+        _logger.debug("Template [{0}]".format(ltline))
         line = ld.add_line(ltline.ltid, dt, host, l_w)
     return line
 
