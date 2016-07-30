@@ -63,10 +63,13 @@ def recur_dir(args):
             return [path]
 
     if isinstance(args, list):
+        l_fn = []
         for arg in args:
-            ret = open_path(arg)
+            l_fn += open_path(arg)
+    elif isinstance(args, str):
+        l_fn = open_path(args)
     else:
-        ret = open_path(args)
+        raise NotImplementedError
     return ret
 
 
