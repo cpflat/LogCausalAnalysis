@@ -70,7 +70,7 @@ def recur_dir(args):
         l_fn = open_path(args)
     else:
         raise NotImplementedError
-    return ret
+    return l_fn
 
 
 def mkdir(path):
