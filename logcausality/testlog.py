@@ -9,9 +9,9 @@ import re
 
 import config
 
-#SEED = None
-SEED = 3
-CONF = "/".join((os.path.dirname(__file__), "testlog.conf.sample"))
+SEED = None
+#SEED = 3
+SAMPLECONF = "/".join((os.path.dirname(__file__), "testlog.conf.sample"))
 
 class TestLogGenerator():
 
@@ -56,6 +56,8 @@ class TestLogGenerator():
         section = "event_" + event_name
         
         def _recur(dt, host, event_name):
+            if not self.conf.has_option(section, "recurrence"):
+                return
             if self.conf.getboolean(section, "recurrence"):
                 if random.random() < self.conf.getfloat(section, "recur_p"):
                     durmin = self.conf.getdur(section, "recur_dur_min")
@@ -65,16 +67,16 @@ class TestLogGenerator():
 
         def _add_event(dt, host, event_name):
             info = {}
-            for i in self.conf.gettuple(section, "info"):
-                if i == "ifname":
-                    info[i] = random.choice(
-                            self.conf.gettuple(section, "ifname"))
-                elif i == "user":
-                    info[i] = random.choice(
-                            self.conf.gettuple(section, "user"))
+            if self.conf.has_option(section, "info"):
+                for i in self.conf.gettuple(section, "info"):
+                    if i == "ifname":
+                        info[i] = random.choice(
+                                self.conf.gettuple(section, "ifname"))
+                    elif i == "user":
+                        info[i] = random.choice(
+                                self.conf.gettuple(section, "user"))
             self.l_event.append((dt, host, event_name, info))
             _recur(dt, host, event_name)
-
 
         for group in self.conf.gettuple(section, "groups"):
             for host in self.d_host[group]:
@@ -159,11 +161,20 @@ class TestLogGenerator():
                         line[1], line[2])) + "\n")
 
 
-def test_make(fn = CONF, output = None):
+def test_make(fn = SAMPLECONF, output = None):
     tlg = TestLogGenerator(fn)
     tlg.dump_log(output)
 
 
 if __name__ == "__main__":
-    test_make()
+    usage = "usage: {0} [options]".format(sys.argv[0])
+    import optparse
+    op = optparse.OptionParser(usage)
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=SAMPLECONF,
+            help="configuration file path")
+    (options, args) = op.parse_args()
+    if len(args) > 0:
+        sys.exit("use -c for config file")
+    test_make(fn = options.conf)
 
