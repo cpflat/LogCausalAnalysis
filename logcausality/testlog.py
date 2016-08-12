@@ -6,6 +6,7 @@ import os
 import datetime
 import random
 import re
+import numpy as np
 
 import config
 
@@ -83,7 +84,9 @@ class TestLogGenerator():
                 occ = self.conf.get(section, "occurrence")
                 if occ == "random":
                     freq = self.conf.getfloat(section, "frequency")
-                    times = int(freq * (self.end_dt - self.top_dt).days + 0.5)
+                    avtimes = 1.0 * (self.end_dt - self.top_dt).total_seconds()\
+                            / (24 * 60 * 60)
+                    times = np.random.poisson(avtimes)
                     for i in range(times):
                         dt = self._dt_rand(self.top_dt, self.end_dt)
                         _add_event(dt, host, event_name)
