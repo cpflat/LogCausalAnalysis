@@ -828,7 +828,7 @@ def _iter_line_from_files(targets):
                     yield line
 
 
-def process_line(msg, ld, lp, ha, areas, isnew_check = False, latest = None):
+def process_line(msg, ld, lp, ha, isnew_check = False, latest = None):
     """Add a log message to DB.
     
     Args:
