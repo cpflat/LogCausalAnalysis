@@ -14,6 +14,7 @@ from itertools import combinations
 import config
 import fslib
 import pc_log
+import pc_input
 import log_db
 import log2event
 import evfilter
