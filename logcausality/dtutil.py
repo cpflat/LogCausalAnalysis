@@ -2,6 +2,9 @@
 # coding: utf-8
 
 import datetime
+import random
+
+TIMEFMT = "%Y-%m-%d %H:%M:%S"
 
 
 def dtrange(top_dt, end_dt, duration, include_end = False):
@@ -283,6 +286,54 @@ def separate_periodic(data, dur, err):
     return ret, remain_dt
 
 
+def rand_uniform(top_dt, end_dt, lambd):
+    """Generate a random event that follows uniform distribution of
+    LAMBD times a day on the average.
+
+    Args:
+        top_dt (datetime.datetime): The start time of generated event.
+        end_dt (datetime.datetime): The end time of generated event.
+        lambd (float): The average of appearance of generated event per a day.
+
+    Returns:
+        list[datetime.datetime]
+    """
+    ret = []
+    total_dt = (end_dt - top_dt)
+    avtimes = 1.0 * lambd * total_dt.total_seconds() / (24 * 60 * 60)
+    times = int(np.random.poisson(avtimes))
+    for i in range(times):
+        deltasec = int(total_dt.total_seconds() * random.random())
+        dt = top_dt + datetime.timedelta(seconds = deltasec)
+        ret.append(dt)
+    return ret
+
+
+def rand_exp(top_dt, end_dt, lambd):
+    """Generate a random event that follows Poisson process.
+    The event interval matches exponential distribution of
+    LAMBD times a day on the average.
+
+    Args:
+        top_dt (datetime.datetime): The start time of generated event.
+        end_dt (datetime.datetime): The end time of generated event.
+        lambd (float): The average of appearance of generated event per a day.
+
+    Yields:
+        datetime.datetime
+    """
+    temp_dt = top_dt
+    temp_dt = rand_next_exp(temp_dt)
+    while temp_dt < end_dt:
+        yield temp_dt
+        temp_dt = rand_next_exp(temp_dt)
+
+
+def rand_next_exp(dt, lambd):
+    return dt + datetime.timedelta(seconds = 1) * int(
+            24 * 60 * 60 * random.expovariate(lambd))
+
+
 def test_discretize():
     test_data = [
             "2112-07-16 00:00:00",
@@ -361,8 +412,20 @@ def test_separate_periodic():
         print dt
 
 
+def test_randlog_exp():
+    top_dt = datetime.datetime.strptime("2112-07-16 00:00:00", TIMEFMT)
+    end_dt = datetime.datetime.strptime("2112-07-17 00:00:00", TIMEFMT)
+    lambd = 100.0
+    for i in range(10):
+        print "exp 1"
+        for dt in rand_exp(top_dt, end_dt, lambd):
+            print dt
+        print
+
+
 if __name__ == "__main__":
     #test_separate_periodic()
-    test_discretize()
+    #test_discretize()
+    test_randlog_exp()
 
 

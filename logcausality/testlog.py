@@ -82,13 +82,14 @@ class TestLogGenerator():
         for group in self.conf.gettuple(section, "groups"):
             for host in self.d_host[group]:
                 occ = self.conf.get(section, "occurrence")
-                if occ == "random":
+                if occ == "random_uniform":
                     freq = self.conf.getfloat(section, "frequency")
-                    avtimes = 1.0 * (self.end_dt - self.top_dt).total_seconds()\
-                            / (24 * 60 * 60)
-                    times = np.random.poisson(avtimes)
-                    for i in range(times):
-                        dt = self._dt_rand(self.top_dt, self.end_dt)
+                    for dt in dtutil.rand_uniform(self.top_dt, self.end_dt,
+                            freq):
+                        _add_event(dt, host, event_name)
+                elif occ in ("random", "random_exp"):
+                    freq = self.conf.getfloat(section, "frequency")
+                    for dt in dtutil.rand_exp(self.top_dt, self.end_dt, freq):
                         _add_event(dt, host, event_name)
                 elif occ == "hourly":
                     dursec = 60 * 60

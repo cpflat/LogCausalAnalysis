@@ -201,6 +201,7 @@ stat_bin = 10s
 
 # Threshold of G square test to find conditional dependency
 threshold = 0.01
+threshold_corr = 0.5
 
 # Found DAG object data
 output_dir = pc_output
