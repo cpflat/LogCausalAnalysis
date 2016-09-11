@@ -22,11 +22,15 @@ def generate_normal():
 
 
 def poisson_process(top_dt, end_dt, lambd):
-    temp_dt = top_dt
-    while temp_dt < end_dt:
-        temp_dt += datetime.timedelta(seconds = 1) * int(
+    def next_dt(dt):
+        return dt + datetime.timedelta(seconds = 1) * int(
                 24 * 60 * 60 * random.expovariate(lambd))
+
+    temp_dt = top_dt
+    temp_dt = next_dt(temp_dt)
+    while temp_dt < end_dt:
         yield temp_dt
+        temp_dt = next_dt(temp_dt)
 
 
 def generate_poisson(top_dt, end_dt, lambd, event):
