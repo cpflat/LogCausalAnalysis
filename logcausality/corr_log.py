@@ -29,10 +29,12 @@ def corr_graph(data, threshold):
     for n1, n2 in combinations(l_nid, 2):
         t1 = data[n1]
         t2 = data[n2]
+        assert len(t1) == len(t2), \
+                "data length bad ({0}, {1})".format(len(t1), len(t2))
         corr = np.corrcoef(np.array(t1), np.array(t2))[0, 1]
-        _logger.debug("{0}-{1} {2}".format(t1, t2, corr))
+        _logger.debug("{0}-{1} {2}".format(n1, n2, corr))
         if corr >= threshold:
-            _logger.debug("add edge ({0}, {1})".format(t1, t2))
+            _logger.debug("add edge ({0}, {1})".format(n1, n2))
             g.add_edge(n1, n2)
             g.add_edge(n2, n1)
     return g
