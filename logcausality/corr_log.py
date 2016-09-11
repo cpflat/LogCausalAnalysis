@@ -72,6 +72,15 @@ def corr_log(conf, top_dt, end_dt, dur, area, dump = True):
     return output
 
 
+def corr_sthread(l_args):
+    start_dt = datetime.datetime.now()
+    _logger.info("corr_log task start ({0} jobs)".format(len(l_args)))
+    for args in l_args:
+        corr_log(*args)
+    end_dt = datetime.datetime.now()
+    _logger.info("corr_log task done ({0})".format(end_dt - start_dt))
+
+
 def corr_mthread(l_args, pal=1):
 
     start_dt = datetime.datetime.now()
@@ -118,6 +127,9 @@ if __name__ == "__main__":
     fslib.mkdir(conf.get("dag", "output_dir"))
     l_args = pc_log.pc_all_args(conf)
 
-    corr_mthread(l_args, options.pal)
+    if options.pal == 1:
+        corr_sthread(l_args)
+    else:
+        corr_mthread(l_args, options.pal)
 
 

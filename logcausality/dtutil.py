@@ -323,10 +323,10 @@ def rand_exp(top_dt, end_dt, lambd):
         datetime.datetime
     """
     temp_dt = top_dt
-    temp_dt = rand_next_exp(temp_dt)
+    temp_dt = rand_next_exp(temp_dt, lambd)
     while temp_dt < end_dt:
         yield temp_dt
-        temp_dt = rand_next_exp(temp_dt)
+        temp_dt = rand_next_exp(temp_dt, lambd)
 
 
 def rand_next_exp(dt, lambd):
@@ -415,7 +415,7 @@ def test_separate_periodic():
 def test_randlog_exp():
     top_dt = datetime.datetime.strptime("2112-07-16 00:00:00", TIMEFMT)
     end_dt = datetime.datetime.strptime("2112-07-17 00:00:00", TIMEFMT)
-    lambd = 100.0
+    lambd = 10000.0
     for i in range(10):
         print "exp 1"
         for dt in rand_exp(top_dt, end_dt, lambd):
