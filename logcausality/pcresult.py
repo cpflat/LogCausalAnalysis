@@ -374,6 +374,15 @@ def number_of_edges(g):
     return temp_graph.number_of_edges()
 
 
+def count_edges(edges):
+    """int: Count edges from a set of edges (tuples)
+    without considering directions of edges."""
+    g = nx.DiGraph()
+    g.add_edges_from(edges)
+    g2 = nx.Graph(g)
+    return g2.number_of_edges()
+
+
 def equal_edge(cedge1, cedge2, ig_host = False):
     # return True if the adjacent nodes of cedge1 is same as that of cedge2
     # If ig_host is True, ignore difference of hosts
@@ -575,9 +584,9 @@ def list_results(conf):
 
     print "datetime\t\tarea\tnodes\tedges\tfilepath"
     for r in l_result:
+        edge_num = number_of_edges(r.graph)
         print "\t".join((str(r.top_dt), r.area,
-                str(len(r.graph.nodes())),
-                str(len(r.graph.edges())), r.result_fn()))
+                str(len(r.graph.nodes())), str(edge_num), r.result_fn()))
 
 
 def list_detailed_results(conf):
@@ -592,11 +601,12 @@ def list_detailed_results(conf):
         row.append(str(r.top_dt))
         row.append(str(r.area))
         row.append(str(len(r.graph.nodes())))
-        row.append(str(len(r.graph.edges())))
-        row.append(str(len(r._edge_across_host())))
+        edge_num = number_of_edges(r.graph)
+        row.append(str(edge_num))
+        row.append(str(count_edges(r._edge_across_host())))
         dedges, udedges = r._separate_edges()
-        row.append(str(len(dedges)))
-        row.append(str(len(r._edge_across_host(dedges))))
+        row.append(str(count_edges(dedges)))
+        row.append(str(count_edges(r._edge_across_host(dedges))))
         row.append(r.result_fn())
         print ",".join(row)
 
