@@ -4,10 +4,11 @@
 import ipaddress
 from collections import defaultdict
 
+#import common
 import config
-import clsbase
 
-class HostAlias(clsbase.singleton):
+#class HostAlias(common.singleton):
+class HostAlias(object):
 
     """
     Note:

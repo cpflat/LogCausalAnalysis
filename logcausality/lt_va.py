@@ -8,8 +8,8 @@ import sys
 import math
 import cPickle as pickle
 
+import common
 import config
-import fslib
 import lt_common
 import lt_misc
 import logparser
@@ -69,7 +69,7 @@ class LTGenVA():
         self.d_w = {}
         
     def mk_dict(self, src_path):
-        for fp in fslib.rep_dir(src_path):
+        for fp in common.rep_dir(src_path):
             with open(fp, 'r') as f:
                 for line in f:
                     dt, host, l_w, l_s = logparser.process_line(line)

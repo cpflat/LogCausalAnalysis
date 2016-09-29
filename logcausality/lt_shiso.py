@@ -18,7 +18,6 @@ import cPickle as pickle
 import numpy
 
 import config
-import fslib
 import lt_common
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
@@ -277,9 +276,9 @@ def edit_distance(m1, m2, sym):
 #def test_ltgen(conf):
 #    ltm = LTManager(conf)
 #    if conf.getboolean("general", "src_recur"):
-#        l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
+#        l_fp = common.recur_dir(conf.getlist("general", "src_path"))
 #    else:
-#        l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
+#        l_fp = common.rep_dir(conf.getlist("general", "src_path"))
 #    ltm.process_dataset(conf, l_fp)
 #
 #

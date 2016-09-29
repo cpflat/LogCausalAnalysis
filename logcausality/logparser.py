@@ -8,7 +8,7 @@ import os
 import re
 import datetime
 
-import fslib
+import common
 import config
 
 DEFAULT_SYMDEF = "/".join((os.path.dirname(__file__), "symdef.txt.sample"))
@@ -223,9 +223,9 @@ def test_parse(conf):
     LP = LogParser(conf)
     ret = []
     if conf.getboolean("general", "src_recur"):
-        l_fp = fslib.recur_dir(conf.getlist("general", "src_path"))
+        l_fp = common.recur_dir(conf.getlist("general", "src_path"))
     else:
-        l_fp = fslib.rep_dir(conf.getlist("general", "src_path"))
+        l_fp = common.rep_dir(conf.getlist("general", "src_path"))
     for fp in l_fp:
         with open(fp, 'r') as f:
             for line in f:
@@ -238,7 +238,7 @@ if __name__ == "__main__":
         sys.exit("usage: {0} config targets".format(sys.argv[0]))
     conf = config.open_config(sys.argv[1])
     LP = LogParser(conf)
-    for fp in fslib.rep_dir(sys.argv[2:]):
+    for fp in common.rep_dir(sys.argv[2:]):
         with open(fp) as f:
             for line in f:
                 print LP.process_line(line.rstrip("\n"))

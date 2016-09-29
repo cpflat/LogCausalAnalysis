@@ -7,7 +7,7 @@ import logging
 import cPickle as pickle
 import changefinder
 
-import fslib
+import common
 import dtutil
 import config
 import log_db
@@ -186,7 +186,7 @@ class ChangePointData():
 
 
 def graph_cp(conf, dur, output_dirname):
-    fslib.mkdir(output_dirname)
+    common.mkdir(output_dirname)
     length = config.str2dur(dur)
     dirname = conf.get("changepoint", "temp_cp_data")
     cpd = ChangePointData(dirname)
@@ -297,8 +297,8 @@ args:
         cf_r = conf.getfloat("changepoint", "cf_r")
         cf_smooth = conf.getint("changepoint", "cf_smooth")
         cpd.init(binsize, cf_r, cf_smooth)
-        fslib.mkdir(cpd.dirname)
-        fslib.rm_dirchild(cpd.dirname)
+        common.mkdir(cpd.dirname)
+        common.rm_dirchild(cpd.dirname)
         cpd.update(conf)
         cpd.dump()
     elif mode == "update":

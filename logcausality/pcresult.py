@@ -8,8 +8,9 @@ import logging
 import cPickle as pickle
 import numpy as np
 import networkx as nx
+from itertools import combinations
 
-import fslib
+import common
 import config
 import lt_label
 from ex_sort import ex_sorted
@@ -352,6 +353,27 @@ class EdgeTFIDF():
 
 # functions for graph
 
+def empty_dag():
+    """nx.DiGraph: Return empty graph."""
+    return nx.DiGraph()
+
+
+def complete_dag(size):
+    """nx.DiGraph: Return complete directed graph."""
+    node_ids = [i for i in xrange(size)]
+    g = nx.Graph()
+    g.add_nodes_from(node_ids)
+    for i, j in combinations(node_ids, 2):
+        g.add_edge(i, j)
+    return nx.DiGraph(g)
+
+
+def number_of_edges(g):
+    """int: Count edges without considering directions of edges."""
+    temp_graph = nx.Graph(g)
+    return temp_graph.number_of_edges()
+
+
 def equal_edge(cedge1, cedge2, ig_host = False):
     # return True if the adjacent nodes of cedge1 is same as that of cedge2
     # If ig_host is True, ignore difference of hosts
@@ -527,7 +549,7 @@ def graph_network(graph):
 def result_areas(conf):
     s_area = set()
     src_dir = conf.get("dag", "output_dir")
-    for fp in fslib.rep_dir(src_dir):
+    for fp in common.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
         s_area.add(r.area)
     return list(s_area)
@@ -535,7 +557,7 @@ def result_areas(conf):
 
 def results_in_area(conf, src_dir, area):
     l_result = []
-    for fp in fslib.rep_dir(src_dir):
+    for fp in common.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
         if r.area == area:
             l_result.append(r)
@@ -547,7 +569,7 @@ def results_in_area(conf, src_dir, area):
 def list_results(conf):
     src_dir = conf.get("dag", "output_dir")
     l_result = []
-    for fp in fslib.rep_dir(src_dir):
+    for fp in common.rep_dir(src_dir):
         l_result.append(PCOutput(conf).load(fp))
     l_result.sort(key = lambda r: r.area)
 
@@ -564,7 +586,7 @@ def list_detailed_results(conf):
     splitter = ","
     print splitter.join(["dt", "area", "node", "edge",
             "edge_oh", "d_edge", "d_edge_oh", "fn"])
-    for fp in fslib.rep_dir(src_dir):
+    for fp in common.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
         row = []
         row.append(str(r.top_dt))
@@ -581,7 +603,7 @@ def list_detailed_results(conf):
 
 def list_netsize(conf):
     src_dir = conf.get("dag", "output_dir")
-    for fp in fslib.rep_dir(src_dir):
+    for fp in common.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
         d_size = {}
         for net in graph_network(r.graph):
@@ -599,7 +621,7 @@ def list_netsize(conf):
 def whole_netsize(conf):
     src_dir = conf.get("dag", "output_dir")
     d_size = {}
-    for fp in fslib.rep_dir(src_dir):
+    for fp in common.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
         for net in graph_network(r.graph):
             d_size[len(net)] = d_size.get(len(net), 0) + 1
@@ -647,7 +669,7 @@ def similar_graph(conf, result, area, alg, cand = 20):
     assert result.area == area
     src_dir = conf.get("dag", "output_dir")
     l_result = []
-    for fp in fslib.rep_dir(src_dir):
+    for fp in common.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
         if r.area == area:
             l_result.append(r)

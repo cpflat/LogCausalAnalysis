@@ -12,10 +12,9 @@ import datetime
 import sqlite3
 import logging
 
+import common
 import config
-import clsbase
 import strutil
-import fslib
 import db_common
 import logparser
 import lt_common
@@ -979,15 +978,8 @@ def migrate(conf):
 def remake_ltgroup(conf):
     ld = LogData(conf, edit = True)
     ld.init_ltmanager()
-    
-    start_dt = datetime.datetime.now()
-    _logger.info("log_db remake_ltg task start")
-    
     ld.ltm.remake_ltg()
     ld.commit_db()
-    
-    end_dt = datetime.datetime.now()
-    _logger.info("log_db remake_ltg task done ({0})".format(end_dt - start_dt))
 
 
 def remake_area(conf):
@@ -1000,14 +992,14 @@ def remake_area(conf):
 def _get_targets(conf, args, recur):
     if len(args) == 0:
         if conf.getboolean("general", "src_recur") or recur:
-            targets = fslib.recur_dir(conf.getlist("general", "src_path"))
+            targets = common.recur_dir(conf.getlist("general", "src_path"))
         else:
-            targets = fslib.rep_dir(conf.getlist("general", "src_path"))
+            targets = common.rep_dir(conf.getlist("general", "src_path"))
     else:
         if recur:
-            targets = fslib.recur_dir(args)
+            targets = common.recur_dir(args)
         else:
-            targets = fslib.rep_dir(args)
+            targets = common.rep_dir(args)
     return targets
 
 
@@ -1049,13 +1041,13 @@ args:
     mode = args.pop(0)
     if mode == "make":
         targets = _get_targets(conf, args, options.recur)
-        timer = fslib.Timer("log_db make", output = _logger)
+        timer = common.Timer("log_db make", output = _logger)
         timer.start()
         process_files(conf, targets, True)
         timer.stop()
     elif mode == "make-init":
         targets = _get_targets(conf, args, options.recur)
-        timer = fslib.Timer("log_db make-init", output = _logger)
+        timer = common.Timer("log_db make-init", output = _logger)
         timer.start()
         process_init_data(conf, targets)
         timer.stop()
@@ -1064,10 +1056,10 @@ args:
             sys.exit("give me filenames of log data to add to DB")
         else:
             if options.recur:
-                targets = fslib.recur_dir(args)
+                targets = common.recur_dir(args)
             else:
-                targets = fslib.rep_dir(args)
-        timer = fslib.Timer("log_db add", output = _logger)
+                targets = common.rep_dir(args)
+        timer = common.Timer("log_db add", output = _logger)
         timer.start()
         process_files(conf, targets, False)
         timer.stop()
@@ -1076,10 +1068,10 @@ args:
             sys.exit("give me filenames of log data to add to DB")
         else:
             if options.recur:
-                targets = fslib.recur_dir(args)
+                targets = common.recur_dir(args)
             else:
-                targets = fslib.rep_dir(args)
-        timer = fslib.Timer("log_db update", output = _logger)
+                targets = common.rep_dir(args)
+        timer = common.Timer("log_db update", output = _logger)
         timer.start()
         process_files(conf, targets, False, diff = True)
         timer.stop()

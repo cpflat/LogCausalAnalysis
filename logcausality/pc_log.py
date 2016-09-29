@@ -2,14 +2,13 @@
 # coding: utf-8
 
 import sys
-import time
 import datetime
 import threading
 import cPickle as pickle
 import logging
 
+import common
 import config
-import fslib
 import log_db
 import log2event
 import pc_input 
@@ -40,7 +39,7 @@ def get_edict(conf, top_dt, end_dt, dur, area):
 def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
     
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
-
+    
     edict, evmap = get_edict(conf, top_dt, end_dt, dur, area)
 
     _logger.info("{0} events found in given term of log data".format(
@@ -57,13 +56,13 @@ def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
     else:
         _logger.info("insufficient events({0}), return empty dag".format(\
                 len(edict)))
-        graph = pc_input.empty_dag()
+        graph = pcresult.empty_dag()
 
     output = pcresult.PCOutput(conf)
     output.make(graph, evmap, top_dt, end_dt, dur, area)
     if dump:
         output.dump()
-        fslib.rm(tempfn)
+        common.rm(tempfn)
 
     _logger.info("job done, output {0}".format(output.filename))
     return output
@@ -130,41 +129,22 @@ def pc_all_args(conf):
     #    top_dt = top_dt + diff
     #return l_args
 
+
 def pc_sthread(l_args):
-
-    start_dt = datetime.datetime.now()
-    _logger.info("pc_log task start ({0} jobs)".format(len(l_args)))
-
+    timer = common.Timer("pc_log task", output = _logger)
+    timer.start()
     for args in l_args:
         pc_log(*args)
-
-    end_dt = datetime.datetime.now()
-    _logger.info("pc_log task done ({0})".format(end_dt - start_dt))
+    timer.stop()
 
 
 def pc_mthread(l_args, pal=1):
-
-    start_dt = datetime.datetime.now()
-    _logger.info("pc_log task start ({0} jobs)".format(len(l_args)))
-
+    timer = common.Timer("pc_log task", output = _logger)
+    timer.start()
     l_thread = [threading.Thread(name = thread_name(*args),
         target = pc_log, args = args) for args in l_args]
-
-    l_job = []
-    while len(l_thread) > 0:
-        if len(l_job) < pal:
-            job = l_thread.pop(0)
-            job.start()
-            l_job.append(job)
-        else:
-            time.sleep(1)
-            l_job = [j for j in l_job if j.is_alive()]
-    else:
-        for job in l_job:
-            job.join()
-
-    end_dt = datetime.datetime.now()
-    _logger.info("pc_log task done ({0})".format(end_dt - start_dt))
+    common.mthread_queueing(l_thread, pal)
+    timer.stop()
 
 
 def test_edict(l_args):
@@ -199,7 +179,7 @@ if __name__ == "__main__":
     lv = logging.DEBUG if options.debug else logging.INFO
     config.set_common_logging(conf, _logger, ["evfilter"], lv = lv)
 
-    fslib.mkdir(conf.get("dag", "output_dir"))
+    common.mkdir(conf.get("dag", "output_dir"))
     l_args = pc_all_args(conf)
     if options.test:
         test_pc(l_args); sys.exit()

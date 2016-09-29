@@ -3,7 +3,7 @@
 
 import sys
 
-import fslib
+import common
 import config
 import pc_log
 import pcresult
@@ -16,7 +16,7 @@ def similar_block_dag(conf, top_dt, end_dt, area, method, ignore_same = True):
 
     dur = conf.getdur("dag", "stat_bin")
     name = pc_log.thread_name(conf, top_dt, end_dt, dur, area) 
-    if name in fslib.rep_dir(src_dir):
+    if name in common.rep_dir(src_dir):
         r_temp = pcresult.PCOutput(conf).load(name)
     else:
         r_temp = pc_log.pc_log(conf, top_dt, end_dt, dur, area, dump = False)

@@ -85,7 +85,7 @@ def pc_rlib(d_dt, threshold):
     return g
 
 
-def empty_dag():
-    return nx.DiGraph()
+#def empty_dag():
+#    return nx.DiGraph()
 
 

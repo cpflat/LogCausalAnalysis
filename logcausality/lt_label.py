@@ -7,7 +7,6 @@ import optparse
 import logging
 
 import config
-import fslib
 import logparser
 import log_db
 
