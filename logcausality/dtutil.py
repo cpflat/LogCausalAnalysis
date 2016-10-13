@@ -16,6 +16,14 @@ def dtrange(top_dt, end_dt, duration, include_end = False):
         temp_dt = temp_dt + duration
 
 
+#def dtrange_term(top_dt, end_dt, duration):
+#    temp_top_dt = top_dt
+#    while temp_top_dt < end_dt:
+#        temp_end_dt = temp_top_dt + duration
+#        yield (temp_top_dt, temp_end_dt)
+#        temp_top_dt = temp_end_dt
+# -> iter_term
+
 def discretize(l_dt, l_label = None, binarize = False):
     """
     Args:
@@ -109,10 +117,20 @@ def radj_sep(dt, duration):
         return adj_sep(dt, duration) + duration
 
 
-def iter_term(whole_term, term_length, term_diff):
+def shortstr(dt):
+    date = datetime.datetime.combine(dt.date(), datetime.time())
+    if date == dt:
+        return dt.strftime("%Y%m%d")
+    else:
+        return dt.strftime("%Y%m%d_%H%M%S")
+
+
+def iter_term(whole_term, term_length, term_diff = None):
     # whole_term : tuple(datetime.datetime, datetime.datetime)
     # term_length : datetime.timedelta
     # term_diff : datetime.timedelta
+    if term_diff is None:
+        term_diff = term_length
     w_top_dt, w_end_dt = whole_term
     top_dt = w_top_dt
     while top_dt < w_end_dt:

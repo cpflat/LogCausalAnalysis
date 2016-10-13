@@ -383,6 +383,12 @@ def self_corr(data, diff, binsize):
         return np.corrcoef(np.array(data1), np.array(data2))[0, 1]
 
 
+#def lpf(l_dt, binsize, winsize):
+
+
+
+
+
 #def discretize_dt(l_dt, binsize):
 #    """
 #    Args:

@@ -5,6 +5,8 @@ import os
 import time
 import datetime
 import logging
+#from collections import UserDict  # for python3
+from UserDict import UserDict  # for python2
 
 
 # classes
@@ -25,6 +27,44 @@ class singleton(object):
         else:
             tmpInstance = clsObj._instanceDict[str(hash(clsObj))]
         return tmpInstance
+
+
+class SequenceKeyDict(UserDict):
+
+    def _key(self, key):
+        return tuple(sorted(list(key)))
+
+    def __contains__(self, key):
+        k = self._key(key)
+        return UserDict.__contains__(self, k)
+
+    def __getitem__(self, key):
+        k = self._key(key)
+        return UserDict.__getitem__(self, k)
+
+    def __delitem__(self, key):
+        k = self._key(key)
+        return UserDict.__delitem__(self, k, item)
+
+    def __setitem__(self, key, item):
+        k = self._key(key)
+        return UserDict.__setitem__(self, k, item)
+
+    def get(self, key, failobj=None):
+        k = self._key(key)
+        return UserDict.get(self, k, failobj)
+
+    def has_key(self, key):
+        k = self._key(key)
+        return UserDict.has_key(self, k)
+
+    def pop(self, key, *args):
+        k = self._key(key)
+        return UserDict.pop(self, k, *args)
+
+    def setdefault(self, key, *args, **kwargs):
+        k = self._key(key)
+        return UserDict.setdefault(self, k, *args, **kwargs)
 
 
 # file managing
@@ -92,6 +132,35 @@ def rm(path):
 def rm_dirchild(dirpath):
     for fpath in rep_dir(dirpath):
         os.remove(fpath)
+
+
+def last_modified(args, latest = False):
+    """Get the last modified time of a file or a set of files.
+
+    Args:
+        args (str or list[str]): Files to investigate.
+        latest (Optional[bool]): If true, return the latest datetime
+                of timestamps. Otherwise, return the oldest timestamp.
+
+    Returns:
+        datetime.datetime
+
+    """
+    def file_timestamp(fn):
+        stat = os.stat(fn)
+        t = stat.st_mtime
+        return datetime.datetime.fromtimestamp(t)
+
+    if isinstance(args, list):
+        l_dt = [file_timestamp(fn) for fn in args]
+        if latest:
+            return max(l_dt)
+        else:
+            return min(l_dt)
+    elif isinstance(args, str):
+        return file_timestamp(args)
+    else:
+        raise NotImplementedError
 
 
 # parallel computing

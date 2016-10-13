@@ -190,6 +190,22 @@ class PCOutput():
         # return labeled information of given edge
         return tuple(self._node_info(node) for node in edge)
 
+    def iter_edge_info(self, l_edge = None):
+        if l_edge is None:
+            l_edge = self.graph.edges()
+        for edge in l_edge:
+            yield self._edge_info(edge)
+
+    def edge2str(self, edge):
+        src_id, dst_id = edge
+        src_str = self.evmap.info_str(src_id)
+        dst_str = self.evmap.info_str(dst_id)
+        return "{0} - {1}".format(src_str, dst_str)
+
+    def info2str(self, t_info):
+        edge = self._edge_id(t_info)
+        return self.edge2str(edge)
+
     def _has_node(self, info):
         return self.evmap.has_info(info)
 
@@ -287,48 +303,28 @@ class PCOutput():
         print ">", fn
 
 
-class EdgeTFIDF():
+class EdgeTFIDF(object):
 
     def __init__(self, l_result):
-        self.d_doc = {} # key : cedge, val : the dataset where the cedge found
-        self.l_result = [(rid, r) for rid, r in enumerate(l_result)]
+        self._d_doc = common.SequenceKeyDict()
+        # key : cedge, val : the dataset where the cedge found
+        self._l_result = l_result
+        self._ridmap = PCOutputIDMap(l_result)
 
-        for rid, r in self.l_result:
+        for r in self._l_result:
+            rid = self._ridmap.rid(r)
             for edge in r.graph.edges():
                 cedge = r._edge_info(edge)
                 self._add_cedge(cedge, rid)
 
     def _add_cedge(self, cedge, rid):
-        src_info, dst_info = cedge
-        if self.d_doc.has_key((src_info, dst_info)):
-            key = (src_info, dst_info)
-            self.d_doc[key].add(rid)
-        elif self.d_doc.has_key((dst_info, src_info)):
-            key = (dst_info, src_info)
-            self.d_doc[key].add(rid)
-        else:
-            key = (src_info, dst_info)
-            self.d_doc[key] = set([rid])
+        self._d_doc.setdefault(cedge, set()).add(rid)
 
     def _docs_with_cedge(self, cedge):
-        src_info, dst_info = cedge
-        if self.d_doc.has_key((src_info, dst_info)):
-            key = (src_info, dst_info)
-            return self.d_doc[key]
-        elif self.d_doc.has_key((dst_info, src_info)):
-            key = (dst_info, src_info)
-            return self.d_doc[key]
-        else:
-            return set()
+        return self._d_doc.get(cedge, set())
 
     def _rid(self, r):
-        for rid, temp_r in self.l_result:
-            if temp_r.filename == r.filename:
-                return rid
-        else:
-            raise ValueError(
-                    "{0} not given for initialization of EdgeTFIDF".format(
-                        r.filename))
+        return self._ridmap.rid(r)
 
     def tf(self, cedge, r):
         rid = self._rid(r)
@@ -338,7 +334,7 @@ class EdgeTFIDF():
             return 0.0
 
     def idf(self, cedge, r):
-        doc_size = len(self.l_result)
+        doc_size = len(self._l_result)
         doc_with_cedge = len(self._docs_with_cedge(cedge))
         if doc_with_cedge == 0:
             import pdb; pdb.set_trace()
@@ -349,6 +345,29 @@ class EdgeTFIDF():
 
     def weight(self, w, doc):
         return self.tfidf(w, doc)
+
+
+class PCOutputIDMap():
+
+    def __init__(self, l_result):
+        self._d_rid = {}
+        self._d_rn = {}
+        for rid, r in enumerate(l_result):
+            self._d_rid[r.filename] = rid
+            self._d_rn[rid] = r.filename
+
+    def rid(self, r):
+        if self._d_rid.has_key(r.filename):
+            return self._d_rid[r.filename]
+        else:
+            raise ValueError(
+                    "Invalid PCOutput given (name: {0})".format(r.filename))
+
+    def rid_info(self, rid):
+        if self._d_rn.has_key(rid):
+            return self._d_rn[rid]
+        else:
+            raise ValueError("Invalid rid {0}".format(rid))
 
 
 # functions for graph
@@ -555,6 +574,15 @@ def graph_network(graph):
 
 # function for results
 
+def results(conf):
+    src_dir = conf.get("dag", "output_dir")
+    l_result = []
+    for fp in common.rep_dir(src_dir):
+        l_result.append(PCOutput(conf).load(fp))
+    l_result.sort(key = lambda r: r.area)
+    return l_result
+
+
 def result_areas(conf):
     s_area = set()
     src_dir = conf.get("dag", "output_dir")
@@ -576,14 +604,8 @@ def results_in_area(conf, src_dir, area):
 # functions for visualization
 
 def list_results(conf):
-    src_dir = conf.get("dag", "output_dir")
-    l_result = []
-    for fp in common.rep_dir(src_dir):
-        l_result.append(PCOutput(conf).load(fp))
-    l_result.sort(key = lambda r: r.area)
-
     print "datetime\t\tarea\tnodes\tedges\tfilepath"
-    for r in l_result:
+    for r in results(conf):
         edge_num = number_of_edges(r.graph)
         print "\t".join((str(r.top_dt), r.area,
                 str(len(r.graph.nodes())), str(edge_num), r.result_fn()))

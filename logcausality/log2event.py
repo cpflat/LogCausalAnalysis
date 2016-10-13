@@ -374,12 +374,12 @@ def _remap_eid(edict, evmap):
     return edict, evmap
 
 
-def event2stat(edict, top_dt, end_dt, dur):
+def event2stat(edict, top_dt, end_dt, dur, binarize = True):
     d_stat = {}
     l_label = dtutil.label(top_dt, end_dt, dur)
 
     for eid, l_ev in edict.iteritems():
-        d_stat[eid] = dtutil.discretize(l_ev, l_label, binarize = True)
+        d_stat[eid] = dtutil.discretize(l_ev, l_label, binarize)
     return d_stat
 
 

@@ -286,6 +286,12 @@ replace_end = true
 # If empty, use default configuration (lt_label.conf.sample)
 ltlabel = 
 
+# If true, remove frequently appearing edges from the result
+filter_edges = false
+edge_filter_method = count_ighost
+edge_filter_th = 0.1
+edge_filter_file = edge.temp
+
 
 [search]
 
