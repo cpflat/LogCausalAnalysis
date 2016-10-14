@@ -35,7 +35,6 @@ class LTManager(object):
         self._db = db
         self._lttable = lttable
         self._table = TemplateTable()
-        #self.ltgroup = self._init_ltgroup(ltg_alg) # LTGroup
         self.ltgen = None
         self.ltspl = None
         self.ltgroup = None
@@ -297,10 +296,16 @@ class TemplateTable():
             return cnt
 
     def _key_template(self, template):
-        return "@@".join(template)
+        l_word = [strutil.add_esc(w) for w in template]
+        return "@".join(l_word)
 
     def exists(self, template):
-        return self._d_rtpl.has_key(self._key_template(template))
+        key = self._key_template(template)
+        return self._d_rtpl.has_key(key)
+
+    def get_tid(self, template):
+        key = self._key_template(template)
+        return self._d_rtpl[key]
 
     def add(self, template):
         tid = self.next_tid()
@@ -508,13 +513,16 @@ def init_ltmanager(conf, db, table, reset_db):
                 max_child = conf.getint(
                     "log_template_shiso", "ltgen_max_child")
                 )
+    elif lt_alg == "import":
+        fn = conf.get("log_template_import", "def_path")
+        mode = conf.get("log_template_import", "mode")
+        import logparser
+        lp = logparser.LogParser(conf)
+        import lt_import
+        ltgen = lt_import.LTGenImport(ltm._table, sym, fn, mode, lp)
     #elif lt_alg == "va":
     #    import lt_va
     #    ltm = lt_va.LTManager(conf, self.db, self.table,
-    #            self._reset_db, ltg_alg)
-    #elif lt_alg == "import":
-    #    import lt_import
-    #    ltm = lt_import.LTManager(conf, self.db, self.table,
     #            self._reset_db, ltg_alg)
     else:
         raise ValueError("lt_alg({0}) invalid".format(lt_alg))

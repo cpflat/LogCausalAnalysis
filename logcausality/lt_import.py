@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""DEAD"""
-
 
 import logging
 
+import common
 import lt_common
 import lt_misc
 import logparser
@@ -13,45 +12,43 @@ import logparser
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-class LTManager(lt_common.LTManager):
+class LTGenImport(lt_common.LTGen):
 
-    def __init__(self, conf, db, table, reset_db, ltg_alg):
-        self.searchtree = None
+    def __init__(self, table, sym, filename, mode, lp):
+        super(LTGenImport, self).__init__(table, sym)
+        self._table = table
+        self._d_def = common.IDDict(lambda x: tuple(x))
+        self.searchtree = lt_misc.LTSearchTree(sym)
+        self._open_def(filename, mode, lp)
 
-        super(LTManager, self).__init__(conf, db, table, reset_db, ltg_alg)
-
-        self.def_path = conf.get("log_template_import", "def_path")
-        self.mode = conf.get("log_template_import", "mode")
-        if self.searchtree is None:
-            self.searchtree = lt_misc.LTSearchTree(self.sym)
-
-        self._open_def()
-
-    def _open_def(self):
-        lp = logparser.LogParser(self.conf)
-        with open(self.def_path, 'r') as f:
+    def _open_def(self, filename, mode, lp):
+        with open(filename, 'r') as f:
             for line in f:
-                if self.mode == "plain":
+                if mode == "plain":
                     line = line.rstrip("\n")
                     ltw, lts = lp.split_message(line)
-                    ltline = self.add_lt(ltw, lts, 0) 
-                    self.searchtree.add(ltline.ltid, ltw)
+                    defid = self._d_def.add(ltw)
+                    self.searchtree.add(defid, ltw)
                 else:
-                    raise ValueError("import_mode string is invalid")
+                    raise ValueError("imvalid import_mode {0}".format(
+                            self.mode))
 
     def process_line(self, l_w, l_s):
-        ltid = self.searchtree.search(l_w)
-        if ltid is None:
+        defid = self.searchtree.search(l_w)
+        if defid is None:
             _logger.warning(
                     "No log template found for message : {0}".format(l_w))
         else:
-            self.count_lt(ltid)
-            return self.table[ltid]
+            tpl = self._d_def.get(defid)
+            if self._table.exists(tpl):
+                tid = self._table.get_tid(tpl)
+                return tid, self.state_unchanged
+            else:
+                tid = self._table.add(tpl)
+                return tid, self.state_added
 
-    def load(self):
-        self.searchtree = self._load_pickle()
+    def load(self, loadobj):
+        pass
 
-    def dump(self):
-        obj = self.searchtree
-        self._dump_pickle(obj)
-
+    def dumpobj(self):
+        return None

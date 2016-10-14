@@ -3,11 +3,14 @@
 
 import sys
 import os
+import logging
 import cPickle as pickle
 
 import common
 import config
 import pcresult
+
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 class EdgeFilter():
@@ -22,6 +25,7 @@ class EdgeFilter():
             self.load()
         if self.latest is None or self._update_check():
             self._init_dict(conf)
+            self.dump()
 
     def _update_check(self):
         lm = common.last_modified(common.rep_dir(self.src_dir))
@@ -56,11 +60,11 @@ class EdgeFilter():
     def load(self):
         """Restore event periodicity data from a serialized file."""
         with open(self.filename, 'r') as f:
-            self.latest, self.d_edge = pickle.load(f)
+            self.__dict__ = pickle.load(f)
 
     def dump(self):
         """Serialize event periodicity with cPickle."""
-        obj = (self.latest, self.d_edge)
+        obj = self.__dict__
         with open(self.filename, 'w') as f:
             pickle.dump(obj, f)
 

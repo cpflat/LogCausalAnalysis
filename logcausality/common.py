@@ -67,6 +67,34 @@ class SequenceKeyDict(UserDict):
         return UserDict.setdefault(self, k, *args, **kwargs)
 
 
+class IDDict():
+
+    def __init__(self, keyfunc = None):
+        self._d_obj = {}
+        self._d_id = {}
+        self.keyfunc = keyfunc
+
+    def _next_id(self):
+        next_id = len(self._d_obj)
+        assert not self._d_obj.has_key(next_id)
+        return next_id
+
+    def add(self, obj):
+        if self.exists(obj):
+            return self._d_id[self.keyfunc(boj)]
+        else:
+            keyid = self._next_id()
+            self._d_obj[keyid] = obj
+            self._d_id[self.keyfunc(obj)] = keyid
+            return keyid
+
+    def exists(self, obj):
+        return self._d_id.has_key(self.keyfunc(obj))
+
+    def get(self, keyid):
+        return self._d_obj[keyid]
+
+
 # file managing
 
 def rep_dir(args):

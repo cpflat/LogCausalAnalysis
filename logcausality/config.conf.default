@@ -83,7 +83,7 @@ remove_header_filename =
 [log_template]
 
 # 1st step algorithms / methods to generate log templates
-# [shiso, va] are available
+# [shiso, va, import] are available
 lt_alg = shiso
 
 # 2nd step algorithms / methods

@@ -299,7 +299,7 @@ class LogData():
     def show_template_table(self):
         """For debugging"""
         self.init_ltmanager()
-        return self.ltm.table
+        return self.ltm._table
 
     def show_all_lt(self):
         """Show all log templates. Log template identifier
