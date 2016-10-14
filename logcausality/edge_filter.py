@@ -35,10 +35,13 @@ class EdgeFilter():
         elif self.method == "count_ighost":
             self.clsobj = _ClassifierOfCountIgHost(l_result, self.threshold)
         elif self.method == "cont":
-            self.clsobj = _ClassifierOfContinuation(l_result, self.threshold)
+            areas = pcresult.result_areas(conf)
+            self.clsobj = _ClassifierOfContinuation(l_result,
+                    self.threshold, areas)
         elif self.method == "cont_ighost":
+            areas = pcresult.result_areas(conf)
             self.clsobj = _ClassifierOfContinuationIgHost(l_result,
-                    self.threshold)
+                    self.threshold, areas)
         #elif self.method == "tfidf":
         #    pass
         #elif self.method == "tfidf_ighost":
@@ -118,27 +121,29 @@ class _ClassifierOfCountIgHost(_ClassifierOfCount):
 
 class _ClassifierOfContinuation(_Classifier):
 
-    def __init__(self, l_result, threshold):
+    def __init__(self, l_result, threshold, areas):
         _Classifier.__init__(self, l_result, threshold)
-        d_temp_cont = {}
         self._d_cont = common.SequenceKeyDict()
         self._ridmap = pcresult.PCOutputIDMap(l_result)
         self._th_val = threshold
-        for r in l_result:
-            rid = self._ridmap.rid(r)
-            l_cedge = [e for e in r.iter_edge_info()]
-            s_lost_cedge = set(d_temp_cont.keys()) - set(l_cedge)
-            for cedge in l_cedge:
-                self._add_expl(cedge, r)
-                key = self._key(cedge)
-                key2 = self._key2(rid, cedge)
-                cont = d_temp_cont.get(key, 0) + 1
-                d_temp_cont[key] = cont
-                self._d_cont[key2] = cont
-            for cedge in s_lost_cedge:
-                assert not cedge in l_cedge
-                key = self._key(cedge)
-                d_temp_cont.pop(key)
+        for area in areas:
+            d_temp_cont = {}
+            l_result_area = [r for r in l_result if r.area == area]
+            for r in l_result_area:
+                rid = self._ridmap.rid(r)
+                l_cedge = [e for e in r.iter_edge_info()]
+                s_lost_cedge = set(d_temp_cont.keys()) - set(l_cedge)
+                for cedge in l_cedge:
+                    self._add_expl(cedge, r)
+                    key = self._key(cedge)
+                    key2 = self._key2(rid, cedge)
+                    cont = d_temp_cont.get(key, 0) + 1
+                    d_temp_cont[key] = cont
+                    self._d_cont[key2] = cont
+                for cedge in s_lost_cedge:
+                    assert not cedge in l_cedge
+                    key = self._key(cedge)
+                    d_temp_cont.pop(key)
 
     def _key(self, cedge):
         return cedge
