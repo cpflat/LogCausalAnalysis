@@ -47,17 +47,16 @@ Invalid option name {0} in section {1} in {2}, ignored
                     section, fn))
         
         for section in conf.sections():
-            if section in self.sections():
-                for option in conf.options(section):
-                    value = conf.get(section, option)
-                    if option in self.options(section):
-                        self.set(section, option, value)
-                    else:
-                        if warn:
-                            warn_opt(section, option, conf.filename)
-            else:
+            if not section in self.sections():
+                self.add_section(section)
                 if warn:
                     warn_sec(section, conf.filename)
+            for option in conf.options(section):
+                value = conf.get(section, option)
+                if not option in self.options(section):
+                    if warn:
+                        warn_opt(section, option, conf.filename)
+                self.set(section, option, value)
         return self
 
     def merge(self, conf):
