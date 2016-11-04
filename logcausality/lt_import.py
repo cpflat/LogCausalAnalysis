@@ -25,13 +25,16 @@ class LTGenImport(lt_common.LTGen):
         with open(filename, 'r') as f:
             for line in f:
                 if mode == "plain":
+                    mes = line.rstrip("\n")
+                elif mode == "ids":
                     line = line.rstrip("\n")
-                    ltw, lts = lp.split_message(line)
-                    defid = self._d_def.add(ltw)
-                    self.searchtree.add(defid, ltw)
+                    mes = line.partition(" ")[2].strip()
                 else:
                     raise ValueError("imvalid import_mode {0}".format(
                             self.mode))
+                ltw, lts = lp.split_message(mes)
+                defid = self._d_def.add(ltw)
+                self.searchtree.add(defid, ltw)
 
     def process_line(self, l_w, l_s):
         defid = self.searchtree.search(l_w)
