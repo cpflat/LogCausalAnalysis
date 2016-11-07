@@ -12,24 +12,35 @@ class LTSearchTree():
     def __str__(self):
         l_buf = []
 
-        def print_children(point, depth):
+        def print_children(point, depth, l_sparent):
             word = point.word
             if word is None: word = "**"
-            buf = "-" * depth + " {0}".format(point.word)
-            if point.end is not None:
-                buf += "  <-- ltid {0}".format(point.end)
-            l_buf.append(buf)
+
+            cnt = len(point.windex.keys())
+            cnt = cnt + 1 if point.wild is not None else cnt
+            if cnt == 1:
+                l_sparent.append(word)
+            else:
+                l_sparent.append(word)
+                buf = "-" * (depth - len(l_sparent) + 1) + \
+                        " {0}".format(" ".join(l_sparent))
+                if point.end is not None:
+                    buf += "  <-- ltid {0}".format(point.end)
+                l_buf.append(buf)
+                l_sparent = []
+
             for word in point.windex.keys():
-                print_children(point.windex[word], depth + 1)
+                print_children(point.windex[word], depth + 1, l_sparent[:])
             if point.wild is not None:
-                print_children(point.wild, depth + 1)
+                print_children(point.wild, depth + 1, l_sparent[:])
+
 
         point = self.root
         l_buf.append("<head of log template search tree>")
         for word in point.windex.keys():
-            print_children(point.windex[word], 1)
+            print_children(point.windex[word], 0, [])
         if point.wild is not None:
-            print_children(point.wild, 1)
+            print_children(point.wild, 0, [])
         return "\n".join(l_buf)
 
     @staticmethod
