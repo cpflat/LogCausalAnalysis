@@ -855,8 +855,9 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None):
     _logger.debug("Processing [{0}]".format(" ".join(l_w)))
     ltline = ld.ltm.process_line(l_w, l_s)
     if ltline is None:
-        _logger.warning("Log template not found " + \
-                "for message [{0}]".format(line))
+        pass
+        #_logger.warning("Log template not found " + \
+        #        "for message [{0}]".format(line))
     else:
         _logger.debug("Template [{0}]".format(ltline))
         line = ld.add_line(ltline.ltid, dt, host, l_w)

@@ -93,6 +93,8 @@ class LTManager(object):
             return ret
 
         tid, state = self.ltgen.process_line(l_w, l_s)
+        if tid is None:
+            return None
 
         tpl = self._table[tid]
         ltw = self.ltspl.replace_variable(l_w, tpl, self.sym)
