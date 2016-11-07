@@ -22,6 +22,7 @@ class LTGenImport(lt_common.LTGen):
         self._open_def(filename, mode, lp)
 
     def _open_def(self, filename, mode, lp):
+        cnt = 0
         with open(filename, 'r') as f:
             for line in f:
                 if mode == "plain":
@@ -35,6 +36,8 @@ class LTGenImport(lt_common.LTGen):
                 ltw, lts = lp.split_message(mes)
                 defid = self._d_def.add(ltw)
                 self.searchtree.add(defid, ltw)
+                cnt += 1
+        _logger.info("{0} template imported".format(cnt))
 
     def process_line(self, l_w, l_s):
         defid = self.searchtree.search(l_w)
