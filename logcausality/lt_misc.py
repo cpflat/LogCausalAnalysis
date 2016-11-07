@@ -16,8 +16,7 @@ class LTSearchTree():
             word = point.word
             if word is None: word = "**"
 
-            cnt = len(point.windex.keys())
-            cnt = cnt + 1 if point.wild is not None else cnt
+            cnt = point.child_num()
             if cnt == 1:
                 l_sparent.append(word)
             else:
@@ -143,6 +142,12 @@ class LTSearchTreeNode():
             return self.windex[word]
         else:
             return None
+
+    def child_num(self):
+        cnt = len(self.windex.keys())
+        if self.wild is not None:
+            cnt += 1
+        return cnt
 
     def current_point(self):
         buf = []
