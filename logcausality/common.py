@@ -72,7 +72,10 @@ class IDDict():
     def __init__(self, keyfunc = None):
         self._d_obj = {}
         self._d_id = {}
-        self.keyfunc = keyfunc
+        if keyfunc is None:
+            self.keyfunc = lambda x: x
+        else:
+            self.keyfunc = keyfunc
 
     def _next_id(self):
         next_id = len(self._d_obj)
@@ -81,7 +84,7 @@ class IDDict():
 
     def add(self, obj):
         if self.exists(obj):
-            return self._d_id[self.keyfunc(boj)]
+            return self._d_id[self.keyfunc(obj)]
         else:
             keyid = self._next_id()
             self._d_obj[keyid] = obj

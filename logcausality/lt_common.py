@@ -6,7 +6,6 @@ import cPickle as pickle
 from collections import defaultdict
 
 import strutil
-import lt_misc
 
 
 class LTManager(object):
@@ -542,6 +541,9 @@ def init_ltmanager(conf, db, table, reset_db):
                 mem_ngram = conf.getboolean(
                     "log_template_shiso", "ltgroup_mem_ngram")
                 )
+    elif ltg_alg == "ssdeep":
+        import lt_misc
+        ltgroup = lt_misc.LTGroupFuzzyHash(table)
     elif ltg_alg == "none":
         ltgroup = LTGroup()
     else:

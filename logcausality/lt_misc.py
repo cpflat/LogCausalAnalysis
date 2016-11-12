@@ -2,6 +2,10 @@
 # coding: utf-8
 
 
+import common
+import lt_common
+
+
 class LTSearchTree():
     # Search tree for un-incremental lt generation algorithms
 
@@ -172,4 +176,52 @@ class LTSearchTreeNode():
                 (self.wild is None) and \
                 (self.end is None)
 
+
+class LTGroupFuzzyHash(lt_common.LTGroup):
+
+    def __init__(self, lttable, th = 1, mem_hash = True):
+        super(LTGroupFuzzyHash, self).__init__()
+        self.th = th
+        self._lttable = lttable
+        self._mem_hash = mem_hash
+        self._d_hash = {}
+
+    def add(self, lt_new):
+        l_score = self._calc_score(lt_new)
+        if len(l_score) == 0:
+            gid = self._next_groupid()
+        else:
+            ltid, score = max(l_score, key = lambda x: x[1])
+            if score >= self.th:
+                gid = self.d_rgroup[ltid]
+            else:
+                gid = self._next_groupid()
+        self.add_ltid(gid, lt_new)
+        return gid
+
+    def _calc_score(self, lt_new):
+        try:
+            import ssdeep
+        except ImportError:
+            raise ImportError(
+                    "ltgroup algorithm <ssdeep> needs python package ssdeep")
+        ret = []
+        h1 = ssdeep.hash(str(lt_new))
+        if self._mem_hash:
+            if len(self._d_hash) == 0:
+                # initialize d_hash
+                for lt in self._lttable:
+                    h = ssdeep.hash(str(lt))
+                    self._d_hash[lt.ltid] = h
+            for ltid, lt_temp in enumerate(self._lttable):
+                h2 = self._d_hash[lt_temp.ltid]
+                score = ssdeep.compare(h1, h2)
+                ret.append((ltid, score))
+            self._d_hash[lt_new.ltid] = h1
+        else:
+            for lt_temp in self._lttable:
+                ltid = lt_temp.ltid
+                score = hash_score(str(lt_new), str(lt_temp))
+                ret.append((ltid, score))
+        return ret
 
