@@ -382,6 +382,12 @@ class LTGen(object):
         """
         raise NotImplementedError
 
+    def load(self, loadobj):
+        pass
+
+    def dumpobj(self):
+        return None
+
 
 class LTGroup(object):
 
@@ -521,6 +527,10 @@ def init_ltmanager(conf, db, table, reset_db):
         lp = logparser.LogParser(conf)
         import lt_import
         ltgen = lt_import.LTGenImport(ltm._table, sym, fn, mode, lp)
+    elif lt_alg == "crf":
+        model = conf.get("log_template_crf", "model_filename")
+        import lt_crf
+        ltgen = lt_crf.LTGenCRF(ltm._table, sym, model)
     #elif lt_alg == "va":
     #    import lt_va
     #    ltm = lt_va.LTManager(conf, self.db, self.table,

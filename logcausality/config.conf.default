@@ -171,6 +171,15 @@ ltgroup_th_distance = 0.85
 ltgroup_mem_ngram = true
 
 
+[log_template_crf]
+
+train_filename = crf_train
+feature_template = crf_template
+model_filename = crf_model
+
+
+
+
 [dag]
 # IDs for grouping criterion of log messages to define DAG node
 # [ltgid, ltid] is available

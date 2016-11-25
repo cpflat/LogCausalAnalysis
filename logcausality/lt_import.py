@@ -54,8 +54,3 @@ class LTGenImport(lt_common.LTGen):
                 tid = self._table.add(tpl)
                 return tid, self.state_added
 
-    def load(self, loadobj):
-        pass
-
-    def dumpobj(self):
-        return None

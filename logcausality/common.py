@@ -5,6 +5,8 @@ import os
 import time
 import datetime
 import logging
+#import subprocess  # for python3
+import subprocess32 as subprocess  # for python2
 #from collections import UserDict  # for python3
 from UserDict import UserDict  # for python2
 
@@ -192,6 +194,26 @@ def last_modified(args, latest = False):
         return file_timestamp(args)
     else:
         raise NotImplementedError
+
+
+# subprocess
+def call_process(cmd):
+    """Call a subprocess and handle standard outputs.
+    
+    Args:
+        cmd (list): A sequence of command strings.
+    
+    Returns:
+        ret (int): Return code of the subprocess.
+        stdout (str)
+        stderr (str)
+    """
+
+    p = subprocess.Popen(cmd, shell=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    ret = p.returncode
+    return ret, stdout, stderr
 
 
 # parallel computing

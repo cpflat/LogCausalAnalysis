@@ -179,6 +179,13 @@ class LTSearchTreeNode():
 
 class LTGroupFuzzyHash(lt_common.LTGroup):
 
+    """Classify templates based on ssdeep, an implementation of fuzzy hashing.
+    Fuzzy hashing evaluate the similarity of string data. This class compares
+    strings of templates including symbols and variable replacements, and
+    make groups that have large scores of fuzzy hash comparizon each other.
+    
+    """
+
     def __init__(self, lttable, th = 1, mem_hash = True):
         super(LTGroupFuzzyHash, self).__init__()
         self.th = th
