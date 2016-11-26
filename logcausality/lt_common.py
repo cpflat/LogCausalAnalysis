@@ -296,6 +296,9 @@ class TemplateTable():
         else:
             return cnt
 
+    def tids(self):
+        return self._d_tpl.keys()
+
     def _key_template(self, template):
         l_word = [strutil.add_esc(w) for w in template]
         return "@".join(l_word)
@@ -307,6 +310,9 @@ class TemplateTable():
     def get_tid(self, template):
         key = self._key_template(template)
         return self._d_rtpl[key]
+
+    def get_template(self, tid):
+        return self._d_tpl[tid]
 
     def add(self, template):
         tid = self.next_tid()
