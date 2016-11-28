@@ -25,10 +25,12 @@ DEFAULT_FEATURE_TEMPLATE = "/".join((os.path.dirname(__file__),
 
 class LTGenCRF(lt_common.LTGen):
 
-    def __init__(self, table, sym, model, middle_label):
+    def __init__(self, table, sym, conf):
         super(LTGenCRF, self).__init__(table, sym)
+        model = conf.get("log_template_crf", "model_filename")
+        self._middle = conf.get("log_template_crf", "middle_label")
+        
         self._crf = CRFPP.Tagger("-m " + model + " -v 3 -n2")
-        self._middle = middle_label
         if self._middle == "re":
             import label_word
             self._lwobj = label_word.LabelWord()
@@ -110,10 +112,8 @@ def generate_lt_from_file(conf, fn):
     lp = logparser.LogParser(conf)
     table = lt_common.TemplateTable()
     sym = conf.get("log_template", "variable_symbol")
-    model = conf.get("log_template_crf", "model_filename")
-    middle_label = conf.get("log_template_crf", "middle_label")
     d_symlist = {}
-    ltgen = LTGenCRF(table, sym, model, middle_label)
+    ltgen = LTGenCRF(table, sym, conf)
     
     with open(fn, "r") as f:
         for line in f:

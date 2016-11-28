@@ -33,6 +33,7 @@ class HostAlias(object):
         with open(fn, "r") as f:
             for line in f:
                 line = line.rstrip("\n")
+                line = line.partition("#")[0]
                 if line == "" or line[0] == "#":
                     continue
                 elif line[0] == "[" and "]" in line:
@@ -40,7 +41,7 @@ class HostAlias(object):
                 elif line[0] == "<" and ">" in line:
                     l_temp = line.strip("<").partition(">")
                     alias = l_temp[0]
-                    names = l_temp[2].strip().rstrip("\n").split()
+                    names = [alias] + l_temp[2].strip().rstrip("\n").split()
                     if len(names) == 0:
                         continue
                     self._add_def(names, alias = alias, group = group)
@@ -53,9 +54,12 @@ class HostAlias(object):
     def _add_def(self, l_name, alias = None, group = None):
 
         def add_alias(key, alias):
-            if alias is not None:
+            if alias is None:
                 self._d_alias[alias].append(key)
                 self._d_ralias[key] = alias
+            else:
+                self._d_alias[key].append(key)
+                self._d_ralias[key] = key
 
         def add_groupdef(key, group):
             if group is not None:
@@ -92,6 +96,21 @@ class HostAlias(object):
             print(" ".join([str(v) for v in val]))
             print
 
+    def isknown(self, string):
+        try:
+            addr = ipaddress.ip_address(string)
+            for net in self._l_net:
+                if addr in net:
+                    return True
+            else:
+                if addr in self._d_ralias.keys():
+                    return True
+                else:
+                    return False
+        except ValueError:
+            name = string.lower()
+            return self._d_ralias.has_key(name)
+
     def resolve_host(self, string):
         try:
             addr = ipaddress.ip_address(string)
@@ -104,8 +123,9 @@ class HostAlias(object):
                 else:
                     return None
         except ValueError:
-            if self._d_ralias.has_key(string):
-                return self._d_ralias[string]
+            name = string.lower()
+            if self._d_ralias.has_key(name):
+                return self._d_ralias[name]
             else:
                 return None
 
@@ -121,27 +141,30 @@ class HostAlias(object):
                 else:
                     return None
         except ValueError:
-            if self._d_rgroup.has_key(string):
-                return self._d_rgroup[string]
+            name = string.lower()
+            if self._d_rgroup.has_key(name):
+                return self._d_rgroup[name]
             else:
                 return None
 
 
 def test_hostalias(conf):
     names = ["192.168.0.1",
-            "www.test.localdomain",
+            "www.TEST.localdomain",
             "localhost",
+            "www",
             "www3",
             "hoge",
             "10.100.1.254",
             "8.8.6.0"]
-    #ha = HostAlias("host_alias.txt")
+    conf.set("database", "host_alias_filename", "host_alias_test.txt")
     ha = HostAlias(conf)
     ha.print_definitions()
     print
     print "[test aliasing]"
     for name in names:
         print name
+        print ha.isknown(name)
         print ha.resolve_host(name)
         print ha.get_group(name)
         print

@@ -4,23 +4,36 @@
 import re
 import ipaddress
 
+import host_alias
+
 
 class LabelWord():
 
-    def __init__(self):
+    def __init__(self, conf):
         self._d_re = {}
-        self._d_re["DIGIT"] = re.compile(r"^[0-9]+$")
+
+        self._d_re["DIGIT"] = [re.compile(r"^\d+$")]
+        self._d_re["DATE"] = [re.compile(r"^\d{2}/\d{2}$"),
+                              re.compile(r"^\d{4}-\d{2}-\d{2}")]
+        self._d_re["TIME"] = [re.compile(r"^\d{2}:\d{2}:\d{2}$")]
+
         self._other = "OTHER"
+        self._ha = host_alias.HostAlias(conf)
+        self._host = "HOST"
 
     def label(self, word):
         ret = self.isipaddr(word)
         if ret is not None:
             return ret
 
-        for k, reobj in self._d_re.iteritems():
-            if reobj.match(word):
-                return k
-
+        if self._ha.isknown(word):
+            return self._host
+        
+        for k, l_reobj in self._d_re.iteritems():
+            for reobj in l_reobj:
+                if reobj.match(word):
+                    return k
+        
         return self._other
 
     @staticmethod
