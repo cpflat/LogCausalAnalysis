@@ -55,7 +55,7 @@ def train(conf, train_fn = None):
         train_fn = conf.get("log_template_crf", "train_filename")
 
     cmd = ["crf_learn", template_fn, train_fn, model_fn]
-    ret, stdout, stderr = common.call_process()
+    ret, stdout, stderr = common.call_process(cmd)
     if not ret == "0":
         raise ValueError("crf_learn failed")
     print stdout
