@@ -535,8 +535,9 @@ def init_ltmanager(conf, db, table, reset_db):
         ltgen = lt_import.LTGenImport(ltm._table, sym, fn, mode, lp)
     elif lt_alg == "crf":
         model = conf.get("log_template_crf", "model_filename")
+        middle_label = conf.get("log_template_crf", "middle_label")
         import lt_crf
-        ltgen = lt_crf.LTGenCRF(ltm._table, sym, model)
+        ltgen = lt_crf.LTGenCRF(ltm._table, sym, model, middle_label)
     #elif lt_alg == "va":
     #    import lt_va
     #    ltm = lt_va.LTManager(conf, self.db, self.table,

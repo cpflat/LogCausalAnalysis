@@ -7,6 +7,7 @@ and python wrapper in CRF++.
 """
 
 import sys
+import os
 import cPickle as pickle
 import CRFPP
 import logging
@@ -18,27 +19,42 @@ import strutil
 #import logparser
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
+DEFAULT_FEATURE_TEMPLATE = "/".join((os.path.dirname(__file__),
+        "crf_template"))
 
 
 class LTGenCRF(lt_common.LTGen):
 
-    def __init__(self, table, sym, model):
+    def __init__(self, table, sym, model, middle_label):
         super(LTGenCRF, self).__init__(table, sym)
-        self.crf = CRFPP.Tagger("-m " + model + " -v 3 -n2")
+        self._crf = CRFPP.Tagger("-m " + model + " -v 3 -n2")
+        self._middle = middle_label
+        if self._middle == "re":
+            import label_word
+            self._lwobj = label_word.LabelWord()
+
+    def _middle_label(self, w):
+        if self._middle == "re":
+            return self._lwobj.label(w)
+        else:
+            return "W"
 
     def process_line(self, l_w, l_s):
-        self.crf.clear()
+        self._crf.clear()
         for w in l_w:
-            self.crf.add("{0} W".format(w))
-        self.crf.parse()
+            label = self._middle_label(w)
+            self._crf.add("{0} {1}".format(w, label))
+        self._crf.parse()
 
         tpl = []
         for wid, w in enumerate(l_w):
-            label = self.crf.y2(wid)
+            label = self._crf.y2(wid)
             if label == "D":
                 tpl.append(w)
             elif label == "V":
                 tpl.append(self._sym)
+            else:
+                raise ValueError("crf label invalid ({0})".format(label))
 
         if self._table.exists(tpl):
             tid = self._table.get_tid(tpl)
@@ -51,6 +67,8 @@ class LTGenCRF(lt_common.LTGen):
 def train(conf, train_fn = None):
     model_fn = conf.get("log_template_crf", "model_filename")
     template_fn = conf.get("log_template_crf", "feature_template")
+    if template_fn == "":
+        template_fn = DEFAULT_FEATURE_TEMPLATE
     if train_fn is None:
         train_fn = conf.get("log_template_crf", "train_filename")
 
@@ -93,8 +111,9 @@ def generate_lt_from_file(conf, fn):
     table = lt_common.TemplateTable()
     sym = conf.get("log_template", "variable_symbol")
     model = conf.get("log_template_crf", "model_filename")
+    middle_label = conf.get("log_template_crf", "middle_label")
     d_symlist = {}
-    ltgen = LTGenCRF(table, sym, model)
+    ltgen = LTGenCRF(table, sym, model, middle_label)
     
     with open(fn, "r") as f:
         for line in f:
