@@ -168,6 +168,8 @@ if __name__ == "__main__":
             default=False, help="search log file recursively")
     op.add_option("-p", "--parallel", action="store", dest="pal", type="int",
             default=1, help="multiprocessing for make")
+    op.add_option("--debug", action="store_true", dest="debug",
+            default=False, help="set logging level to DEBUG")
     options, args = op.parse_args()
 
     conf = config.open_config(options.conf)
