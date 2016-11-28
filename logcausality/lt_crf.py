@@ -9,13 +9,15 @@ and python wrapper in CRF++.
 import sys
 import cPickle as pickle
 import CRFPP
-#import logging
+import logging
 
 import common
 import config
 import lt_common
 import strutil
 #import logparser
+
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 class LTGenCRF(lt_common.LTGen):
@@ -84,6 +86,8 @@ def lt2trainsource(conf, fn = None):
 
 
 def generate_lt_from_file(conf, fn):
+    _logger.info("job for ({0}) start".format(fn))
+    
     import logparser
     lp = logparser.LogParser(conf)
     table = lt_common.TemplateTable()
@@ -98,12 +102,14 @@ def generate_lt_from_file(conf, fn):
             l_w = [strutil.add_esc(w) for w in l_w]
             tid, dummy = ltgen.process_line(l_w, l_s)
             d_symlist[tid] = l_s
-    
+
     ret = []
     for tid in table.tids():
         tpl = table.get_template(tid)
         l_s = d_symlist[tid]
         ret.append((tpl, l_s))
+
+    _logger.info("job for ({0}) done".format(fn))
     return ret
 
 
@@ -118,9 +124,17 @@ def generate_lt_pal(conf, targets, pal):
     import log_db
     ld = log_db.LogData(conf)
 
+    timer = common.Timer("lt_crf task", output = _logger)
+    timer.start()
     pool = multiprocessing.Pool(pal)
     l_callback = pool.map(wrapper_mp, [(conf, fn) for fn in targets])
+    timer.stop()
 
+    with open("temp_crf_dump") as f:
+        pickle.dump(l_callback, f)
+
+    timer = common.Timer("lt_crf postprocessing task", output = _logger)
+    timer.start()
     sym = conf.get("log_template", "variable_symbol")
     lttable = lt_common.LTTable(sym)
     table = lt_common.TemplateTable()
@@ -133,9 +147,10 @@ def generate_lt_pal(conf, targets, pal):
                 lt = lt_common.LogTemplate(tid, tid, tpl, l_s, 0, sym)
                 lttable.add_lt(lt)
 
-    with open("temp_crf", "w") as f:
+    with open("temp_crf_template", "w") as f:
         pickle.dump(lttable, f)
 
+    timer.stop()
     for ltline in lttable:
         print ltline
 
