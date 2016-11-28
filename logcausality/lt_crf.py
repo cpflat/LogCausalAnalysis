@@ -130,7 +130,7 @@ def generate_lt_pal(conf, targets, pal):
     l_callback = pool.map(wrapper_mp, [(conf, fn) for fn in targets])
     timer.stop()
 
-    with open("temp_crf_dump") as f:
+    with open("temp_crf_dump", "w") as f:
         pickle.dump(l_callback, f)
 
     timer = common.Timer("lt_crf postprocessing task", output = _logger)
