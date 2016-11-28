@@ -33,7 +33,7 @@ class LTGenCRF(lt_common.LTGen):
         self._crf = CRFPP.Tagger("-m " + model + " -v 3 -n2")
         if self._middle == "re":
             import label_word
-            self._lwobj = label_word.LabelWord()
+            self._lwobj = label_word.LabelWord(conf)
 
     def _middle_label(self, w):
         if self._middle == "re":
