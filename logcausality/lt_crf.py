@@ -99,6 +99,7 @@ def generate_lt_from_file(conf, fn):
     with open(fn, "r") as f:
         for line in f:
             dt, org_host, l_w, l_s = lp.process_line(line)
+            if l_w is None: continue
             l_w = [strutil.add_esc(w) for w in l_w]
             tid, dummy = ltgen.process_line(l_w, l_s)
             d_symlist[tid] = l_s
@@ -170,6 +171,8 @@ if __name__ == "__main__":
     options, args = op.parse_args()
 
     conf = config.open_config(options.conf)
+    lv = logging.DEBUG if options.debug else logging.INFO
+    config.set_common_logging(conf, _logger, [], lv = lv)
     
     if len(args) == 0:
         sys.exit(usage)
