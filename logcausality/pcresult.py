@@ -574,8 +574,9 @@ def graph_network(graph):
 
 # function for results
 
-def results(conf):
-    src_dir = conf.get("dag", "output_dir")
+def results(conf, src_dir = None):
+    if src_dir is None:
+        src_dir = conf.get("dag", "output_dir")
     l_result = []
     for fp in common.rep_dir(src_dir):
         l_result.append(PCOutput(conf).load(fp))
@@ -603,9 +604,9 @@ def results_in_area(conf, src_dir, area):
 
 # functions for visualization
 
-def list_results(conf):
+def list_results(conf, src_dir):
     print "datetime\t\tarea\tnodes\tedges\tfilepath"
-    for r in results(conf):
+    for r in results(conf, src_dir):
         edge_num = number_of_edges(r.graph)
         print "\t".join((str(r.top_dt), r.area,
                 str(len(r.graph.nodes())), str(edge_num), r.result_fn()))
@@ -775,7 +776,8 @@ args:
         sys.exit(usage)
     mode = args.pop(0)
     if mode == "show-all":
-        list_results(conf)
+        src_dir = None if len(args) == 0 else args[0]
+        list_results(conf, src_dir)
     elif mode == "show-all-detail":
         list_detailed_results(conf)
     elif mode == "all-netsize":
