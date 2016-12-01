@@ -51,8 +51,10 @@ def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
 
     if len(edict) > 2:
         threshold = conf.getfloat("dag", "threshold")
-        data = log2event.event2stat(edict, top_dt, end_dt, dur)
-        graph = pc_input.pc(data, threshold)
+        ci_func = conf.get("dag", "ci_func")
+        binarize = False if ci_func == "fisherz" else True
+        data = log2event.event2stat(edict, top_dt, end_dt, dur, binarize)
+        graph = pc_input.pc(data, threshold, ci_func)
     else:
         _logger.info("insufficient events({0}), return empty dag".format(\
                 len(edict)))
@@ -167,8 +169,8 @@ if __name__ == "__main__":
             default=False, help="only making event set")
     op.add_option("-p", "--parallel", action="store", dest="pal", type="int",
             default=1, help="multithreading")
-    op.add_option("-r", action="store_true", dest="rflag",
-            default=False, help="using pcalg library in R")
+    #op.add_option("-r", action="store_true", dest="rflag",
+    #        default=False, help="using pcalg library in R")
     op.add_option("--test", action="store_true", dest="test",
             default=False, help="test pc_log; do with first term")
     op.add_option("--debug", action="store_true", dest="debug",

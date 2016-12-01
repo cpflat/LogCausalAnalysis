@@ -208,7 +208,11 @@ unit_diff = 24h
 # Bin size of discrete data for G square test
 stat_bin = 10s
 
-# Threshold of G square test to find conditional dependency
+# Method to calculate conditional independency
+# [fisherz, gsq] is available
+ci_func = gsq
+
+# Threshold of p-value for conditional independence test
 threshold = 0.01
 threshold_corr = 0.5
 
@@ -288,6 +292,7 @@ replace_top = true
 
 # if filter.action = replace, add virtual event on the end of periodic appearance
 replace_end = true
+
 
 [visual]
 
