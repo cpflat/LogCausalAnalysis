@@ -102,6 +102,10 @@ post_alg = host, dummy
 # Do NOT share among multiple log template generation algorithms
 indata_filename = lt.dump
 
+# Output lines that fails to classify with existing log templates
+# This can appear only if method "import" used
+fail_output = lt_fail.log
+
 # Definition file of symbol strings to split log messages
 # If empty, use default rule (symdef.txt.sample)
 sym_filename = 

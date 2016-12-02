@@ -30,6 +30,7 @@ class LTManager(object):
         self._reset_db = reset_db
         self.sym = conf.get("log_template", "variable_symbol")
         self.filename = conf.get("log_template", "indata_filename")
+        self._fail_fn = conf.get("log_template", "fail_output")
 
         self._db = db
         self._lttable = lttable
@@ -164,6 +165,11 @@ class LTManager(object):
             self.ltgroup._lttable.add_lt(ltline)
             self._db.add_ltg(ltline.ltid, ltgid)
         assert self.ltgroup._lttable.ltdict == temp_lttable.ltdict
+
+    def failure_output(self, line):
+        with open(self._fail_fn, "a") as f:
+            line = line.rstrip("\n")
+            f.write(line + "\n")
 
     def load(self):
         with open(self.filename, 'r') as f:
