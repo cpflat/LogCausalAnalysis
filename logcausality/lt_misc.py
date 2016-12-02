@@ -74,22 +74,29 @@ class LTSearchTree():
         while True:
             w = temp_ltwords.pop(0)
             if w == self.sym:
+                # w is sym (only if input is template)
+                # go wild node
                 if point.wild is None:
                     return None
                 else:
                     point = point.wild
             elif point.windex.has_key(w):
+                # w is in windex
+                # go the word node
+                # also go to wild node, when check_points poped
                 if point.wild is not None:
                     check_points.append((point, len(temp_ltwords)))
                 point = point.windex[w]
             elif point.wild is not None:
+                # w is not in windex, but have wild node
                 point = point.wild
             else:
+                # no template to process w, go back or end
                 if len(check_points) == 0:
                     return None
                 else:
                     p, left_wlen = check_points.pop(-1)
-                    temp_ltwords = ltwords[-left_wlen+1:]
+                    temp_ltwords = ltwords[-left_wlen:]
                         # +1 : for one **(wild) node
                     point = p.wild
 
@@ -99,7 +106,7 @@ class LTSearchTree():
                         return None
                     else:
                         p, left_wlen = check_points.pop(-1)
-                        temp_ltwords = ltwords[-left_wlen+1:]
+                        temp_ltwords = ltwords[-left_wlen:]
                         point = p.wild
                 else:
                     return point
@@ -137,6 +144,17 @@ class LTSearchTreeNode():
         self.end = None
         self.parent = parent # for reverse search to remove
         self.word = word
+
+    def __str__(self):
+        ret = []
+        p = self
+        while p.parent is not None:
+            if p.word is None:
+                ret.append("<root>")
+            else:
+                ret.append(p.word)
+            p = p.parent
+        return " ".join(ret)
 
     def child(self, word = None):
         if word is None:
