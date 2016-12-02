@@ -69,7 +69,7 @@ class HostAlias(object):
         for name in l_name:
             if "/" in name:
                 try:
-                    net = ipaddress.ip_network(name)
+                    net = str(ipaddress.ip_network(name))
                     add_alias(net, alias)
                     add_groupdef(net, group)
                     self._l_net.append(net)
@@ -78,7 +78,7 @@ class HostAlias(object):
                     add_groupdef(name, group)
             else:
                 try:
-                    addr = ipaddress.ip_address(name)
+                    addr = str(ipaddress.ip_address(name))
                     add_alias(addr, alias)
                     add_groupdef(addr, group)
                 except ValueError:
@@ -98,7 +98,7 @@ class HostAlias(object):
 
     def isknown(self, string):
         try:
-            addr = ipaddress.ip_address(string)
+            addr = str(ipaddress.ip_address(string))
             for net in self._l_net:
                 if addr in net:
                     return True
@@ -113,7 +113,7 @@ class HostAlias(object):
 
     def resolve_host(self, string):
         try:
-            addr = ipaddress.ip_address(string)
+            addr = str(ipaddress.ip_address(string))
             for net in self._l_net:
                 if addr in net:
                     return self._d_ralias[net]
@@ -131,7 +131,7 @@ class HostAlias(object):
 
     def get_group(self, string):
         try:
-            addr = ipaddress.ip_address(string)
+            addr = str(ipaddress.ip_address(string))
             for net in self._l_net:
                 if addr in net:
                     return self._d_rgroup[net]
