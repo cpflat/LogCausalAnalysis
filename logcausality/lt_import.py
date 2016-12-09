@@ -54,3 +54,52 @@ class LTGenImport(lt_common.LTGen):
                 tid = self._table.add(tpl)
                 return tid, self.state_added
 
+
+def search_exception(conf, targets):
+    
+    import logparser
+    import strutil
+    lp = logparser.LogParser(conf)
+    def_path = conf.get("log_template_import", "def_path")
+    sym = conf.get("log_template", "variable_symbol")
+    mode = conf.get("log_template_import", "mode")
+    table = lt_common.TemplateTable()
+    ltgen = LTGenImport(table, sym, def_path, mode, lp)
+
+    for fn in targets:
+        _logger.info("lt_import job for ({0}) start".format(fn))
+        with open(fn, "r") as f:
+            for line in f:
+                dt, org_host, l_w, l_s = lp.process_line(line)
+                if l_w is None: continue
+                l_w = [strutil.add_esc(w) for w in l_w]
+                tid, dummy = ltgen.process_line(l_w, l_s)
+                if tid is None:
+                    print line.rstrip("\n")
+        _logger.info("lt_import job for ({0}) done".format(fn))
+
+
+if __name__ == "__main__":
+    import sys
+    import optparse
+    import config
+    import log_db
+    usage = "usage: {0} [options] fn".format(sys.argv[0])
+    op = optparse.OptionParser(usage)
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+            help="configuration file path")
+    op.add_option("-r", action="store_true", dest="recur",
+            default=False, help="search log file recursively")
+    op.add_option("--debug", action="store_true", dest="debug",
+            default=False, help="set logging level to DEBUG")
+    options, args = op.parse_args()
+
+    conf = config.open_config(options.conf)
+    lv = logging.DEBUG if options.debug else logging.INFO
+    config.set_common_logging(conf, _logger, [], lv = lv)
+
+    targets = log_db._get_targets(conf, args, options.recur)
+    search_exception(conf, targets)
+
+
