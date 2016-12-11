@@ -28,13 +28,14 @@ class LogParser():
     month_name = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-    def __init__(self, conf):
+    def __init__(self, conf, sep_variable = False):
         self.default_year = conf.get("database", "default_year")
         self.rmheader_fl = conf.gettuple("database", "remove_header_filename")
         self.symdef = conf.get("log_template", "sym_filename")
         self.varsym = conf.get("log_template", "variable_symbol")
         if self.symdef is None or self.symdef == "":
             self.symdef = DEFAULT_SYMDEF
+        self.sep_variable = sep_variable
         self.sym_ignore = conf.getboolean("log_template", "sym_ignore")
         self.rm_header = []
         if self.rmheader_fl is not None and len(self.rmheader_fl) > 0:
@@ -97,7 +98,7 @@ class LogParser():
                 return string[0:cnt], string[cnt], string[cnt+1:]
         # partition if string have variable string symbol
         # only for Non-symbol-ignoring mode
-        if self.varsym in string:
+        if self.varsym in string and self.sep_variable:
             ind_s = string.find(self.varsym)
             ind_e = ind_s + len(self.varsym)
             if string == self.varsym:

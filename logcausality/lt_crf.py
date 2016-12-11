@@ -141,8 +141,8 @@ def wrapper_mp(args):
 def generate_lt_pal(conf, targets, pal):
     
     import multiprocessing
-    import log_db
-    ld = log_db.LogData(conf)
+    #import log_db
+    #ld = log_db.LogData(conf)
 
     timer = common.Timer("lt_crf task", output = _logger)
     timer.start()

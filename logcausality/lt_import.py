@@ -14,14 +14,15 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 class LTGenImport(lt_common.LTGen):
 
-    def __init__(self, table, sym, filename, mode, lp):
+    def __init__(self, table, sym, filename, mode):
         super(LTGenImport, self).__init__(table, sym)
         self._table = table
         self._d_def = common.IDDict(lambda x: tuple(x))
         self.searchtree = lt_misc.LTSearchTree(sym)
-        self._open_def(filename, mode, lp)
+        self._lp = logparser.LogParser(conf, sep_variable = True)
+        self._open_def(filename, mode)
 
-    def _open_def(self, filename, mode, lp):
+    def _open_def(self, filename, mode):
         cnt = 0
         with open(filename, 'r') as f:
             for line in f:
@@ -33,7 +34,7 @@ class LTGenImport(lt_common.LTGen):
                 else:
                     raise ValueError("imvalid import_mode {0}".format(
                             self.mode))
-                ltw, lts = lp.split_message(mes)
+                ltw, lts = self._lp.split_message(mes)
                 defid = self._d_def.add(ltw)
                 self.searchtree.add(defid, ltw)
                 cnt += 1
@@ -64,7 +65,8 @@ def search_exception(conf, targets):
     sym = conf.get("log_template", "variable_symbol")
     mode = conf.get("log_template_import", "mode")
     table = lt_common.TemplateTable()
-    ltgen = LTGenImport(table, sym, def_path, mode, lp)
+    #ltgen = LTGenImport(table, sym, def_path, mode, lp)
+    ltgen = LTGenImport(table, sym, def_path, mode)
 
     for fn in targets:
         _logger.info("lt_import job for ({0}) start".format(fn))
