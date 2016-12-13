@@ -13,7 +13,7 @@ def pc(d_dt, threshold, mode = "pylib"):
         graph = pc_rlib(d_dt, threshold)
     elif mode == "gsq":
         graph = pc_gsq(d_dt, threshold)
-    elif mode == "fisherz":
+    elif mode in ("fisherz", "fisherz_bin"):
         graph = pc_fisherz(d_dt, threshold)
     else:
         raise ValueError("ci_func invalid ({0})".format(mode))
@@ -22,6 +22,13 @@ def pc(d_dt, threshold, mode = "pylib"):
     #with open("graph_dump", 'w') as f:
     #    pickle.dump(graph, f)
     return graph
+
+
+def input_binarize(ci_func):
+    if mode == "fisherz":
+        return False
+    else:
+        return True
 
 
 def pc_gsq(d_dt, threshold):

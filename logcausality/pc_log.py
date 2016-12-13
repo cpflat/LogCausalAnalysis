@@ -52,7 +52,8 @@ def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
     if len(edict) > 2:
         threshold = conf.getfloat("dag", "threshold")
         ci_func = conf.get("dag", "ci_func")
-        binarize = False if ci_func == "fisherz" else True
+        #binarize = False if ci_func == "fisherz" else True
+        binarize = pc_input.input_binarize(ci_func)
         data = log2event.event2stat(edict, top_dt, end_dt, dur, binarize)
         graph = pc_input.pc(data, threshold, ci_func)
     else:

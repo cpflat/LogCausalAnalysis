@@ -212,8 +212,8 @@ unit_diff = 24h
 # Bin size of discrete data for G square test
 stat_bin = 10s
 
-# Method to calculate conditional independency
-# [fisherz, gsq] is available
+# Method to estimate conditional independency
+# [fisherz, fisherz_bin, gsq, gsq_rlib] is available
 ci_func = gsq
 
 # Threshold of p-value for conditional independence test
