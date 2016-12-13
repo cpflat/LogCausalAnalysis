@@ -117,6 +117,24 @@ def radj_sep(dt, duration):
         return adj_sep(dt, duration) + duration
 
 
+def limit_dt_seq(l_dt, top_dt, end_dt):
+    """dt: Yields dt that satisfy top_dt <= dt < end_dt."""
+    l_dt = l_dt[:]
+    dt = l_dt.pop(0)
+    while dt < top_dt:
+        if len(l_dt) == 0:
+            raise ValueError("no data satisfies the given condition")
+        else:
+            dt = l_dt.pop(0)
+
+    while dt < end_dt:
+        yield dt
+        if len(l_dt) == 0:
+            break
+        else:
+            dt = l_dt.pop(0)
+
+
 def shortstr(dt):
     date = datetime.datetime.combine(dt.date(), datetime.time())
     if date == dt:

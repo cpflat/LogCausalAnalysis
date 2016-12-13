@@ -252,8 +252,9 @@ def generate_evmap(conf, ld, top_dt, end_dt):
     return evmap
 
 
-def filter_edict(conf, edict, evmap):
-    l_result = evfilter.periodic_events(conf, edict, evmap)
+def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
+    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
+            edict, evmap)
 
     temp_edict = copy.deepcopy(edict)
     temp_evmap = _copy_evmap(evmap)
@@ -263,7 +264,7 @@ def filter_edict(conf, edict, evmap):
     return _remap_eid(temp_edict, temp_evmap)
 
 
-def replace_edict(conf, edict, evmap, top_dt, end_dt):
+def replace_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
     
     def _across_term_top(l_dt, pe, top_dt, dur, err):
         err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
@@ -283,7 +284,8 @@ def replace_edict(conf, edict, evmap, top_dt, end_dt):
         else:
             return False
 
-    l_result = evfilter.periodic_events(conf, edict, evmap)
+    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
+            edict, evmap)
 
     err = conf.getfloat("filter", "seq_error")
     dup = conf.getboolean("filter", "seq_duplication") 

@@ -252,16 +252,12 @@ cf_smooth = 5
 # periodic-whole : 'periodic' with the interval calculated with 'self-corr'
 
 # Action to apply for periodic events
-# [remove, (to be added)]
+# [remove, replace, (to be added)]
 action = remove
-
-# Temporal filter filename for 'periodic-whole'
-# Automatically made and removed if process successfully works
-temp_filter_data = filter.temp
 
 # Sampling term to calculate interval candidate in 'periodic-whole'
 # If empty, use whole log data in DB
-sampling_term = 
+sampling_term = 1w, 1d
 
 # Required times of periodic event appearance to repeat
 # Used for 'periodic' and 'self-corr'
@@ -280,6 +276,10 @@ self_corr_th = 0.5
 
 # Difference duration candidates to calculate self-correlation
 self_corr_diff = 1h, 1d
+
+# Search candidates of stable periodic interval
+# (temporaly added to self_corr_diff)
+search_interval = true
 
 # Bin size to discretize event appearance data in calculating self-correlation
 self_corr_bin = 10s

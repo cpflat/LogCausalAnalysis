@@ -26,10 +26,11 @@ def get_edict(conf, top_dt, end_dt, dur, area):
     if usefilter:
         act = conf.get("filter", "action")
         if act == "remove":
-            edict, evmap = log2event.filter_edict(conf, edict, evmap)
+            edict, evmap = log2event.filter_edict(conf, edict, evmap,
+                    ld, top_dt, end_dt, area)
         elif act == "replace":
             edict, evmap = log2event.replace_edict(conf, edict, evmap,
-                    top_dt, end_dt)
+                    ld, top_dt, end_dt, area)
         else:
             raise NotImplementedError
 
@@ -52,7 +53,6 @@ def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
     if len(edict) > 2:
         threshold = conf.getfloat("dag", "threshold")
         ci_func = conf.get("dag", "ci_func")
-        #binarize = False if ci_func == "fisherz" else True
         binarize = pc_input.input_binarize(ci_func)
         data = log2event.event2stat(edict, top_dt, end_dt, dur, binarize)
         graph = pc_input.pc(data, threshold, ci_func)
@@ -99,7 +99,7 @@ def pc_all_args(conf):
     ld = log_db.LogData(conf)
     w_top_dt, w_end_dt = whole_term(conf, ld)
 
-    evfilter.init_evfilter(conf)
+    #evfilter.init_evfilter(conf)
     term = conf.getdur("dag", "unit_term")
     diff = conf.getdur("dag", "unit_diff")
     dur = conf.getdur("dag", "stat_bin")

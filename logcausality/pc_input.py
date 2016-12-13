@@ -25,7 +25,7 @@ def pc(d_dt, threshold, mode = "pylib"):
 
 
 def input_binarize(ci_func):
-    if mode == "fisherz":
+    if ci_func == "fisherz":
         return False
     else:
         return True
