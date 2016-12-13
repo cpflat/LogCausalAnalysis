@@ -20,26 +20,21 @@ You can generate pseudo log dataset for testing functions.
 
 $ python testlog.py > test.temp
 
-First, you need to put a configuration file for whole system.
-Copy default file, and edit it if necessary.
+First, you need to generate a configuration file for whole system.
+Copy sample file, and edit it if necessary.
 
-$ cp config.conf.default config.conf
+$ cp config.conf.sample config.conf
 
 Then classify dataset and register them with database.
 Classification works with log template generation inside this command.
 
-$ python log_db.py
+$ python log_db.py -c config.conf make
 
 You can see log templates found in log messages with following command.
 
-$ python lt_edit.py show
+$ python log_db.py -c config.conf show-lt
 
-If found log template do not make reasonable event group,
-Following command may be useful.
-
-$ python lt_edit.py [breakdown, merge, separate]
-
-Finally analyze causal relations generating DAG.
+Then analyze causal relations generating DAG.
 (This step requires much time. If your machine have enough performance,
 we recommend you to use -p options for multithreading.)
 
@@ -47,5 +42,5 @@ $ python pc_log.py
 
 You can check result DAG with following command.
 
-$ python pcresult.py -g graph.pdf pc_output/all_21120901
+$ python pcresult.py -g graph.pdf show pc_output/all_21120901
 
