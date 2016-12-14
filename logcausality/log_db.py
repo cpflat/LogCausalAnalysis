@@ -301,6 +301,11 @@ class LogData():
         self.init_ltmanager()
         return self.ltm._table
 
+    def dump_template_table(self):
+        """For debugging"""
+        self.init_ltmanager()
+        return "\n".join([" ".join(tpl) for tpl in self.ltm._table])
+
     def show_all_lt(self):
         """Show all log templates. Log template identifier
         and its template message will be output.
@@ -959,6 +964,10 @@ def show_template_table(conf):
     print ld.show_template_table()
 
 
+def dump_template_table(conf):
+    ld = LogData(conf)
+    print ld.dump_template_table()
+
 def show_repr(conf):
     ld = LogData(conf)
     for ltgid in ld.iter_ltgid():
@@ -1080,6 +1089,8 @@ args:
         show_lt(conf)
     elif mode == "show-tpl":
         show_template_table(conf)
+    elif mode == "dump-tpl":
+        dump_template_table(conf)
     elif mode == "show-log-repr":
         show_repr(conf)
     elif mode == "remake-area":

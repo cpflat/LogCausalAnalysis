@@ -14,16 +14,19 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 class LTGenImport(lt_common.LTGen):
 
-    def __init__(self, table, sym, filename, mode):
+    def __init__(self, table, sym, filename, mode, lp):
         super(LTGenImport, self).__init__(table, sym)
         self._table = table
         self._d_def = common.IDDict(lambda x: tuple(x))
         self.searchtree = lt_misc.LTSearchTree(sym)
-        self._lp = logparser.LogParser(conf, sep_variable = True)
+        self._lp = lp
+        #logparser.LogParser(conf, sep_variable = True)
         self._open_def(filename, mode)
 
     def _open_def(self, filename, mode):
         cnt = 0
+        if not os.path.exists(filename):
+            raise ValueError("log_template_import.def_path is invalid")
         with open(filename, 'r') as f:
             for line in f:
                 if mode == "plain":
@@ -65,8 +68,8 @@ def search_exception(conf, targets):
     sym = conf.get("log_template", "variable_symbol")
     mode = conf.get("log_template_import", "mode")
     table = lt_common.TemplateTable()
-    #ltgen = LTGenImport(table, sym, def_path, mode, lp)
-    ltgen = LTGenImport(table, sym, def_path, mode)
+    temp_lp = logparser.LogParser(conf, sep_variable = True)
+    ltgen = LTGenImport(table, sym, def_path, mode, temp_lp)
 
     for fn in targets:
         _logger.info("lt_import job for ({0}) start".format(fn))

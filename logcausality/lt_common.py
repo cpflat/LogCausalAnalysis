@@ -535,8 +535,10 @@ def init_ltmanager(conf, db, table, reset_db):
     elif lt_alg == "import":
         fn = conf.get("log_template_import", "def_path")
         mode = conf.get("log_template_import", "mode")
+        import logparser
+        lp = logparser.LogParser(conf, sep_variable = True)
         import lt_import
-        ltgen = lt_import.LTGenImport(ltm._table, sym, fn, mode)
+        ltgen = lt_import.LTGenImport(ltm._table, sym, fn, mode, lp)
     elif lt_alg == "crf":
         import lt_crf
         ltgen = lt_crf.LTGenCRF(ltm._table, sym, conf)
