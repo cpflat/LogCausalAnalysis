@@ -77,7 +77,7 @@ class LogParser():
             r = ipaddress.ip_address(string)
         except ValueError:
             try:
-                r = ipaddress.ip_network(string)
+                r = ipaddress.ip_network(string, strict = False)
             except ValueError:
                 pass
             else:
