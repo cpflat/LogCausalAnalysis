@@ -45,7 +45,9 @@ def breakdown_ltid(ld, ltid, limit):
             d_var[arg] = d_var.get(arg, 0) + 1
 
     buf = []
+    
     buf.append("LTID {0}> {1}".format(ltid, str(ld.lt(ltid))))
+    buf.append(" ".join(ld.lt(ltid).ltw))
     buf.append("")
     for vid, loc in enumerate(ld.lt(ltid).var_location()):
         buf.append("Variable {0} (word location : {1})".format(vid, loc))
@@ -138,6 +140,59 @@ def separate_ltid(ld, ltid, vid, value, sym):
     print _str_lt(new_ltid)
 
 
+def fix_ltid(ld, ltid, vid, sym):
+    ld.init_ltmanager()
+    print("make variable (with no variety) into description word...")
+    print _str_lt(ltid)
+    
+    variety = set()
+    for lm in ld.iter_lines(ltid = ltid):
+        variety.add(lm.var()[vid])
+    assert len(variety) > 0
+    if len(variety) == 1:
+        print("confirmed that the given variable can be fixed (no variety)")
+        fixed_word = variety.pop()
+        print(fixed_word)
+    else:
+        print("the given variable can NOT be fixed (seems not stable)")
+        print(variety)
+        return
+
+    ltobj = ld.lt(ltid)
+    vloc = ltobj.var_location()[vid]
+    new_ltw = ltobj.ltw[:]; new_ltw[vloc] = fixed_word
+    l_s = ltobj.lts
+    cnt = ltobj.cnt
+
+    ld.ltm.replace_lt(ltid, new_ltw, l_s, cnt)
+    ld.commit_db()
+    print("> new log templates : ltid {0}".format(ltid))
+    print _str_lt(ltid)
+
+
+def free_ltid(ld, ltid, wid, sym):
+    ld.init_ltmanager()
+    print("make description word into variable (with no variety)...")
+    print _str_lt(ltid)
+ 
+    ltobj = ld.lt(ltid)
+    if ltobj.ltw[wid] == sym:
+        print("wid {0} seems a variable, failed")
+        return
+    else:
+        print("confirmed that wid {0} is description word ({1})".format(
+            wid, ltobj.ltw[wid]))
+
+    new_ltw = ltobj.ltw[:]; new_ltw[wid] = sym
+    l_s = ltobj.lts
+    cnt = ltobj.cnt
+
+    ld.ltm.replace_lt(ltid, new_ltw, l_s, cnt)
+    ld.commit_db()
+    print("> new log templates : ltid {0}".format(ltid))
+    print _str_lt(ltid)
+
+
 if __name__ == "__main__":
     
     usage = """
@@ -200,6 +255,21 @@ args:
         val = args[3]
         sym = conf.get("log_template", "variable_symbol")
         separate_ltid(ld, ltid, vid, val, sym)
-        
+    elif mode == "fix":
+        if len(args) <= 2:
+            sys.exit("give me ltid and variable id to fix, "
+                    "following \"{0}\"".format(mode))
+        ltid = int(args[1])
+        vid = int(args[2])
+        sym = conf.get("log_template", "variable_symbol")
+        fix_ltid(ld, ltid, vid, sym)
+    elif mode == "free":
+        if len(args) <= 2:
+            sys.exit("give me ltid and word id to free, "
+                    "following \"{0}\"".format(mode))
+        ltid = int(args[1])
+        wid = int(args[2])
+        sym = conf.get("log_template", "variable_symbol")
+        free_ltid(ld, ltid, wid, sym)
 
 
