@@ -207,6 +207,24 @@ def free_ltid(ld, ltid, wid, sym):
     print _str_lt(ltid)
 
 
+def search_stable_variable(ld, th = 1):
+    ld.init_ltmanager()
+
+    for ltobj in ld.iter_lt():
+        ltid = ltobj.ltid
+        d_args = {}
+        for lm in ld.iter_lines(ltid = ltid):
+            for vid, arg in enumerate(lm.var()):
+                d_var = d_args.setdefault(vid, {})
+                d_var[arg] = d_var.get(arg, 0) + 1
+        for vid, loc in enumerate(ld.lt(ltid).var_location()):
+            var_variety = len(d_args[vid].keys())
+            if var_variety <= th:
+                print("{0} {1}".format(ltobj.ltid, ltobj))
+                print("variable {0} (word location {1}): {2}".format(
+                        vid, loc, d_args[vid]))
+
+
 if __name__ == "__main__":
     
     usage = """
@@ -285,5 +303,10 @@ args:
         wid = int(args[2])
         sym = conf.get("log_template", "variable_symbol")
         free_ltid(ld, ltid, wid, sym)
-
+    elif mode == "search-stable":
+        if len(args) >= 2:
+            th = int(args[1])
+        else:
+            th = 1
+        search_stable_variable(ld, th)
 
