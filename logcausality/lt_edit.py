@@ -95,12 +95,13 @@ def merge_ltid(ld, ltid1, ltid2, sym):
 def separate_ltid(ld, ltid, vid, value, sym):
 
     def remake_lt(ld, ltid):
-        # use iter_words, because iter_lines needs ltline registered in table
+        # use iter_words rather than iter_lines
+        # because iter_lines needs ltline registered in table
         # but ltline on new_ltid is now on construction in this function...
         new_lt = None
         cnt = 0
         for l_w in ld.db.iter_words(ltid = ltid):
-            print l_w
+            print " ".join(l_w)
             if new_lt is None:
                 new_lt = l_w
             else:
@@ -118,7 +119,7 @@ def separate_ltid(ld, ltid, vid, value, sym):
 
     l_lid = [lm.lid for lm in ld.iter_lines(ltid = ltid)
             if lm.var()[vid] == value]
-    new_ltid = ld.table.next_ltid()    
+    new_ltid = ld.lttable.next_ltid()    
     for lid in l_lid:
         ld.db.update_log({"lid" : lid}, {"ltid" : new_ltid})
 

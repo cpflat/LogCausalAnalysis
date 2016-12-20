@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""
+Note:
+    Configuration defined earlier is prior.
+"""
+
+
 import sys
 import os
 import optparse
@@ -52,6 +58,12 @@ class LTLabel():
         for word, rule in zip(l_word, l_rule):
             if rule == "equal":
                 if word in ltline.ltw:
+                    # satisfied
+                    pass
+                else:
+                    return False
+            if rule == "equal_ord":
+                if word.lower() in [w.lower() for w in ltline.ltw]:
                     # satisfied
                     pass
                 else:

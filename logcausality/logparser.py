@@ -256,6 +256,7 @@ if __name__ == "__main__":
     for fp in common.rep_dir(sys.argv[2:]):
         with open(fp) as f:
             for line in f:
-                print LP.process_line(line.rstrip("\n"))
+                #print LP.process_line(line.rstrip("\n"))
+                print " ".join(LP.process_line(line.rstrip("\n"))[2])
 
 
