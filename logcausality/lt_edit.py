@@ -118,7 +118,6 @@ def separate_ltid(ld, ltid, vid, value, sym):
         new_lt = None
         cnt = 0
         for l_w in ld.db.iter_words(ltid = ltid):
-            print " ".join(l_w)
             if new_lt is None:
                 new_lt = l_w
             else:
