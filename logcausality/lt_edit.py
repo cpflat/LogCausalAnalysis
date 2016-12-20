@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""Notice: after you edit log templates,
+it is NOT reccommended to add other log messages,
+especially with new log templates.
+On current implementation, lt_edit will destroy
+the structures of log template manager."""
+
 import sys
 import optparse
 
@@ -66,6 +72,15 @@ def breakdown_ltid(ld, ltid, limit):
 
 def _str_lt(ltid):
     return "ltid {0} : {1}".format(ltid, str(ld.lt(ltid)))
+
+
+#def _update_tpl(ld, old_ltw, new_ltw):
+#    table = ld.ltm.ltgen._table
+#    if table.exists(old_ltw):
+#        tid = table.get_tid(old_ltw)
+#        state = ld.ltm.ltgen.update_table(new_ltw, tid, False)
+#    else:
+#        raise ValueError("No existing tpl, failed")
 
 
 def merge_ltid(ld, ltid1, ltid2, sym):

@@ -959,6 +959,11 @@ def show_lt(conf):
     print ld.show_all_ltgroup()
 
 
+def dump_lt(conf):
+    ld = LogData(conf)
+    print ld.show_all_lt()
+
+
 def show_template_table(conf):
     ld = LogData(conf)
     print ld.show_template_table()
@@ -1087,6 +1092,8 @@ args:
         info(conf)
     elif mode == "show-lt":
         show_lt(conf)
+    elif mode == "dump-lt":
+        dump_lt(conf)
     elif mode == "show-tpl":
         show_template_table(conf)
     elif mode == "dump-tpl":
