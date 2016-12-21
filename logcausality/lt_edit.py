@@ -206,7 +206,7 @@ def split_ltid(ld, ltid, vid, sym):
         for lid in l_lid:
             ld.db.update_log({"lid" : lid}, {"ltid" : temp_ltid})
 
-    #ld.commit_db()
+    ld.commit_db()
 
 
 def fix_ltid(ld, ltid, l_vid, sym):
