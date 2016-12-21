@@ -154,6 +154,61 @@ def separate_ltid(ld, ltid, vid, value, sym):
     print _str_lt(new_ltid)
 
 
+def split_ltid(ld, ltid, vid, sym):
+    ld.init_ltmanager()
+    print("split following log template...")
+    print _str_lt(ltid)
+    
+    d_lid = {}
+    for lm in ld.iter_lines(ltid = ltid):
+        lid = lm.lid
+        w = lm.var()[vid] 
+        d_lid.setdefault(w, []).append(lid)
+    
+    print("variable {0}: {1}".format(vid, d_lid.keys()))
+    if len(d_lid) > 10:
+        print("variable candidate is too large... are you sure?")
+        import pdb; pdb.set_trace()
+
+    args = d_lid.keys()
+    d_word_ltid = {}
+
+    ltobj = ld.lt(ltid)
+    l_s = ltobj.lts
+    vloc = ltobj.var_location()[vid]
+
+    # Update a template on existing ltid
+    new_ltid = ltid
+    new_word = args.pop(0)
+    new_ltw = ltobj.ltw[:]; new_ltw[vloc] = new_word
+    cnt = len(d_lid[new_word])
+    ld.ltm.replace_lt(new_ltid, new_ltw, l_s, cnt)
+    d_word_ltid[new_word] = new_ltid
+    print("> new log templates : ltid {0}".format(new_ltid))
+    print _str_lt(new_ltid)
+
+    # Add templates
+    while len(args) > 0:
+        new_ltid = ld.lttable.next_ltid()   
+        new_word = args.pop(0)
+        new_ltw = ltobj.ltw[:]
+        new_ltw[vloc] = new_word
+        cnt = len(d_lid[new_word])
+        new_ltobj = ld.ltm.add_lt(new_ltw, l_s, cnt)
+        assert new_ltid == new_ltobj.ltid
+        d_word_ltid[new_word] = new_ltid
+        print("> new log templates : ltid {0}".format(new_ltid))
+        print _str_lt(new_ltid)
+    
+    # Update log lines
+    for word, l_lid in d_lid.iteritems():
+        temp_ltid = d_word_ltid[word]
+        for lid in l_lid:
+            ld.db.update_log({"lid" : lid}, {"ltid" : temp_ltid})
+
+    #ld.commit_db()
+
+
 def fix_ltid(ld, ltid, l_vid, sym):
     ld.init_ltmanager()
     print("make variable (with no variety) into description word...")
@@ -250,7 +305,7 @@ args:
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file")
     op.add_option("-l", "--limit", action="store",
-            dest="show_limit", type="int", default=10,
+            dest="show_limit", type="int", default=5,
             help="Limitation rows to show source log data")
     (options, args) = op.parse_args()
     if len(args) == 0:
@@ -293,6 +348,14 @@ args:
         val = args[2]
         sym = conf.get("log_template", "variable_symbol")
         separate_ltid(ld, ltid, vid, val, sym)
+    elif mode == "split":
+        if len(args) < 2:
+            sys.exit("give me ltid and variable id, "
+                    "following \"{0}\"".format(mode))
+        ltid = int(args[0])
+        vid = int(args[1])
+        sym = conf.get("log_template", "variable_symbol")
+        split_ltid(ld, ltid, vid, sym)
     elif mode == "fix":
         if len(args) < 2:
             sys.exit("give me ltid and variable id to fix, "
