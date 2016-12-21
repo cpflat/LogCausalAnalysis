@@ -964,6 +964,12 @@ def dump_lt(conf):
     print ld.show_all_lt()
 
 
+def show_lt_import(conf):
+    ld = LogData(conf)
+    for ltobj in ld.iter_lt():
+        print " ".join(ltobj.ltw)
+
+
 def show_template_table(conf):
     ld = LogData(conf)
     print ld.show_template_table()
@@ -1098,6 +1104,8 @@ args:
         show_template_table(conf)
     elif mode == "dump-tpl":
         dump_template_table(conf)
+    elif mode == "show-lt-import":
+        show_lt_import(conf)
     elif mode == "show-log-repr":
         show_repr(conf)
     elif mode == "remake-area":
