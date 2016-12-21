@@ -154,27 +154,33 @@ def separate_ltid(ld, ltid, vid, value, sym):
     print _str_lt(new_ltid)
 
 
-def fix_ltid(ld, ltid, vid, sym):
+def fix_ltid(ld, ltid, l_vid, sym):
     ld.init_ltmanager()
     print("make variable (with no variety) into description word...")
     print _str_lt(ltid)
     
-    variety = set()
+    d_variety = {vid : set() for vid in l_vid}
     for lm in ld.iter_lines(ltid = ltid):
-        variety.add(lm.var()[vid])
-    assert len(variety) > 0
-    if len(variety) == 1:
-        print("confirmed that the given variable can be fixed (no variety)")
-        fixed_word = variety.pop()
-        print(fixed_word)
-    else:
-        print("the given variable can NOT be fixed (seems not stable)")
-        print(variety)
-        return
+        for vid in l_vid:
+            d_variety[vid].add(lm.var()[vid])
+
+    d_fixed = {}
+    for vid in l_vid:
+        variety = d_variety[vid]
+        assert len(variety) > 0
+        if len(variety) == 1:
+            print("confirmed that variable {0} is stable".format(vid))
+            d_fixed[vid] = variety.pop()
+            print("fixed word : {0}".format(d_fixed[vid]))
+        else:
+            print("variable {0} is not stable, ignored".format(vid))
+            print(variety)
 
     ltobj = ld.lt(ltid)
-    vloc = ltobj.var_location()[vid]
-    new_ltw = ltobj.ltw[:]; new_ltw[vloc] = fixed_word
+    new_ltw = ltobj.ltw[:]
+    for vid in d_fixed.keys():
+        vloc = ltobj.var_location()[vid]
+        new_ltw[vloc] = d_fixed[vid]
     l_s = ltobj.lts
     cnt = ltobj.cnt
 
@@ -184,20 +190,20 @@ def fix_ltid(ld, ltid, vid, sym):
     print _str_lt(ltid)
 
 
-def free_ltid(ld, ltid, wid, sym):
+def free_ltid(ld, ltid, l_wid, sym):
     ld.init_ltmanager()
     print("make description word into variable (with no variety)...")
     print _str_lt(ltid)
  
     ltobj = ld.lt(ltid)
-    if ltobj.ltw[wid] == sym:
-        print("wid {0} seems a variable, failed")
-        return
-    else:
-        print("confirmed that wid {0} is description word ({1})".format(
-            wid, ltobj.ltw[wid]))
-
-    new_ltw = ltobj.ltw[:]; new_ltw[wid] = sym
+    new_ltw = ltobj.ltw[:]
+    for wid in l_wid:
+        if ltobj.ltw[wid] == sym:
+            print("wid {0} seems a variable, ignored")
+        else:
+            print("confirmed that wid {0} is description word ({1})".format(
+                wid, ltobj.ltw[wid]))
+            new_ltw[wid] = sym
     l_s = ltobj.lts
     cnt = ltobj.cnt
 
@@ -249,7 +255,7 @@ args:
     (options, args) = op.parse_args()
     if len(args) == 0:
         sys.exit(usage)
-    mode = args[0]
+    mode = args.pop(0)
     conf = config.open_config(options.conf)
 
     ld = log_db.LogData(conf, edit = True)
@@ -260,52 +266,52 @@ args:
     elif mode == "show-lt":
         show_lt(ld)
     elif mode == "show-group":
-        if len(args) <= 1:
+        if len(args) == 0:
             show_ltg(ld, None)
         else:
             show_ltg(ld, int(args[1]))
     elif mode == "show-sort":
         show_sort(ld)
     elif mode == "breakdown":
-        if len(args) <= 1:
+        if len(args) == 0:
             sys.exit("give me ltid, following \"{0}\"".format(mode))
-        ltid = int(args[1])
+        ltid = int(args[0])
         print breakdown_ltid(ld, ltid, options.show_limit)
     elif mode == "merge":
-        if len(args) <= 2:
+        if len(args) < 2:
             sys.exit("give me 2 ltid, following \"{0}\"".format(mode))
-        ltid1 = int(args[1])
-        ltid2 = int(args[2])
+        ltid1 = int(args[0])
+        ltid2 = int(args[1])
         sym = conf.get("log_template", "variable_symbol")
         merge_ltid(ld, ltid1, ltid2, sym)
     elif mode == "separate":
-        if len(args) <= 3:
+        if len(args) < 3:
             sys.exit("give me ltid, variable id and value, "
                     "following \"{0}\"".format(mode))
-        ltid = int(args[1])
-        vid = int(args[2])
-        val = args[3]
+        ltid = int(args[0])
+        vid = int(args[1])
+        val = args[2]
         sym = conf.get("log_template", "variable_symbol")
         separate_ltid(ld, ltid, vid, val, sym)
     elif mode == "fix":
-        if len(args) <= 2:
+        if len(args) < 2:
             sys.exit("give me ltid and variable id to fix, "
                     "following \"{0}\"".format(mode))
-        ltid = int(args[1])
-        vid = int(args[2])
+        ltid = int(args[0])
+        l_vid = [int(i) for i in args[1:]]
         sym = conf.get("log_template", "variable_symbol")
-        fix_ltid(ld, ltid, vid, sym)
+        fix_ltid(ld, ltid, l_vid, sym)
     elif mode == "free":
-        if len(args) <= 2:
+        if len(args) < 2:
             sys.exit("give me ltid and word id to free, "
                     "following \"{0}\"".format(mode))
-        ltid = int(args[1])
-        wid = int(args[2])
+        ltid = int(args[0])
+        l_wid = [int(i) for i in args[1:]]
         sym = conf.get("log_template", "variable_symbol")
-        free_ltid(ld, ltid, wid, sym)
+        free_ltid(ld, ltid, l_wid, sym)
     elif mode == "search-stable":
-        if len(args) >= 2:
-            th = int(args[1])
+        if len(args) >= 1:
+            th = int(args[0])
         else:
             th = 1
         search_stable_variable(ld, th)
