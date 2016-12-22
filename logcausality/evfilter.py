@@ -42,7 +42,7 @@ def periodic_events(conf, ld, top_dt, end_dt, area, edict, evmap):
         p_th = conf.getfloat("filter", "periodic_th")
         for sample_top_dt in l_sample_top_dt: 
             for eid, l_dt in sample_edict.iteritems():
-                l_dt = list(dtutil.limit_dt_seq(l_dt, sample_top_dt, end_dt))
+                l_dt = dtutil.limit_dt_seq(l_dt, sample_top_dt, end_dt)
                 if is_enough_long(l_dt, p_cnt, p_term):
                     diff = interval(l_dt, p_th)
                     if diff is not None:

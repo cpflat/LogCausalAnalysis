@@ -118,22 +118,27 @@ def radj_sep(dt, duration):
 
 
 def limit_dt_seq(l_dt, top_dt, end_dt):
-    """dt: Yields dt that satisfy top_dt <= dt < end_dt."""
+    """List[dt]: Get a sequence of dt that satisfy top_dt <= dt < end_dt."""
+    if len(l_dt) == 0:
+        return
+
+    ret = []
     l_dt = l_dt[:]
     dt = l_dt.pop(0)
+    # pass dts before top_dt
     while dt < top_dt:
         if len(l_dt) == 0:
-            return
-            #raise ValueError("no data satisfies the given condition")
+            return []
         else:
             dt = l_dt.pop(0)
 
     while dt < end_dt:
-        yield dt
+        ret.append(dt)
         if len(l_dt) == 0:
             break
         else:
             dt = l_dt.pop(0)
+    return ret
 
 
 def shortstr(dt):
