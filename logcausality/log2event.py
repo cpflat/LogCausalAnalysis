@@ -388,7 +388,6 @@ def event2stat(edict, top_dt, end_dt, dur, binarize = True):
 def test_log2event(conf):
     import pc_log
     ld = log_db.LogData(conf)
-    usefilter = conf.getboolean("dag", "usefilter")
     for args in pc_log.pc_all_args(conf):
         top_dt = args[1]
         end_dt = args[2]
@@ -396,18 +395,7 @@ def test_log2event(conf):
         area = args[4]
         _logger.info("testing log2event({0} - {1} in {2})".format(
                 top_dt, end_dt, area))
-        edict, evmap = log2event(conf, ld, top_dt, end_dt, area)
-        assert len(edict) == len(evmap)
-        _logger.info("{0} events found before filtering".format(len(edict)))
-        if usefilter:
-            act = conf.get("filter", "action")
-            if act == "remove":
-                edict, evmap = filter_edict(conf, edict, evmap)
-            elif act == "replace":
-                edict, evmap = replace_edict(conf, edict, evmap,
-                        top_dt, end_dt)
-            else:
-                raise NotImplementedError
+        edict, evmap = pc_log.get_edict(conf, top_dt, end_dt, dur, area)
 
         assert len(edict) == len(evmap)
         for eid in edict.keys():
