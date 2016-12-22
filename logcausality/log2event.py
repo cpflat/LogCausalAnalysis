@@ -396,7 +396,7 @@ def test_log2event(conf):
         area = args[4]
         _logger.info("testing log2event({0} - {1} in {2})".format(
                 top_dt, end_dt, area))
-        edict, evmap = log2event(conf, top_dt, end_dt, area)
+        edict, evmap = log2event(conf, ld, top_dt, end_dt, area)
         assert len(edict) == len(evmap)
         _logger.info("{0} events found before filtering".format(len(edict)))
         if usefilter:
