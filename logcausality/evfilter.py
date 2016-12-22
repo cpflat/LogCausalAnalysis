@@ -42,9 +42,9 @@ def periodic_events(conf, ld, top_dt, end_dt, area, edict, evmap):
         p_th = conf.getfloat("filter", "periodic_th")
         for sample_top_dt in l_sample_top_dt: 
             for eid, l_dt in sample_edict.iteritems():
-                l_dt = dtutil.limit_dt_seq(l_dt, sample_top_dt, end_dt)
-                if is_enough_long(l_dt, p_cnt, p_term):
-                    diff = interval(l_dt, p_th)
+                l_dts = dtutil.limit_dt_seq(l_dt, sample_top_dt, end_dt)
+                if is_enough_long(l_dts, p_cnt, p_term):
+                    diff = interval(l_dts, p_th)
                     if diff is not None:
                         new_corr_diff.add(datetime.timedelta(seconds = diff))
         new_corr_diff.update(set(corr_diff))
@@ -56,10 +56,10 @@ def periodic_events(conf, ld, top_dt, end_dt, area, edict, evmap):
         l_result = []
         for sample_top_dt in l_sample_top_dt:
             for diff in corr_diff:
-                l_dt = list(dtutil.limit_dt_seq(l_dt, sample_top_dt, end_dt))
-                if len(l_dt) == 0:
+                l_dts = dtutil.limit_dt_seq(l_dt, sample_top_dt, end_dt)
+                if len(l_dts) == 0:
                     continue
-                data = dtutil.auto_discretize(l_dt, corr_bin)
+                data = dtutil.auto_discretize(l_dts, corr_bin)
                 corr = self_corr(data, diff, corr_bin)
                 l_result.append((corr, diff))
         max_corr, max_diff = max(l_result)
