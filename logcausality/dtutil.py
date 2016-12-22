@@ -123,7 +123,8 @@ def limit_dt_seq(l_dt, top_dt, end_dt):
     dt = l_dt.pop(0)
     while dt < top_dt:
         if len(l_dt) == 0:
-            raise ValueError("no data satisfies the given condition")
+            return
+            #raise ValueError("no data satisfies the given condition")
         else:
             dt = l_dt.pop(0)
 
