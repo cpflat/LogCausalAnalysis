@@ -50,6 +50,9 @@ def periodic_events(conf, ld, top_dt, end_dt, area, edict, evmap):
         new_corr_diff.update(set(corr_diff))
         corr_diff = list(new_corr_diff)
 
+    _logger.info("correlation interval : {0}".format(
+            " ".join([str(i) for i in corr_diff])))
+
     # get periodic events
     ret = []
     for eid, l_dt in sample_edict.iteritems():
@@ -136,37 +139,40 @@ def self_corr(data, diff, binsize):
 
 def test_evfilter(conf, fn = "evf_filtered"):
 
-    def dump_event(f, eid, evmap, max_diff):
+    def dump_event(buf, eid, evmap, max_diff):
         import log2event
-        f.write(("Event {0} : {1} (diff: {2})\n".format(eid,
+        buf.append(("Event {0} : {1} (diff: {2})".format(eid,
                 evmap.info_str(eid), max_diff)))
         #if evmap.info(eid).type == log2event.EventDefinitionMap.type_normal:
         if evmap.info(eid).type == evmap.type_normal:
-            f.write(evmap.info_repr(ld, eid) + "\n")
+            buf.append(evmap.info_repr(ld, eid))
         else:
-            f.write("\n".join([str(dt) for dt in edict[eid]]) + "\n")
-            f.write("\n".join(["#" + w for w
-                    in evmap.info_repr(ld, eid).split("\n")]) + "\n")
-        f.write("\n")
+            buf.append("\n".join([str(dt) for dt in edict[eid]]))
+            buf.append("\n".join(["#" + w for w
+                    in evmap.info_repr(ld, eid).split("\n")]))
+        buf.append("")
+        return buf
 
 
     import pc_log
     import log_db
-    f = open(fn, "a")
+    buf = []
     ld = log_db.LogData(conf)
     for args in pc_log.pc_all_args(conf):
         top_dt = args[1]
         end_dt = args[2]
         dur = args[3]
         area = args[4]
-        f.write("testing evfilter({0} - {1} in {2})\n".format(
+        buf.append("testing evfilter({0} - {1} in {2})\n".format(
                 top_dt, end_dt, area))
         edict, evmap = pc_log.get_edict(conf, top_dt, end_dt, dur, area)
 
         l_result = periodic_events(conf, ld, top_dt, end_dt, area,
                 edict, evmap)
         for eid, max_diff in l_result:
-            dump_event(f, eid, evmap, max_diff)
+            buf = dump_event(buf, eid, evmap, max_diff)
+    with open(fn, "w") as f:
+        f.write("\n".join(buf))
 
 
 if __name__ == "__main__":
@@ -177,7 +183,11 @@ if __name__ == "__main__":
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
+    op.add_option("--debug", action="store_true", dest="debug",
+            default=False, help="set logging level to DEBUG")
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
+    lv = logging.DEBUG if options.debug else logging.INFO
+    config.set_common_logging(conf, _logger, [], lv = lv)
     test_evfilter(conf)
