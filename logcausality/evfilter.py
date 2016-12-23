@@ -133,3 +133,51 @@ def self_corr(data, diff, binsize):
         assert len(data1) == len(data2)
         return np.corrcoef(np.array(data1), np.array(data2))[0, 1]
 
+
+def test_evfilter(conf, fn = "evf_filtered"):
+
+    def dump_event(f, eid, evmap, max_diff):
+        import log2event
+        f.write(("Event {0} : {1} (diff: {2})\n".format(eid,
+                evmap.info_str(eid), max_diff)))
+        #if evmap.info(eid).type == log2event.EventDefinitionMap.type_normal:
+        if evmap.info(eid).type == evmap.type_normal:
+            f.write(evmap.info_repr(ld, eid) + "\n")
+        else:
+            f.write("\n".join([str(dt) for dt in edict[eid]]) + "\n")
+            f.write("\n".join(["#" + w for w
+                    in evmap.info_repr(ld, eid).split("\n")]) + "\n")
+        f.write("\n")
+
+
+    import pc_log
+    import log_db
+    f = open(fn, "a")
+    ld = log_db.LogData(conf)
+    for args in pc_log.pc_all_args(conf):
+        top_dt = args[1]
+        end_dt = args[2]
+        dur = args[3]
+        area = args[4]
+        f.write("testing evfilter({0} - {1} in {2})\n".format(
+                top_dt, end_dt, area))
+        edict, evmap = pc_log.get_edict(conf, top_dt, end_dt, dur, area)
+
+        l_result = periodic_events(conf, ld, top_dt, end_dt, area,
+                edict, evmap)
+        for eid, max_diff in l_result:
+            dump_event(f, eid, evmap, max_diff)
+
+
+if __name__ == "__main__":
+    import sys
+    import optparse
+    usage = "usage: {0} [options]".format(sys.argv[0])
+    op = optparse.OptionParser(usage)
+    op.add_option("-c", "--config", action="store",
+            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+            help="configuration file path")
+    (options, args) = op.parse_args()
+
+    conf = config.open_config(options.conf)
+    test_evfilter(conf)
