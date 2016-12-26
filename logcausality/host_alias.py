@@ -42,8 +42,6 @@ class HostAlias(object):
                     l_temp = line.strip("<").partition(">")
                     alias = l_temp[0]
                     names = [alias] + l_temp[2].strip().rstrip("\n").split()
-                    if len(names) == 0:
-                        continue
                     self._add_def(names, alias = alias, group = group)
                 else:
                     names = line.rstrip("\n").split()
@@ -53,19 +51,21 @@ class HostAlias(object):
 
     def _add_def(self, l_name, alias = None, group = None):
 
-        def add_alias(key, alias):
-            if alias is None:
-                self._d_alias[alias].append(key)
-                self._d_ralias[key] = alias
+        def add_alias(name, alias):
+            if alias is not None:
+                self._d_alias[alias].append(name)
+                self._d_ralias[name] = alias
             else:
-                self._d_alias[key].append(key)
-                self._d_ralias[key] = key
+                self._d_alias[name].append(name)
+                self._d_ralias[name] = name
 
         def add_groupdef(key, group):
             if group is not None:
                 self._d_group[group].append(key)
                 self._d_rgroup[key] = group
 
+        print "alias : {0}".format(alias)
+        print "names : {0}".format(",".join(l_name))
         for name in l_name:
             if "/" in name:
                 try:
@@ -157,7 +157,7 @@ def test_hostalias(conf):
             "hoge",
             "10.100.1.254",
             "8.8.6.0"]
-    conf.set("database", "host_alias_filename", "host_alias_test.txt")
+    #conf.set("database", "host_alias_filename", "host_alias_test.txt")
     ha = HostAlias(conf)
     ha.print_definitions()
     print
