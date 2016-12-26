@@ -986,6 +986,10 @@ def show_repr(conf):
         print ld.show_log_repr(head = 5, foot = 5, ltgid = ltgid)
         print
 
+def show_all_host(conf, top_dt = None, end_dt = None):
+    ld = LogData(conf)
+    for host in ld.whole_host():
+        print host
 
 def migrate(conf):
     ld = LogData(conf, edit = True)
@@ -1108,6 +1112,8 @@ args:
         show_lt_import(conf)
     elif mode == "show-log-repr":
         show_repr(conf)
+    elif mode == "all-host":
+        show_all_host(conf)
     elif mode == "remake-area":
         remake_area(conf)
     elif mode == "remake-ltgroup":
