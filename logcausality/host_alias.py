@@ -64,8 +64,6 @@ class HostAlias(object):
                 self._d_group[group].append(key)
                 self._d_rgroup[key] = group
 
-        print "alias : {0}".format(alias)
-        print "names : {0}".format(",".join(l_name))
         for name in l_name:
             if "/" in name:
                 try:
