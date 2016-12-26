@@ -855,7 +855,6 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None):
     if l_w is None: return None
     l_w = [strutil.add_esc(w) for w in l_w]
     host = ha.resolve_host(org_host)
-    print("host = {0} -> {1}".format(org_host, host))
     if host is None: host = org_host
 
     _logger.debug("Processing [{0}]".format(" ".join(l_w)))
