@@ -174,6 +174,33 @@ def test_evfilter(conf, fn = "evf_filtered"):
     with open(fn, "w") as f:
         f.write("\n".join(buf))
 
+def test_interval(conf):
+    import pc_log
+    import log_db
+    ld = log_db.LogData(conf)
+    for args in pc_log.pc_all_args(conf):
+        top_dt = args[1]
+        end_dt = args[2]
+        dur = args[3]
+        area = args[4]
+        print("testing evfilter interval({0} - {1} in {2})\n".format(
+                top_dt, end_dt, area))
+        edict, evmap = pc_log.get_edict(conf, top_dt, end_dt, dur, area)
+
+        new_corr_diff = set()
+        p_cnt = conf.getint("filter", "periodic_count")
+        p_term = conf.getdur("filter", "periodic_term")
+        p_th = conf.getfloat("filter", "periodic_th")
+        for sample_top_dt in l_sample_top_dt: 
+            for eid, l_dt in sample_edict.iteritems():
+                l_dts = dtutil.limit_dt_seq(l_dt, sample_top_dt, end_dt)
+                if is_enough_long(l_dts, p_cnt, p_term):
+                    diff = interval(l_dts, p_th)
+                    if diff is not None:
+                        new_corr_diff.add(datetime.timedelta(seconds = diff))
+        print("found interval : {0}".format(", ".join(
+                [str(diff) for diff in new_corr_diff])))
+
 
 if __name__ == "__main__":
     import sys
@@ -190,4 +217,5 @@ if __name__ == "__main__":
     conf = config.open_config(options.conf)
     lv = logging.DEBUG if options.debug else logging.INFO
     config.set_common_logging(conf, _logger, [], lv = lv)
-    test_evfilter(conf)
+    #test_evfilter(conf)
+    test_interval(conf)

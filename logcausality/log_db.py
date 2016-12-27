@@ -74,7 +74,8 @@ class LogMessage():
 
     def var(self):
         """str: Get sequence of all variable words in this message.
-        Variable words are presented with mask (defaults **) in log template.
+        Variable words mean what is presented with mask
+        (defaults **) in log template.
         """
         return self.lt.var(self.l_w)
 
@@ -584,13 +585,14 @@ class LogDB():
 
     def update_log(self, d_cond, d_update):
         if len(d_cond) == 0:
-            raise ValueError("called update with empty condition")
+            _logger.warn("called update with empty condition")
+            #raise ValueError("called update with empty condition")
         args = d_cond.copy()
 
         table_name = "log"
         l_ss = []
         for k, v in d_update.iteritems():
-            assert k in ("ltid", "top_dt", "end_dt", "host")
+            #assert k in ("ltid", "top_dt", "end_dt", "host")
             keyname = "update_" + k
             l_ss.append(db_common.setstate(k, keyname))
             args[keyname] = v
@@ -614,6 +616,7 @@ class LogDB():
                 l_cond.append(db_common.cond(c, "=", c))
         sql = self.db.update_sql(table_name, l_ss, l_cond)
         self.db.execute(sql, args)
+
 
     def count_lines(self):
         table_name = "log"
@@ -1012,6 +1015,14 @@ def remake_area(conf):
     ld.commit_db()
 
 
+def anonymize(conf):
+    ld = LogData(conf, edit = True)
+    d_cond = {}
+    d_update = {"words" : ""}
+    ld.db.update_log(d_cond, d_update)
+    ld.commit_db()
+
+
 def _get_targets(conf, args, recur):
     if len(args) == 0:
         if conf.getboolean("general", "src_recur") or recur:
@@ -1120,6 +1131,8 @@ args:
         remake_ltgroup(conf)
     elif mode == "migrate":
         migrate(conf)
+    elif mode == "anonym":
+        anonymize(conf)
     else:
         sys.exit("Invalid argument")
 

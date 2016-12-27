@@ -232,6 +232,8 @@ class LTTable():
 class LogTemplate():
 
     def __init__(self, ltid, ltgid, ltw, lts, count, sym):
+        if len(ltw) == 0:
+            raise ValueError("empty ltw, failed to generate LogTemplate")
         self.ltid = ltid
         self.ltgid = ltgid
         self.ltw = ltw
@@ -243,19 +245,24 @@ class LogTemplate():
         return self.restore_message(self.ltw)
 
     def var(self, l_w):
-        return [w_org for w_org, w_lt in zip(l_w, self.ltw)
-                if w_lt == self.sym]
+        if len(l_w) == 0:
+            return [self.sym for w in self.ltw if w == self.sym]
+        else:
+            return [w_org for w_org, w_lt in zip(l_w, self.ltw)
+                    if w_lt == self.sym]
 
     def var_location(self):
         return [i for i, w_lt in enumerate(self.ltw) if w_lt == self.sym]
 
     def restore_message(self, l_w):
+        if len(l_w) == 0:
+            l_w = self.ltw
         l_w = [strutil.restore_esc(w) for w in l_w]
         if self.lts is None:
             return "".join(l_w)
         else:
             return "".join([s + w for w, s in zip(l_w + [""], self.lts)])
-    
+
     def count(self):
         self.cnt += 1
         return self.cnt
