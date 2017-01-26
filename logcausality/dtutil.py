@@ -3,6 +3,7 @@
 
 import datetime
 import random
+import numpy as np
 
 TIMEFMT = "%Y-%m-%d %H:%M:%S"
 
@@ -83,15 +84,19 @@ def auto_discretize(l_dt, binsize, binarize = False):
         return discretize(l_dt, l_label, binarize)
 
 
-def label(top_dt, end_dt, duration):
+def periodic(top_dt, end_dt, interval):
     l_label = []
     #temp_dt = top_dt + duration
     temp_dt = top_dt
     while temp_dt < end_dt:
         l_label.append(temp_dt)
-        temp_dt += duration
+        temp_dt += interval
     l_label.append(end_dt)
     return l_label
+
+
+def label(top_dt, end_dt, duration):
+    return periodic(top_dt, end_dt, duration)
 
 
 def is_sep(dt, duration):

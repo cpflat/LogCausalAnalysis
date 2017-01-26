@@ -177,6 +177,13 @@ class EventDefinitionMap():
             # NotImplemented
             return "({0})".format(string)
 
+    def info_tpl(self, ld, eid):
+        info = self._emap[eid]
+        string = ", ".join(["{0}={1}".format(key, getattr(info, key))
+                for key in self.l_attr])
+        lt_str = str(ld.show_ltgroup(info.gid))
+        return "[{0}] {1}".format()
+
     def info_repr(self, ld, eid, limit = 5):
         info = self._emap[eid]
         d = {"head" : limit, "foot" : limit,

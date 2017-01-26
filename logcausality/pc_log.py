@@ -3,7 +3,6 @@
 
 import sys
 import datetime
-import threading
 import cPickle as pickle
 import logging
 
@@ -142,11 +141,22 @@ def pc_sthread(l_args):
 
 
 def pc_mthread(l_args, pal=1):
+    import threading
     timer = common.Timer("pc_log task", output = _logger)
     timer.start()
     l_thread = [threading.Thread(name = thread_name(*args),
         target = pc_log, args = args) for args in l_args]
     common.mthread_queueing(l_thread, pal)
+    timer.stop()
+
+
+def pc_mprocess(l_args, pal=1):
+    import multiprocessing
+    timer = common.Timer("pc_log task", output = _logger)
+    timer.start()
+    l_process = [multiprocessing.Process(name = thread_name(*args),
+        target = pc_log, args = args) for args in l_args]
+    common.mprocess_queueing(l_process, pal)
     timer.stop()
 
 
@@ -192,6 +202,7 @@ if __name__ == "__main__":
     if options.pal == 1:
         pc_sthread(l_args)
     else:
-        pc_mthread(l_args, options.pal)
+        #pc_mthread(l_args, options.pal)
+        pc_mprocess(l_args, options.pal)
 
 
