@@ -63,6 +63,9 @@ area_filename =
 # If empty, no host will be replaced
 host_alias_filename = 
 
+# Discard logs from undefined hosts in host_alias definition file
+undefined_host = false
+
 ## A sequence of areas that cover all needed hosts.
 ## If a host does not belong to any hosts here,
 ## messages from the host is ignored.

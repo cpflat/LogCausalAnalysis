@@ -858,7 +858,12 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None):
     if l_w is None: return None
     l_w = [strutil.add_esc(w) for w in l_w]
     host = ha.resolve_host(org_host)
-    if host is None: host = org_host
+    #if host is None: host = org_host
+    if host is None:
+        if conf.getboolean("database", "undefined_host"):
+            return None
+        else:
+            host = org_host
 
     _logger.debug("Processing [{0}]".format(" ".join(l_w)))
     ltline = ld.ltm.process_line(l_w, l_s)
@@ -927,7 +932,12 @@ def process_init_data(conf, targets, isnew_check = False):
         if l_w is None: continue
         l_w = [strutil.add_esc(w) for w in l_w]
         host = ha.resolve_host(org_host)
-        if host is None: host = org_host
+        if host is None:
+            if conf.getboolean("database", "undefined_host"):
+                return None
+            else:
+                host = org_host
+
         l_line.append((l_w, l_s))
         l_data.append((dt, host))
 
