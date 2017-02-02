@@ -17,30 +17,30 @@ import pcresult
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-def get_edict(conf, top_dt, end_dt, dur, area):
-    ld = log_db.LogData(conf)
-    edict, evmap = log2event.log2event(conf, ld, top_dt, end_dt, area)
-
-    usefilter = conf.getboolean("dag", "usefilter")
-    if usefilter:
-        act = conf.get("filter", "action")
-        if act == "remove":
-            edict, evmap = log2event.filter_edict(conf, edict, evmap,
-                    ld, top_dt, end_dt, area)
-        elif act == "replace":
-            edict, evmap = log2event.replace_edict(conf, edict, evmap,
-                    ld, top_dt, end_dt, area)
-        else:
-            raise NotImplementedError
-
-    return edict, evmap
+#def get_edict(conf, top_dt, end_dt, dur, area):
+#    ld = log_db.LogData(conf)
+#    edict, evmap = log2event.log2event(conf, ld, top_dt, end_dt, area)
+#
+#    usefilter = conf.getboolean("dag", "usefilter")
+#    if usefilter:
+#        act = conf.get("filter", "action")
+#        if act == "remove":
+#            edict, evmap = log2event.filter_edict(conf, edict, evmap,
+#                    ld, top_dt, end_dt, area)
+#        elif act == "replace":
+#            edict, evmap = log2event.replace_edict(conf, edict, evmap,
+#                    ld, top_dt, end_dt, area)
+#        else:
+#            raise NotImplementedError
+#
+#    return edict, evmap
 
 
 def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
     
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
     
-    edict, evmap = get_edict(conf, top_dt, end_dt, dur, area)
+    edict, evmap = log2event.get_edict(conf, top_dt, end_dt, dur, area)
 
     _logger.info("{0} events found in given term of log data".format(
             len(edict)))

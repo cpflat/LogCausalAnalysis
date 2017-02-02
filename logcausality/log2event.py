@@ -260,6 +260,25 @@ def generate_evmap(conf, ld, top_dt, end_dt):
     return evmap
 
 
+def get_edict(conf, top_dt, end_dt, dur, area):
+    ld = log_db.LogData(conf)
+    edict, evmap = log2event(conf, ld, top_dt, end_dt, area)
+
+    usefilter = conf.getboolean("dag", "usefilter")
+    if usefilter:
+        act = conf.get("filter", "action")
+        if act == "remove":
+            edict, evmap = filter_edict(conf, edict, evmap,
+                    ld, top_dt, end_dt, area)
+        elif act == "replace":
+            edict, evmap = replace_edict(conf, edict, evmap,
+                    ld, top_dt, end_dt, area)
+        else:
+            raise NotImplementedError
+
+    return edict, evmap
+
+
 def sample_edict(ld, evmap, end_dt, dt_length, area):
     top_dt = end_dt - dt_length
     iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
@@ -486,7 +505,7 @@ def test_log2event(conf):
         area = args[4]
         _logger.info("testing log2event({0} - {1} in {2})".format(
                 top_dt, end_dt, area))
-        edict, evmap = pc_log.get_edict(conf, top_dt, end_dt, dur, area)
+        edict, evmap = get_edict(conf, top_dt, end_dt, dur, area)
 
         assert len(edict) == len(evmap)
         for eid in edict.keys():
