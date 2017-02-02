@@ -230,7 +230,7 @@ def set_common_logging(conf, logger = None, l_logger_name = [],
         lv = logging.INFO):
     fn = conf.get("general", "info_log")
     fmt = logging.Formatter(
-            fmt = "%(asctime)s %(levelname)s (%(threadName)s) %(message)s",
+            fmt = "%(asctime)s %(levelname)s (%(processName)s) %(message)s",
             datefmt = "%Y-%m-%d %H:%M:%S")
     #lv = logging.INFO
     if fn == "":
