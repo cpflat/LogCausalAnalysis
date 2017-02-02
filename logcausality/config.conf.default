@@ -257,7 +257,8 @@ action = remove
 
 # Sampling term to calculate interval candidate in 'periodic-whole'
 # If empty, use whole log data in DB
-sampling_term = 1w, 1d
+#sampling_term = 1w, 1d
+dt_cond = 1d_1s, 7d_1m
 
 # Required times of periodic event appearance to repeat
 # Used for 'periodic' and 'self-corr'
@@ -268,34 +269,40 @@ periodic_count = 5
 # Used for 'periodic' and 'self-corr'
 periodic_term = 6h
 
-# Threshold value for filter 'periodic'
-periodic_th = 0.5
+# threshold for fourier analysis
+threshold_spec = 0.4
+threshold_eval = 0.1
+threshold_restore = 0.5
 
-# Threshold value for self-correlation ('self-corr', 'periodic-whole')
-self_corr_th = 0.5
 
-# Difference duration candidates to calculate self-correlation
-self_corr_diff = 1h, 1d
+## Threshold value for filter 'periodic'
+#periodic_th = 0.5
+
+## Threshold value for self-correlation ('self-corr', 'periodic-whole')
+#self_corr_th = 0.5
+
+## Difference duration candidates to calculate self-correlation
+#self_corr_diff = 1h, 1d
 
 # Search candidates of stable periodic interval
 # (temporaly added to self_corr_diff)
-search_interval = true
+#search_interval = true
 
 # Bin size to discretize event appearance data in calculating self-correlation
-self_corr_bin = 10s
+#self_corr_bin = 10s
 
 # Allowed error rate of periodic sequence extraction in event replacement
-seq_error = 0.01
+#seq_error = 0.01
 
 # If true, allow duplication in separating periodic event sequences
 # in event replacement
-seq_duplication = false
+#seq_duplication = false
 
 # if filter.action = replace, add virtual event on the start of periodic appearance
-replace_top = true
+#replace_top = true
 
 # if filter.action = replace, add virtual event on the end of periodic appearance
-replace_end = true
+#replace_end = true
 
 
 [visual]

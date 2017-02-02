@@ -10,7 +10,8 @@ from collections import namedtuple
 import config
 import dtutil
 import log_db
-import evfilter
+#import evfilter
+import fourier
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 EvDef = namedtuple("EvDef", ["type", "note", "gid", "host"])
@@ -259,113 +260,196 @@ def generate_evmap(conf, ld, top_dt, end_dt):
     return evmap
 
 
-def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
-    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
-            edict, evmap)
+def sample_edict(ld, evmap, end_dt, dt_length, area):
+    top_dt = end_dt - dt_length
+    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
+    
+    edict = {}
+    for line in iterobj:
+        eid = evmap.process_line(line)
+        edict.setdefault(eid, []).append(line.dt)
+    return edict
 
-    temp_edict = copy.deepcopy(edict)
-    temp_evmap = _copy_evmap(evmap)
-    for eid, interval in l_result:
-        temp_edict.pop(eid)
-        temp_evmap.pop(eid)
-    return _remap_eid(temp_edict, temp_evmap)
+
+#def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
+#    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
+#            edict, evmap)
+#
+#    temp_edict = copy.deepcopy(edict)
+#    temp_evmap = _copy_evmap(evmap)
+#    for eid, interval in l_result:
+#        temp_edict.pop(eid)
+#        temp_evmap.pop(eid)
+#    return _remap_eid(temp_edict, temp_evmap)
+
+
+def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
+
+    ret_edict = copy.deepcopy(edict)
+    ret_evmap = _copy_evmap(evmap)
+    s_eid_periodic = set()
+
+    for dt_cond in conf.gettuple("filter", "dt_cond"): 
+        print dt_cond, area
+        dt_length, binsize = [config.str2dur(s) for s in dt_cond.split("_")]
+        if dt_length == top_dt - end_dt:
+            temp_edict = edict
+        else:
+            temp_edict = sample_edict(ld, evmap, end_dt, dt_length, area)
+        d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
+                binarize = False)
+        for eid, l_stat in d_stat.iteritems():
+            if eid in s_eid_periodic:
+                pass
+            else:
+                flag, interval = fourier.remove(conf, l_stat, binsize)
+                if flag:
+                    s_eid_periodic.add(eid)
+
+    for eid in s_eid_periodic:
+        ret_edict.pop(eid)
+        ret_evmap.pop(eid)
+
+    return _remap_eid(ret_edict, ret_evmap)
 
 
 def replace_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
-    
-    def _across_term_top(l_dt, pe, top_dt, dur, err):
-        err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
-        top_pe = min(pe)
-        if top_pe == min(l_dt):
-            if top_pe < top_dt + (dur + err_dur):
-                return True
+    #TODO filter_edict sync
+
+    def revert_event(data, top_dt, end_dt, binsize):
+        assert top_dt + len(data) * binsize == end_dt
+        return [top_dt + i * binsize for i, val in enumerate(data) if val > 0]
+
+    ret_edict = edict[:]
+    ret_evmap = _copy_evmap(evmap)
+    s_eid_periodic = set()
+
+    for dt_cond in conf.gettuple("filter", "dt_cond"): 
+        dt_length, binsize = [config.str2dur(s) for s in dt_cond.split("_")]
+        if dt_length == top_dt - end_dt:
+            temp_edict = edict
         else:
-            return False
-
-    def _across_term_end(l_dt, pe, end_dt, dur, err):
-        err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
-        end_pe = max(pe)
-        if end_pe == max(l_dt):
-            if end_pe > end_dt - (dur + err_dur):
-                return True
-        else:
-            return False
-
-    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
-            edict, evmap)
-
-    err = conf.getfloat("filter", "seq_error")
-    dup = conf.getboolean("filter", "seq_duplication") 
-    pcnt = conf.getint("filter", "periodic_count") 
-    pterm = conf.getdur("filter", "periodic_term") 
-    repl_top = conf.getboolean("filter", "replace_top")
-    repl_end = conf.getboolean("filter", "replace_end")
-
-    temp_edict = copy.deepcopy(edict)
-    temp_evmap = _copy_evmap(evmap)
-    for eid, interval in l_result:
-        l_dt = edict[eid]
-        if dup:
-            l_pe, npe = dtutil.separate_periodic_dup(l_dt, interval, err)
-        else:
-            l_pe, npe = dtutil.separate_periodic(l_dt, interval, err)
-        _logger.info("Event {0} ({1}) -> pseq * {2} ({3}) + {4}".format(
-                eid, len(l_dt), len(l_pe),
-                [len(pe) for pe in l_pe], len(npe)))
-
-        l_remain = []
-        l_top = []
-        l_end = []
-        for pe in l_pe:
-            if len(pe) < pcnt:
-                l_remain += pe
-            elif repl_top and \
-                    not _across_term_top(l_dt, pe, top_dt, interval, err):
-                l_top.append(min(pe))
-            elif repl_end and \
-                    not _across_term_end(l_dt, pe, end_dt, interval, err):
-                l_end.append(max(pe))
+            temp_edict = sample_edict(ld, evmap, end_dt, dt_length, area)
+        d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
+                binarize = False)
+        for eid, l_stat in d_stat.iteritems():
+            if eid in s_eid_periodic:
+                pass
             else:
-                l_remain += pe
-        l_remain += npe
+                flag, remain_data, interval = fourier.replace(conf,
+                        l_stat, binsize)
+                if flag:
+                    s_eid.add(eid)
+                    if sum(remain_data) == 0:
+                        ret_edict.pop(eid)
+                        ret_evmap.pop(eid)
+                    else:
+                        ret_edict[eid] = revert_event(remain_data,
+                                top_dt, end_dt, binsize)
+                        ret_edict.update_event(eid, evmap.info(eid),
+                                EventDefinitionMap.type_periodic_remainder,
+                                int(interval.total_seconds()))
+                else:
+                    pass
 
-        if len(l_remain) == len(l_dt):
-            pass
-        elif len(l_remain) > 0:
-            temp_evmap.update_event(eid, evmap.info(eid),
-                    EventDefinitionMap.type_periodic_remainder,
-                    int(interval.total_seconds()))
-            temp_edict[eid] = sorted(l_remain)
-            _logger.info(
-                    "periodic event {0} ({1}) is filtered".format(
-                    eid, evmap.info_str(eid)) + \
-                    " and left (-> {0})".format(temp_evmap.info_str(eid)))
-        else:
-            temp_edict.pop(eid)
-            temp_evmap.pop(eid)
-            _logger.info("periodic event {0} ({1}) is removed ".format(
-                    eid, evmap.info_str(eid)))
-        if len(l_top) > 0:
-            new_eid = temp_evmap.add_virtual_event(evmap.info(eid),
-                    EventDefinitionMap.type_periodic_top,
-                    int(interval.total_seconds()))
-            temp_edict[new_eid] = sorted(l_top)
-            _logger.info("virtual event {0} ({1}) added".format(
-                    new_eid, temp_evmap.info_str(new_eid)) + \
-                    " from event {0} ({1})".format(
-                    eid, evmap.info_str(eid)))
-        if len(l_end) > 0:
-            new_eid = temp_evmap.add_virtual_event(evmap.info(eid),
-                    EventDefinitionMap.type_periodic_end,
-                    int(interval.total_seconds()))
-            temp_edict[new_eid] = sorted(l_end)
-            _logger.info("virtual event {0} ({1}) added".format(
-                    new_eid, temp_evmap.info_str(new_eid)) + \
-                    " from event {0} ({1})".format(
-                    eid, evmap.info_str(eid)))
-    
-    #return _remap_eid(temp_edict, temp_evmap)
-    return temp_edict, temp_evmap
+    return _remap_eid(ret_edict, ret_evmap)
+
+
+#def replace_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
+#    
+#    def _across_term_top(l_dt, pe, top_dt, dur, err):
+#        err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
+#        top_pe = min(pe)
+#        if top_pe == min(l_dt):
+#            if top_pe < top_dt + (dur + err_dur):
+#                return True
+#        else:
+#            return False
+#
+#    def _across_term_end(l_dt, pe, end_dt, dur, err):
+#        err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
+#        end_pe = max(pe)
+#        if end_pe == max(l_dt):
+#            if end_pe > end_dt - (dur + err_dur):
+#                return True
+#        else:
+#            return False
+#
+#    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
+#            edict, evmap)
+#
+#    err = conf.getfloat("filter", "seq_error")
+#    dup = conf.getboolean("filter", "seq_duplication") 
+#    pcnt = conf.getint("filter", "periodic_count") 
+#    pterm = conf.getdur("filter", "periodic_term") 
+#    repl_top = conf.getboolean("filter", "replace_top")
+#    repl_end = conf.getboolean("filter", "replace_end")
+#
+#    temp_edict = copy.deepcopy(edict)
+#    temp_evmap = _copy_evmap(evmap)
+#    for eid, interval in l_result:
+#        l_dt = edict[eid]
+#        if dup:
+#            l_pe, npe = dtutil.separate_periodic_dup(l_dt, interval, err)
+#        else:
+#            l_pe, npe = dtutil.separate_periodic(l_dt, interval, err)
+#        _logger.info("Event {0} ({1}) -> pseq * {2} ({3}) + {4}".format(
+#                eid, len(l_dt), len(l_pe),
+#                [len(pe) for pe in l_pe], len(npe)))
+#
+#        l_remain = []
+#        l_top = []
+#        l_end = []
+#        for pe in l_pe:
+#            if len(pe) < pcnt:
+#                l_remain += pe
+#            elif repl_top and \
+#                    not _across_term_top(l_dt, pe, top_dt, interval, err):
+#                l_top.append(min(pe))
+#            elif repl_end and \
+#                    not _across_term_end(l_dt, pe, end_dt, interval, err):
+#                l_end.append(max(pe))
+#            else:
+#                l_remain += pe
+#        l_remain += npe
+#
+#        if len(l_remain) == len(l_dt):
+#            pass
+#        elif len(l_remain) > 0:
+#            temp_evmap.update_event(eid, evmap.info(eid),
+#                    EventDefinitionMap.type_periodic_remainder,
+#                    int(interval.total_seconds()))
+#            temp_edict[eid] = sorted(l_remain)
+#            _logger.info(
+#                    "periodic event {0} ({1}) is filtered".format(
+#                    eid, evmap.info_str(eid)) + \
+#                    " and left (-> {0})".format(temp_evmap.info_str(eid)))
+#        else:
+#            temp_edict.pop(eid)
+#            temp_evmap.pop(eid)
+#            _logger.info("periodic event {0} ({1}) is removed ".format(
+#                    eid, evmap.info_str(eid)))
+#        if len(l_top) > 0:
+#            new_eid = temp_evmap.add_virtual_event(evmap.info(eid),
+#                    EventDefinitionMap.type_periodic_top,
+#                    int(interval.total_seconds()))
+#            temp_edict[new_eid] = sorted(l_top)
+#            _logger.info("virtual event {0} ({1}) added".format(
+#                    new_eid, temp_evmap.info_str(new_eid)) + \
+#                    " from event {0} ({1})".format(
+#                    eid, evmap.info_str(eid)))
+#        if len(l_end) > 0:
+#            new_eid = temp_evmap.add_virtual_event(evmap.info(eid),
+#                    EventDefinitionMap.type_periodic_end,
+#                    int(interval.total_seconds()))
+#            temp_edict[new_eid] = sorted(l_end)
+#            _logger.info("virtual event {0} ({1}) added".format(
+#                    new_eid, temp_evmap.info_str(new_eid)) + \
+#                    " from event {0} ({1})".format(
+#                    eid, evmap.info_str(eid)))
+#    
+#    #return _remap_eid(temp_edict, temp_evmap)
+#    return temp_edict, temp_evmap
 
 
 def _remap_eid(edict, evmap):

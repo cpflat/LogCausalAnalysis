@@ -11,7 +11,7 @@ import config
 import log_db
 import log2event
 import pc_input 
-import evfilter
+#import evfilter
 import pcresult
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
