@@ -241,6 +241,9 @@ class LogTemplate():
         self.cnt = count
         self.sym = sym
 
+    def __iter__(self):
+        return self.ltw
+
     def __str__(self):
         return self.restore_message(self.ltw)
 

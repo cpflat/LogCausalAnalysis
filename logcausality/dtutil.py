@@ -2,10 +2,12 @@
 # coding: utf-8
 
 import datetime
+import logging
 import random
 import numpy as np
 
 TIMEFMT = "%Y-%m-%d %H:%M:%S"
+_logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 def dtrange(top_dt, end_dt, duration, include_end = False):
@@ -41,7 +43,7 @@ def discretize(l_dt, l_label = None, binarize = False):
     if len(l_dt_temp) > 0:
         new_dt = l_dt_temp.pop(0)
     else:
-        raise UserWarning("l_dt is empty")
+        _logger.warning("l_dt is empty")
         return []
 
     # remove data before label term
@@ -49,8 +51,7 @@ def discretize(l_dt, l_label = None, binarize = False):
         if len(l_dt_temp) > 0:
             new_dt = l_dt_temp.pop(0)
         else:
-            raise UserWarning(
-                    "all datetime values are out of given label term")
+            _logger.warning("all datetime values are out of given label term")
             return []
     for label_dt in l_label[1:]:
         cnt = 0

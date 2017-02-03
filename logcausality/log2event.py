@@ -273,6 +273,9 @@ def get_edict(conf, top_dt, end_dt, dur, area):
         elif act == "replace":
             edict, evmap = replace_edict(conf, edict, evmap,
                     ld, top_dt, end_dt, area)
+        elif act == "remove-corr":
+            edict, evmap = filter_edict_corr(conf, edict, evmap,
+                    ld, top_dt, end_dt, area)
         else:
             raise NotImplementedError
 
@@ -290,16 +293,16 @@ def sample_edict(ld, evmap, end_dt, dt_length, area):
     return edict
 
 
-#def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
-#    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
-#            edict, evmap)
-#
-#    temp_edict = copy.deepcopy(edict)
-#    temp_evmap = _copy_evmap(evmap)
-#    for eid, interval in l_result:
-#        temp_edict.pop(eid)
-#        temp_evmap.pop(eid)
-#    return _remap_eid(temp_edict, temp_evmap)
+def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):
+    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
+            edict, evmap)
+
+    temp_edict = copy.deepcopy(edict)
+    temp_evmap = _copy_evmap(evmap)
+    for eid, interval in l_result:
+        temp_edict.pop(eid)
+        temp_evmap.pop(eid)
+    return _remap_eid(temp_edict, temp_evmap)
 
 
 def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
@@ -309,7 +312,6 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
     s_eid_periodic = set()
 
     for dt_cond in conf.gettuple("filter", "dt_cond"): 
-        print dt_cond, area
         dt_length, binsize = [config.str2dur(s) for s in dt_cond.split("_")]
         if dt_length == top_dt - end_dt:
             temp_edict = edict
@@ -318,14 +320,18 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
         d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
                 binarize = False)
         for eid, l_stat in d_stat.iteritems():
+            _logger.info("periodicity test for eid {0}".format(eid))
             if eid in s_eid_periodic:
                 pass
             else:
                 flag, interval = fourier.remove(conf, l_stat, binsize)
                 if flag:
+                    _logger.info("eid {0} is periodic ({1}, {2})".format(
+                            eid, dt_length, binsize))
                     s_eid_periodic.add(eid)
 
     for eid in s_eid_periodic:
+        _logger.info("remove eid {0} from dataset".format(eid))
         ret_edict.pop(eid)
         ret_evmap.pop(eid)
 
@@ -333,13 +339,17 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
 
 
 def replace_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
-    #TODO filter_edict sync
+
+    #def resize(data, top_dt, end_dt, binsize):
+    #    length = int((top_dt - end_dt).total_seconds() / \
+    #            binsize.total_seconds())
+    #    return data[-length:]
 
     def revert_event(data, top_dt, end_dt, binsize):
         assert top_dt + len(data) * binsize == end_dt
         return [top_dt + i * binsize for i, val in enumerate(data) if val > 0]
 
-    ret_edict = edict[:]
+    ret_edict = copy.deepcopy(edict)
     ret_evmap = _copy_evmap(evmap)
     s_eid_periodic = set()
 
@@ -355,17 +365,23 @@ def replace_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
             if eid in s_eid_periodic:
                 pass
             else:
+                _logger.info("periodicity test for eid {0}".format(eid))
                 flag, remain_data, interval = fourier.replace(conf,
                         l_stat, binsize)
                 if flag:
-                    s_eid.add(eid)
+                    _logger.info("eid {0} is periodic ({1}, {2})".format(
+                            eid, dt_length, binsize))
+                    s_eid_periodic.add(eid)
                     if sum(remain_data) == 0:
+                        _logger.info("remove eid {0} from dataset".format(eid))
                         ret_edict.pop(eid)
                         ret_evmap.pop(eid)
                     else:
+                        _logger.info("replace eid {0} (count:{1})".format(
+                                eid, sum(remain_data)))
                         ret_edict[eid] = revert_event(remain_data,
                                 top_dt, end_dt, binsize)
-                        ret_edict.update_event(eid, evmap.info(eid),
+                        ret_evmap.update_event(eid, evmap.info(eid),
                                 EventDefinitionMap.type_periodic_remainder,
                                 int(interval.total_seconds()))
                 else:

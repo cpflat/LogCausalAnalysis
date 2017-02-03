@@ -6,6 +6,7 @@
 import datetime
 import logging
 
+import math
 import numpy as np
 import scipy.fftpack
 import scipy.signal
@@ -24,7 +25,8 @@ def remove(conf, l_stat, binsize):
 
     th_spec = conf.getfloat("filter", "threshold_spec")
     th_std = conf.getfloat("filter", "threshold_eval")
-    data = l_stat[-power2(len(l_stat)):]
+    data = l_stat
+    #data = l_stat[-power2(len(l_stat)):]
     fdata = scipy.fftpack.fft(data)
     flag, interval = is_periodic(data, fdata, binsize, th_spec, th_std)
 
@@ -43,7 +45,8 @@ def replace(conf, l_stat, binsize):
     th_std = conf.getfloat("filter", "threshold_eval")
     th_restore = conf.getfloat("filter", "threshold_restore")
 
-    data = l_stat[-power2(len(l_stat)):]
+    #data = l_stat[-power2(len(l_stat)):]
+    data = l_stat
     fdata = scipy.fftpack.fft(data)
     flag, interval = is_periodic(data, fdata, binsize, th_spec, th_std)
     if flag:
@@ -91,12 +94,12 @@ def part_filtered(data, fdata, binsize, th_spec):
     
     a_label = scipy.fftpack.fftfreq(len(data), d = dt)
     a_spec = np.abs(fdata)
-    max_spec = max(allspec)
+    max_spec = max(a_spec)
     sf_filtered = {freq for freq, spec in zip(a_label, a_spec)
             if spec > th_spec * max_spec}
 
     fdata_filtered = np.array([])
-    for freq, spec in zip(a_label, a_spec): 
+    for freq, fcond in zip(a_label, fdata): 
         if freq in sf_filtered:
             fdata_filtered = np.append(fdata_filtered, fcond)
         else:
@@ -144,3 +147,7 @@ def is_enough_long(l_stat, p_cnt, p_term, binsize):
 
 def power2(length):
     return 2 ** int(np.log2(length))
+
+def power2ceil(length):
+    return 2 ** math.ceil(np.log2(length))
+
