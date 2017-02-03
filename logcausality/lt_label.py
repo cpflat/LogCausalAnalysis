@@ -9,10 +9,12 @@ Note:
 
 import sys
 import os
+import re
 import optparse
 import logging
 
 import config
+import strutil
 import logparser
 import log_db
 
@@ -45,51 +47,79 @@ class LTLabel():
             for label in self.conf.gettuple(section, "members"):
                 self.d_group.setdefault(group, []).append(label)
                 self.d_rgroup.setdefault(label, []).append(group)
-        self.rules = []
+        self.rules = [] # [(label, (re_matchobj, ...)), ...]
         for label in self.labels:
             section = self.label_header + label
             for rulename in self.conf.gettuple(section, "rules"):
-                l_word = self.conf.gettuple(section, rulename + "_word")
-                l_rule = self.conf.gettuple(section, rulename + "_rule")
-                assert len(l_word) == len(l_rule)
-                self.rules.append((label, l_word, l_rule))
+                l_re = []
+                l_restr = self.conf.gettuple(section, rulename)
+                for re_str in l_restr:
+                    if rulename[0] == "i":
+                        re_obj = re.compile(re_str, re.IGNORECASE)
+                    elif rulename[0] == "c":
+                        re_obj = re.compile(re_str, )
+                    else:
+                        raise ValueError(
+                                "lt_label rulename invalid ({0})".format(
+                                    rulename))
+                    l_re.append(re_obj)
+                self.rules.append((label, tuple(l_re)))
 
-    def _test_rule(self, ltline, l_word, l_rule):
-        for word, rule in zip(l_word, l_rule):
-            if rule == "equal":
-                if word in ltline.ltw:
-                    # satisfied
+            #    l_word = self.conf.gettuple(section, rulename + "_word")
+            #    l_rule = self.conf.gettuple(section, rulename + "_rule")
+            #    assert len(l_word) == len(l_rule)
+            #    self.rules.append((label, l_word, l_rule))
+
+    #def _test_rule(self, ltline, l_word, l_rule):
+    #    for word, rule in zip(l_word, l_rule):
+    #        if rule == "equal":
+    #            if word in ltline.ltw:
+    #                # satisfied
+    #                pass
+    #            else:
+    #                return False
+    #        if rule == "equal_ord":
+    #            if word.lower() in [w.lower() for w in ltline.ltw]:
+    #                # satisfied
+    #                pass
+    #            else:
+    #                return False
+    #        elif rule == "in":
+    #            for w in ltline.ltw:
+    #                if word in w:
+    #                    # satisfied
+    #                    break
+    #            else:
+    #                return False
+    #        elif rule == "in_ord":
+    #            for w in ltline.ltw:
+    #                if word.lower() in w.lower():
+    #                    # satisfied
+    #                    break
+    #            else:
+    #                return False
+    #        else:
+    #            raise ValueError("Invalid rule name")
+    #    else:
+    #        return True
+
+    def _test_rule(self, ltline, t_re):
+        for reobj in t_re:
+            for word in ltline.ltw:
+                if reobj.match(word):
+                    break
+                else:
                     pass
-                else:
-                    return False
-            if rule == "equal_ord":
-                if word.lower() in [w.lower() for w in ltline.ltw]:
-                    # satisfied
-                    pass
-                else:
-                    return False
-            elif rule == "in":
-                for w in ltline.ltw:
-                    if word in w:
-                        # satisfied
-                        break
-                else:
-                    return False
-            elif rule == "in_ord":
-                for w in ltline.ltw:
-                    if word.lower() in w.lower():
-                        # satisfied
-                        break
-                else:
-                    return False
             else:
-                raise ValueError("Invalid rule name")
+                # no word matches
+                return False
         else:
+            # all reobj passes
             return True
-
+    
     def get_lt_label(self, ltline):
-        for label, word, rule in self.rules:
-            if self._test_rule(ltline, word, rule):
+        for label, t_re in self.rules:
+            if self._test_rule(ltline, t_re):
                 return label
         else:
             return None
@@ -98,8 +128,8 @@ class LTLabel():
         d_score = {} # key : ruleid, value : score
         for ltline in l_ltline:
             for rid, t_rule in enumerate(self.rules):
-                label, word, rule = t_rule
-                if self._test_rule(ltline, word, rule):
+                label, t_re = t_rule
+                if self._test_rule(ltline, t_re):
                     d_score[rid] = d_score.get(rid, 0) + 1
         l_cand = []
         max_score = 0
@@ -133,7 +163,12 @@ def test_ltlabel(conf):
     d_buf = {}
     buf_none = []
     for ltgid in ld.iter_ltgid():
-        label = ll.get_ltg_label(ltgid, ld.ltg_members(ltgid))
+        l_gid = ld.ltg_members(ltgid)
+        if len(l_gid) == 1:
+            #label = ll.get_lt_label(ltgid, ld.ltg_members(ltgid))
+            label = ll.get_ltg_label(ltgid, ld.ltg_members(ltgid))
+        else:
+            label = ll.get_ltg_label(ltgid, ld.ltg_members(ltgid))
         if label is None:
             buf_none.append(output(ld, ltgid, str(label)))
         else:

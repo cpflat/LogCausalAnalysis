@@ -25,6 +25,7 @@ def dtrange(top_dt, end_dt, duration, include_end = False):
 #        temp_top_dt = temp_end_dt
 # -> iter_term
 
+
 def discretize(l_dt, l_label = None, binarize = False):
     """
     Args:
@@ -40,14 +41,17 @@ def discretize(l_dt, l_label = None, binarize = False):
     if len(l_dt_temp) > 0:
         new_dt = l_dt_temp.pop(0)
     else:
-        raise ValueError("l_dt is empty")
+        raise UserWarning("l_dt is empty")
+        return []
 
     # remove data before label term
     while new_dt < l_label[0]:
         if len(l_dt_temp) > 0:
             new_dt = l_dt_temp.pop(0)
         else:
-            raise ValueError("all datetime values are out of given label term")
+            raise UserWarning(
+                    "all datetime values are out of given label term")
+            return []
     for label_dt in l_label[1:]:
         cnt = 0
         while new_dt is not None and new_dt < label_dt:

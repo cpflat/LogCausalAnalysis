@@ -5,75 +5,51 @@ members = user, remote, syslog
 members = dns, dhcp, snmp, ntp, smtp, syslog
 
 
+# c: case-sensitive, i : ignorecase
 [label_boot]
-rules = shutdown, reboot
-shutdown_word = shutdown
-shutdown_rule = in_ord
-reboot_word = reboot
-reboot_rule = in_ord
+rules = i_shutdown, i_reboot
+i_shutdown = ^.*shutdown.*$
+i_reboot = ^.*reboot.*$
 
 [label_user]
-rules = su, sudo, login
-su_word = su
-su_rule = equal
-sudo_word = sudo
-sudo_rule = equal
-login_word = login
-login_rule = equal
+rules = c_su, c_sudo, c_login
+c_su = ^su$
+c_sudo = ^sudo$
+c_login = ^login$
 
 [label_remote]
-rules = sshd
-sshd_word = sshd
-sshd_rule = equal
+rules = c_sshd
+c_sshd = ^sshd$
 
 [label_cron]
-rules = cmd, cron, anacron
-cmd_word = CMD
-cmd_rule = equal
-cron_word = CRON
-cron_rule = equal
-anacron_word = anacron
-anacron_rule = equal
+rules = c_cmd, c_cron, c_anacron
+c_cmd = ^CMD$
+c_cron = ^CRON$
+c_anacron = ^anacron$
 
 [label_dns]
-rules = named, dns
-named_word = named
-named_rule = equal
-dns_word = DNS
-dns_rule = in_ord
-
-[label_dhcp]
-rules = dhcpd
-dhcpd_word = dhcpd
-dhcpd_rule = equal
+rules = c_named, i_dns
+c_named = ^named$
+i_dns = ^.*dns.*$
 
 [label_snmp]
-rules = snmpd
-snmpd_word = snmpd
-snmpd_rule = equal
+rules = c_snmpd
+c_snmpd = ^snmpd$
 
 [label_ntp]
-rules = ntpd, ntpdate
-ntpd_word = ntpd
-ntpd_rule = equal
-ntpdate_word = ntpdate
-ntpdate_rule = equal
+rules = c_ntpd, c_ntpdate
+c_ntpd = ^ntpd$
+c_ntpdate = ^ntpdate$
 
 [label_smtp]
-rules = postfix, smtpd
-postfix_word = postfix
-postfix_rule = in_ord
-smtpd_word = smtpd
-smtpd_rule = equal
+rules = i_postfix, c_smtpd
+i_postfix = ^.*postfix.*$
+c_smtpd = ^smtpd$
 
 [label_syslog]
-rules = syslogd, rsyslogd, newsyslog, rotate
-syslogd_word = syslogd
-syslogd_rule = equal
-rsyslogd_word = rsyslogd
-rsyslogd_rule = equal
-newsyslog_word = newsyslog
-newsyslog_rule = equal
-rotate_word = last, message, repeated
-rotate_rule = equal, equal, equal
+rules = c_syslogd, c_rsyslogd, c_newsyslog, c_rotate
+c_syslogd = ^syslogd$
+c_rsyslogd = ^rsyslogd$
+c_newsyslog = ^newsyslog$
+c_rotate = ^last$, ^message$, ^repeated$
 
