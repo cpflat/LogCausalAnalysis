@@ -260,15 +260,19 @@ def generate_evmap(conf, ld, top_dt, end_dt):
     return evmap
 
 
-def get_edict(conf, top_dt, end_dt, dur, area):
+def get_edict(conf, top_dt, end_dt, area):
     ld = log_db.LogData(conf)
     edict, evmap = log2event(conf, ld, top_dt, end_dt, area)
+    edict, evmap = filter_edict(conf, top_dt, end_dt, area)
+    return edict, evmap
 
+
+def filter_edict(conf, top_dt, end_dt, area):
     usefilter = conf.getboolean("dag", "usefilter")
     if usefilter:
         act = conf.get("filter", "action")
         if act == "remove":
-            edict, evmap = filter_edict(conf, edict, evmap,
+            edict, evmap = filter_edict_f(conf, edict, evmap,
                     ld, top_dt, end_dt, area)
         elif act == "replace":
             edict, evmap = replace_edict(conf, edict, evmap,
@@ -278,7 +282,6 @@ def get_edict(conf, top_dt, end_dt, dur, area):
                     ld, top_dt, end_dt, area)
         else:
             raise NotImplementedError
-
     return edict, evmap
 
 
