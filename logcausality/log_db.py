@@ -861,6 +861,7 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None):
     #if host is None: host = org_host
     if host is None:
         if conf.getboolean("database", "undefined_host"):
+            ld.ltm.failure_output(msg)
             return None
         else:
             host = org_host
@@ -869,6 +870,7 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None):
     ltline = ld.ltm.process_line(l_w, l_s)
     if ltline is None:
         ld.ltm.failure_output(msg)
+        return None
     else:
         _logger.debug("Template [{0}]".format(ltline))
         line = ld.add_line(ltline.ltid, dt, host, l_w)
@@ -934,6 +936,7 @@ def process_init_data(conf, targets, isnew_check = False):
         host = ha.resolve_host(org_host)
         if host is None:
             if conf.getboolean("database", "undefined_host"):
+                ld.ltm.failure_output(msg)
                 return None
             else:
                 host = org_host

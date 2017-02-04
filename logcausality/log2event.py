@@ -5,12 +5,14 @@ import sys
 import datetime
 import copy
 import logging
+import cPickle as pickle
 from collections import namedtuple
 
+import common
 import config
 import dtutil
 import log_db
-#import evfilter
+import evfilter
 import fourier
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
@@ -263,11 +265,11 @@ def generate_evmap(conf, ld, top_dt, end_dt):
 def get_edict(conf, top_dt, end_dt, area):
     ld = log_db.LogData(conf)
     edict, evmap = log2event(conf, ld, top_dt, end_dt, area)
-    edict, evmap = filter_edict(conf, top_dt, end_dt, area)
+    edict, evmap = filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area)
     return edict, evmap
 
 
-def filter_edict(conf, top_dt, end_dt, area):
+def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
     usefilter = conf.getboolean("dag", "usefilter")
     if usefilter:
         act = conf.get("filter", "action")
@@ -308,7 +310,7 @@ def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):
     return _remap_eid(temp_edict, temp_evmap)
 
 
-def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
+def filter_edict_f(conf, edict, evmap, ld, top_dt, end_dt, area):
 
     ret_edict = copy.deepcopy(edict)
     ret_evmap = _copy_evmap(evmap)
@@ -538,17 +540,77 @@ def test_log2event(conf):
             print
 
 
+def agg_log2event(conf, top_dt, end_dt, dur, area, dirname, filename):
+
+    ld = log_db.LogData(conf)
+    dn = pc_log.thread_name(conf,
+            top_dt, end_dt, dur, area).partition("/")[2]
+    _logger.info(dn)
+
+    org_edict, org_evmap = log2event(conf, ld, top_dt, end_dt, area)
+    edict, evmap = filter_edict(conf, org_edict, org_evmap, ld,
+            top_dt, end_dt, area)
+
+    len_all_event = len(org_edict)
+    len_event = len(edict)
+    len_replace = sum(1 for evdef in evmap.iter_evdef()
+            if evdef.type == evmap.type_periodic_remainder)
+    with open(filename, "a") as f:
+        f.write("{0}\t{1}\t{2}\t{3}\n".format(dn, len_all_event,
+            len_event, len_replace))
+    dumpobj = edict, evmap
+    with open("{0}/{1}".format(dirname, dn), "w") as f:
+        pickle.dump(dumpobj, f)
+
+
+def agg_mprocess(l_args, dirname, filename, pal=1):
+    common.mkdir(dirname)
+    with open(filename, "a") as f:
+        f.write("area_timestamp\tall_events\tevents\treplaced\n")
+
+    import multiprocessing
+    timer = common.Timer("log2event task", output = _logger)
+    timer.start()
+    if pal > 1:
+        l_process = [multiprocessing.Process(
+                name = pc_log.thread_name(*(args[:5])),
+                target = agg_log2event, args = args) for args in l_args]
+        common.mprocess_queueing(l_process, pal)
+    else:
+        for args in l_args:
+            agg_log2event(*args)
+    timer.stop()
+
+
 if __name__ == "__main__":
-    usage = "usage: {0} [options]".format(sys.argv[0])
+    usage = "usage: {0} [options] mode".format(sys.argv[0])
     import optparse
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
+    op.add_option("-p", "--parallel", action="store", dest="pal", type="int",
+            default=1, help="multiprocessing for agg")
+    op.add_option("--debug", action="store_true", dest="debug",
+            default=False, help="set logging level to DEBUG")
     (options, args) = op.parse_args()
 
     conf = config.open_config(options.conf)
-    config.set_common_logging(conf, _logger, ["pc_log", "evfilter"])
-    test_log2event(conf)
+    lv = logging.DEBUG if options.debug else logging.INFO
+    config.set_common_logging(conf, _logger, ["fourier", "evfilter"], lv = lv)
 
+    if len(args) == 0:
+        test_log2event(conf)
+    mode = args.pop(0)
+    if mode == "agg":
+        if len(args) < 2:
+            sys.exit("give me dirname and filename of event output")
+        dirname = args[0]
+        filename = args[1]
+        import pc_log
+        l_args = [list(args) + [dirname, filename] for args
+                in pc_log.pc_all_args(conf)]
+        agg_mprocess(l_args, dirname, filename, options.pal)
+    elif mode == "test":
+        test_log2event(conf)
 

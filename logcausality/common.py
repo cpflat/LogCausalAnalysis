@@ -222,8 +222,6 @@ def mthread_queueing(l_thread, pal):
     """
     Args:
         l_thread (List[threading.Thread]): A sequence of thread objects.
-        func (func): Target function to execute in parallel.    
-        l_args (List[args, kwargs]): A sequence of arguments for func.
         pal (int): Maximum number of threads executed at once.
     """
     l_job = []

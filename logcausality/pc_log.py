@@ -190,7 +190,8 @@ if __name__ == "__main__":
 
     conf = config.open_config(options.conf)
     lv = logging.DEBUG if options.debug else logging.INFO
-    config.set_common_logging(conf, _logger, ["evfilter"], lv = lv)
+    config.set_common_logging(conf, _logger,
+            ["evfilter", "log2event"], lv = lv)
 
     common.mkdir(conf.get("dag", "output_dir"))
     l_args = pc_all_args(conf)
