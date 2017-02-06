@@ -102,6 +102,16 @@ class IDDict():
 
 # file managing
 
+def is_empty(dirname):
+    if os.path.isdir(dirname):
+        if len(os.listdir(dirname)) > 1:
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
 def rep_dir(args):
     if isinstance(args, list):
         ret = []

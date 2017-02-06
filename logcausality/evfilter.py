@@ -165,7 +165,7 @@ def test_evfilter(conf, fn = "evf_filtered"):
         area = args[4]
         buf.append("testing evfilter({0} - {1} in {2})\n".format(
                 top_dt, end_dt, area))
-        edict, evmap = log2event.get_edict(conf, top_dt, end_dt, area)
+        edict, evmap = log2event.get_edict(conf, top_dt, end_dt, dur, area)
 
         l_result = periodic_events(conf, ld, top_dt, end_dt, area,
                 edict, evmap)
@@ -173,6 +173,7 @@ def test_evfilter(conf, fn = "evf_filtered"):
             buf = dump_event(buf, eid, evmap, max_diff)
     with open(fn, "w") as f:
         f.write("\n".join(buf))
+
 
 def test_interval(conf):
     import pc_log
@@ -185,7 +186,7 @@ def test_interval(conf):
         area = args[4]
         print("testing evfilter interval({0} - {1} in {2})\n".format(
                 top_dt, end_dt, area))
-        edict, evmap = log2event.get_edict(conf, top_dt, end_dt, area)
+        edict, evmap = log2event.get_edict(conf, top_dt, end_dt, dur, area)
 
         new_corr_diff = set()
         p_cnt = conf.getint("filter", "periodic_count")

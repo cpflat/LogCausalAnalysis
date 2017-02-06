@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import sys
+import os
 import datetime
 import copy
 import logging
@@ -12,6 +13,7 @@ import common
 import config
 import dtutil
 import log_db
+import pc_log
 import evfilter
 import fourier
 
@@ -262,11 +264,43 @@ def generate_evmap(conf, ld, top_dt, end_dt):
     return evmap
 
 
-def get_edict(conf, top_dt, end_dt, area):
-    ld = log_db.LogData(conf)
-    edict, evmap = log2event(conf, ld, top_dt, end_dt, area)
-    edict, evmap = filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area)
+def get_edict(conf, top_dt, end_dt, dur, area):
+    filepath = edict_filepath(conf, top_dt, end_dt, dur, area)
+    if os.path.exists(filepath):
+        edict, evmap = load_edict(filepath)
+    else:
+        init_edict_dir(conf)
+        ld = log_db.LogData(conf)
+        edict, evmap = log2event(conf, ld, top_dt, end_dt, area)
+        edict, evmap = filter_edict(conf, edict, evmap,
+                ld, top_dt, end_dt, area)
+        filepath = edict_filepath(conf, top_dt, end_dt, dur, area)
+        dump_edict(filepath, edict, evmap)
+
     return edict, evmap
+
+
+def init_edict_dir(conf):
+    dirname = conf.get("dag", "event_dir")
+    common.mkdir(dirname)
+
+
+def dump_edict(filepath, edict, evmap):
+    dumpobj = (edict, evmap)
+    with open(filepath, "w") as f:
+        pickle.dump(dumpobj, f)
+
+
+def load_edict(filepath):
+    with open(filepath, "r") as f:
+        edict, evmap = pickle.load(f)
+    return edict, evmap
+
+
+def edict_filepath(conf, top_dt, end_dt, dur, area):
+    dirname = conf.get("dag", "event_dir")
+    filename = pc_log.filename(conf, top_dt, end_dt, dur, area)
+    return "/".join((dirname, filename))
 
 
 def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
@@ -326,7 +360,8 @@ def filter_edict_f(conf, edict, evmap, ld, top_dt, end_dt, area):
                 binarize = False)
         for eid, l_stat in d_stat.iteritems():
             _logger.info("periodicity test for eid {0}".format(eid))
-            if eid in s_eid_periodic:
+            if eid in s_eid_periodic or\
+                    not fourier.pretest(conf, l_stat, binsize):
                 pass
             else:
                 flag, interval = fourier.remove(conf, l_stat, binsize)
@@ -367,7 +402,8 @@ def replace_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
         d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
                 binarize = False)
         for eid, l_stat in d_stat.iteritems():
-            if eid in s_eid_periodic:
+            if eid in s_eid_periodic or\
+                    not fourier.pretest(conf, l_stat, binsize):
                 pass
             else:
                 _logger.info("periodicity test for eid {0}".format(eid))
@@ -540,33 +576,27 @@ def test_log2event(conf):
             print
 
 
-def agg_log2event(conf, top_dt, end_dt, dur, area, dirname, filename):
-
+def agg_log2event(conf, top_dt, end_dt, dur, area, fn):
+    init_edict_dir(conf)
     ld = log_db.LogData(conf)
-    dn = pc_log.thread_name(conf,
-            top_dt, end_dt, dur, area).partition("/")[2]
-    _logger.info(dn)
-
     org_edict, org_evmap = log2event(conf, ld, top_dt, end_dt, area)
-    edict, evmap = filter_edict(conf, org_edict, org_evmap, ld,
-            top_dt, end_dt, area)
+    edict, evmap = filter_edict(conf, org_edict, org_evmap,
+            ld, top_dt, end_dt, area)
+    filepath = edict_filepath(conf, top_dt, end_dt, dur, area)
+    dump_edict(filepath, edict, evmap)
 
     len_all_event = len(org_edict)
     len_event = len(edict)
     len_replace = sum(1 for evdef in evmap.iter_evdef()
             if evdef.type == evmap.type_periodic_remainder)
-    with open(filename, "a") as f:
-        f.write("{0}\t{1}\t{2}\t{3}\n".format(dn, len_all_event,
-            len_event, len_replace))
-    dumpobj = edict, evmap
-    with open("{0}/{1}".format(dirname, dn), "w") as f:
-        pickle.dump(dumpobj, f)
+    with open(fn, "a") as f:
+        f.write("{0}\t{1}\t{2}\t{3}\n".format(len_all_event,
+            len_event, len_replace, filepath))
 
 
-def agg_mprocess(l_args, dirname, filename, pal=1):
-    common.mkdir(dirname)
+def agg_mprocess(l_args, filename, pal=1):
     with open(filename, "a") as f:
-        f.write("area_timestamp\tall_events\tevents\treplaced\n")
+        f.write("all_events\tevents\treplaced\tfilename\n")
 
     import multiprocessing
     timer = common.Timer("log2event task", output = _logger)
@@ -603,14 +633,14 @@ if __name__ == "__main__":
         test_log2event(conf)
     mode = args.pop(0)
     if mode == "agg":
-        if len(args) < 2:
-            sys.exit("give me dirname and filename of event output")
-        dirname = args[0]
-        filename = args[1]
+        sys.exit("This function is outdated")
+        if len(args) < 1:
+            sys.exit("give me filename of statistical event output")
+        filename = args[0]
         import pc_log
-        l_args = [list(args) + [dirname, filename] for args
+        l_args = [list(args) + [filename] for args
                 in pc_log.pc_all_args(conf)]
-        agg_mprocess(l_args, dirname, filename, options.pal)
+        agg_mprocess(l_args, filename, options.pal)
     elif mode == "test":
         test_log2event(conf)
 

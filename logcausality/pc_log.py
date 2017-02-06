@@ -36,18 +36,14 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 #    return edict, evmap
 
 
-def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
+def pc_log(conf, top_dt, end_dt, dur, area):
     
     _logger.info("job start ({0} - {1} in {2})".format(top_dt, end_dt, area))
     
-    edict, evmap = log2event.get_edict(conf, top_dt, end_dt, area)
+    edict, evmap = log2event.get_edict(conf, top_dt, end_dt, dur, area)
 
     _logger.info("{0} events found in given term of log data".format(
             len(edict)))
-    if dump:
-        tempfn = thread_name(conf, top_dt, end_dt, dur, area) + ".temp"
-        with open(tempfn, 'w') as f:
-            pickle.dump((edict, evmap), f)
 
     if len(edict) > 2:
         threshold = conf.getfloat("dag", "threshold")
@@ -62,26 +58,37 @@ def pc_log(conf, top_dt, end_dt, dur, area, dump = True):
 
     output = pcresult.PCOutput(conf)
     output.make(graph, evmap, top_dt, end_dt, dur, area)
-    if dump:
-        output.dump()
-        common.rm(tempfn)
 
     _logger.info("job done, output {0}".format(output.filename))
     return output
 
 
-def thread_name(conf, top_dt, end_dt, dur, area):
-    dirname = conf.get("dag", "output_dir")
-    l_header = []
-    l_header.append(dirname)
-    l_header.append("/")
-    l_header.append(area)
-    l_header.append("_")
+def filename(conf, top_dt, end_dt, dur, area):
+    buf = []
+    buf.append(area)
+    buf.append("_")
     if conf.getdur("dag", "unit_diff") == datetime.timedelta(days = 1):
-        l_header.append(top_dt.strftime("%Y%m%d"))
+        buf.append(top_dt.strftime("%Y%m%d"))
     else:
-        l_header.append(top_dt.strftime("%Y%m%d_%H%M%S"))
-    return "".join(l_header)
+        buf.append(top_dt.strftime("%Y%m%d_%H%M%S"))
+    return "".join(buf)
+
+
+def thread_name(conf, top_dt, end_dt, dur, area):
+    dn = conf.get("dag", "output_dir")
+    fn = filename(conf, top_dt, end_dt, dur, area)
+    return "/".join((fn, fn))
+
+    #l_header = []
+    #l_header.append(dirname)
+    #l_header.append("/")
+    #l_header.append(area)
+    #l_header.append("_")
+    #if conf.getdur("dag", "unit_diff") == datetime.timedelta(days = 1):
+    #    l_header.append(top_dt.strftime("%Y%m%d"))
+    #else:
+    #    l_header.append(top_dt.strftime("%Y%m%d_%H%M%S"))
+    #return "".join(l_header)
 
 
 def whole_term(conf, ld = None):
@@ -198,7 +205,14 @@ if __name__ == "__main__":
     if options.test:
         test_pc(l_args); sys.exit()
     elif options.make_event:
-        test_edict(l_args); sys.exit()
+        if len(args) < 1:
+            sys.exit("give me filename of statistical event output")
+        filename = args[0]
+        import pc_log
+        l_args = [list(args) + [filename] for args
+                in pc_log.pc_all_args(conf)]
+        log2event.agg_mprocess(l_args, filename, options.pal)
+        sys.exit()
 
     if options.pal == 1:
         pc_sthread(l_args)

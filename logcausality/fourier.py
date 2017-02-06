@@ -15,14 +15,17 @@ round_int = lambda x: int(x + 0.5)
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-def remove(conf, l_stat, binsize):
+def pretest(conf, l_stat, binsize):
+    """bool: Test that the data is enough long to judge as periodic data.
+    """
     if sum(l_stat) == 0:
-        return False, None
+        return False
     p_cnt = conf.getint("filter", "periodic_count")
     p_term = conf.getdur("filter", "periodic_term")
-    if not is_enough_long(l_stat, p_cnt, p_term, binsize):
-        return False, None
+    return is_enough_long(l_stat, p_cnt, p_term, binsize)
 
+
+def remove(conf, l_stat, binsize):
     th_spec = conf.getfloat("filter", "threshold_spec")
     th_std = conf.getfloat("filter", "threshold_eval")
     data = l_stat
@@ -34,13 +37,6 @@ def remove(conf, l_stat, binsize):
 
 
 def replace(conf, l_stat, binsize):
-    if sum(l_stat) == 0:
-        return False, None, None
-    p_cnt = conf.getint("filter", "periodic_count")
-    p_term = conf.getdur("filter", "periodic_term")
-    if not is_enough_long(l_stat, p_cnt, p_term, binsize):
-        return False, None, None
-
     th_spec = conf.getfloat("filter", "threshold_spec")
     th_std = conf.getfloat("filter", "threshold_eval")
     th_restore = conf.getfloat("filter", "threshold_restore")

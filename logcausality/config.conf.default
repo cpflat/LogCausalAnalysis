@@ -223,6 +223,9 @@ ci_func = gsq
 threshold = 0.01
 threshold_corr = 0.5
 
+# Event definition data
+event_dir = ev_output
+
 # Found DAG object data
 output_dir = pc_output
 
