@@ -343,8 +343,9 @@ def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):
             _logger.warning("Warning: no eid {0} in edict, ".format(eid) + \
                     "but tried to be filtered {0} {1}".format(
                         l_result, temp_edict.keys()))
-        temp_edict.pop(eid)
-        temp_evmap.pop(eid)
+        else:
+            temp_edict.pop(eid)
+            temp_evmap.pop(eid)
     return _remap_eid(temp_edict, temp_evmap)
 
 
