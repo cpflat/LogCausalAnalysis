@@ -339,6 +339,10 @@ def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):
     temp_edict = copy.deepcopy(edict)
     temp_evmap = _copy_evmap(evmap)
     for eid, interval in l_result:
+        if not eid in temp_edict.keys():
+            _logger.warning("Warning: no eid {0} in edict, ".format(eid) + \
+                    "but tried to be filtered {1} {2}".format(
+                        l_result, temp_edict.keys()))
         temp_edict.pop(eid)
         temp_evmap.pop(eid)
     return _remap_eid(temp_edict, temp_evmap)

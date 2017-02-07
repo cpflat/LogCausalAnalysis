@@ -258,7 +258,7 @@ cf_smooth = 5
 # periodic-whole : 'periodic' with the interval calculated with 'self-corr'
 
 # Action to apply for periodic events
-# [remove, replace, (to be added)]
+# [remove, replace, remove-corr, (to be added)]
 action = remove
 
 # Sampling term to calculate interval candidate in 'periodic-whole'
@@ -281,34 +281,17 @@ threshold_eval = 0.1
 threshold_restore = 0.5
 
 
-## Threshold value for filter 'periodic'
-#periodic_th = 0.5
-
-## Threshold value for self-correlation ('self-corr', 'periodic-whole')
-#self_corr_th = 0.5
-
-## Difference duration candidates to calculate self-correlation
-#self_corr_diff = 1h, 1d
-
-# Search candidates of stable periodic interval
-# (temporaly added to self_corr_diff)
-#search_interval = true
-
-# Bin size to discretize event appearance data in calculating self-correlation
-#self_corr_bin = 10s
-
-# Allowed error rate of periodic sequence extraction in event replacement
-#seq_error = 0.01
-
-# If true, allow duplication in separating periodic event sequences
-# in event replacement
-#seq_duplication = false
-
-# if filter.action = replace, add virtual event on the start of periodic appearance
-#replace_top = true
-
-# if filter.action = replace, add virtual event on the end of periodic appearance
-#replace_end = true
+# for remove-corr (outdated)
+periodic_th = 0.5
+self_corr_th = 0.5
+self_corr_diff = 1h, 1d
+search_interval = true
+self_corr_bin = 10s
+seq_error = 0.01
+seq_duplication = false
+replace_top = true
+replace_end = true
+sampling_term = 1w, 1d
 
 
 [visual]

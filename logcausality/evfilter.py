@@ -12,7 +12,6 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 def periodic_events(conf, ld, top_dt, end_dt, area, edict, evmap):
-
     l_sampling_term = [config.str2dur(diffstr) for diffstr
             in conf.gettuple("filter", "sampling_term")]
     if len(l_sampling_term) == 0:
