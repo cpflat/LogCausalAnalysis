@@ -341,7 +341,7 @@ def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):
     for eid, interval in l_result:
         if not eid in temp_edict.keys():
             _logger.warning("Warning: no eid {0} in edict, ".format(eid) + \
-                    "but tried to be filtered {1} {2}".format(
+                    "but tried to be filtered {0} {1}".format(
                         l_result, temp_edict.keys()))
         temp_edict.pop(eid)
         temp_evmap.pop(eid)
