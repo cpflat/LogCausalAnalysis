@@ -308,14 +308,16 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
     if usefilter:
         act = conf.get("filter", "action")
         if act == "remove":
-            edict, evmap = filter_edict_f(conf, edict, evmap,
-                    ld, top_dt, end_dt, area)
+            edict, evmap = filter_edict_remove(conf, edict, evmap,
+                    ld, top_dt, end_dt, area, alg = "fourier")
         elif act == "replace":
             edict, evmap = replace_edict(conf, edict, evmap,
                     ld, top_dt, end_dt, area)
         elif act == "remove-corr":
-            edict, evmap = filter_edict_corr(conf, edict, evmap,
-                    ld, top_dt, end_dt, area)
+            edict, evmap = filter_edict_remove(conf, edict, evmap,
+                    ld, top_dt, end_dt, area, alg = "corr")
+            #edict, evmap = filter_edict_corr(conf, edict, evmap,
+            #        ld, top_dt, end_dt, area)
         else:
             raise NotImplementedError
     return edict, evmap
@@ -332,24 +334,30 @@ def sample_edict(ld, evmap, end_dt, dt_length, area):
     return edict
 
 
-def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):
-    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
-            edict, evmap)
+#def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):
+#    l_result = evfilter.periodic_events(conf, ld, top_dt, end_dt, area,
+#            edict, evmap)
+#
+#    temp_edict = copy.deepcopy(edict)
+#    temp_evmap = _copy_evmap(evmap)
+#    for eid, interval in l_result:
+#        if not eid in temp_edict.keys():
+#            _logger.warning("Warning: no eid {0} in edict, ".format(eid) + \
+#                    "but tried to be filtered {0} {1}".format(
+#                        l_result, temp_edict.keys()))
+#        else:
+#            temp_edict.pop(eid)
+#            temp_evmap.pop(eid)
+#    return _remap_eid(temp_edict, temp_evmap)
 
-    temp_edict = copy.deepcopy(edict)
-    temp_evmap = _copy_evmap(evmap)
-    for eid, interval in l_result:
-        if not eid in temp_edict.keys():
-            _logger.warning("Warning: no eid {0} in edict, ".format(eid) + \
-                    "but tried to be filtered {0} {1}".format(
-                        l_result, temp_edict.keys()))
-        else:
-            temp_edict.pop(eid)
-            temp_evmap.pop(eid)
-    return _remap_eid(temp_edict, temp_evmap)
 
+def filter_edict_remove(conf, edict, evmap, ld, top_dt, end_dt, area, alg):
 
-def filter_edict_f(conf, edict, evmap, ld, top_dt, end_dt, area):
+    def is_removed(conf, l_stat, binsize, alg):
+        if alg == "fourier":
+            return fourier.remove(conf, l_stat, binsize)
+        elif alg == "corr":
+            return evfilter.remove_corr(conf, l_stat, binsize) 
 
     ret_edict = copy.deepcopy(edict)
     ret_evmap = _copy_evmap(evmap)
@@ -369,7 +377,8 @@ def filter_edict_f(conf, edict, evmap, ld, top_dt, end_dt, area):
                     not fourier.pretest(conf, l_stat, binsize):
                 pass
             else:
-                flag, interval = fourier.remove(conf, l_stat, binsize)
+                #flag, interval = fourier.remove(conf, l_stat, binsize)
+                flag, interval = is_removed(conf, l_stat, binsize, alg)
                 if flag:
                     _logger.info("eid {0} is periodic ({1}, {2})".format(
                             eid, dt_length, binsize))

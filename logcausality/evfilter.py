@@ -11,6 +11,23 @@ import dtutil
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
+def remove_corr(conf, l_stat, binsize):
+    corr_th = conf.getfloat("filter", "self_corr_th")
+    corr_diff = [config.str2dur(diffstr) for diffstr
+            in conf.gettuple("filter", "self_corr_diff")]
+
+    l_result = []
+    for diff in corr_diff:
+        c = self_corr(l_stat, diff, binsize)
+        l_result.append([c, diff])
+    max_c, max_diff = max(l_result, key = lambda x: x[0])
+
+    if max_c >= corr_th:
+        return True, max_diff
+    else:
+        return False, None
+
+
 def periodic_events(conf, ld, top_dt, end_dt, area, edict, evmap):
     l_sampling_term = [config.str2dur(diffstr) for diffstr
             in conf.gettuple("filter", "sampling_term")]
