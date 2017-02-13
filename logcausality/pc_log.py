@@ -77,7 +77,7 @@ def filename(conf, top_dt, end_dt, dur, area):
 def thread_name(conf, top_dt, end_dt, dur, area):
     dn = conf.get("dag", "output_dir")
     fn = filename(conf, top_dt, end_dt, dur, area)
-    return "/".join((fn, fn))
+    return "/".join((dn, fn))
 
     #l_header = []
     #l_header.append(dirname)
