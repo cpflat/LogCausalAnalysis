@@ -58,6 +58,7 @@ def pc_log(conf, top_dt, end_dt, dur, area):
 
     output = pcresult.PCOutput(conf)
     output.make(graph, evmap, top_dt, end_dt, dur, area)
+    output.dump()
 
     _logger.info("job done, output {0}".format(output.filename))
     return output
