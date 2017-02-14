@@ -634,6 +634,27 @@ def list_detailed_results(conf):
         print ",".join(row)
 
 
+def show_results_sum(conf, src_dir):
+    d = {}
+    for fp in common.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        dedges, udedges = r._separate_edges()
+        edge_num = number_of_edges(r.graph)
+        edge_oh = count_edges(r._edge_across_host())
+        d_edge = count_edges(dedges)
+        d_edge_oh = count_edges(r._edge_across_host(dedges))
+
+        d["edge"] = d.get("edge", 0) + edge_num
+        d["edge_oh"] = d.get("edge_oh", 0) + edge_oh
+        d["d_edge"] = d.get("d_edge", 0) + d_edge
+        d["d_edge_oh"] = d.get("d_edge_oh", 0) + d_edge_oh
+
+    print("number of edges                       : {0}".format(d["edge"]))
+    print("number of edges across hosts          : {0}".format(d["edge_oh"]))
+    print("number of directed edges              : {0}".format(d["d_edge"]))
+    print("number of directed edges across hosts : {0}".format(d["d_edge_oh"]))
+
+
 def list_netsize(conf):
     src_dir = conf.get("dag", "output_dir")
     for fp in common.rep_dir(src_dir):
@@ -787,10 +808,14 @@ args:
     elif mode == "show":
         if len(args) < 1:
             sys.exit("give me filename of pc result object")
-        result = PCOutput(conf).load(args[0])
-        show_result(conf, result, None, options.dflag, options.show_limit)
-        if options.graph_fn is not None:
-            result.show_graph(options.graph_fn, None, options.eflag)
+        filepath = args[0]
+        if os.path.isdir(filepath):
+            show_results_sum(conf, filepath)
+        else:
+            result = PCOutput(conf).load(args[0])
+            show_result(conf, result, None, options.dflag, options.show_limit)
+            if options.graph_fn is not None:
+                result.show_graph(options.graph_fn, None, options.eflag)
     elif mode == "common":
         if len(args) < 2:
             sys.exit("give me 2 filenames of pc result object")
