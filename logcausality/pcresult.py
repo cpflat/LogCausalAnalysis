@@ -609,7 +609,7 @@ def list_results(conf, src_dir):
     for r in results(conf, src_dir):
         edge_num = number_of_edges(r.graph)
         print "\t".join((str(r.top_dt), r.area,
-                str(len(r.graph.nodes())), str(edge_num), r.result_fn()))
+                str(len(r.evmap)), str(edge_num), r.result_fn()))
 
 
 def list_detailed_results(conf):
@@ -638,17 +638,20 @@ def show_results_sum(conf, src_dir):
     d = {}
     for fp in common.rep_dir(src_dir):
         r = PCOutput(conf).load(fp)
+        ev = len(r.evmap)
         dedges, udedges = r._separate_edges()
         edge_num = number_of_edges(r.graph)
         edge_oh = count_edges(r._edge_across_host())
         d_edge = count_edges(dedges)
         d_edge_oh = count_edges(r._edge_across_host(dedges))
 
+        d["event"] = d.get("event", 0) + ev
         d["edge"] = d.get("edge", 0) + edge_num
         d["edge_oh"] = d.get("edge_oh", 0) + edge_oh
         d["d_edge"] = d.get("d_edge", 0) + d_edge
         d["d_edge_oh"] = d.get("d_edge_oh", 0) + d_edge_oh
 
+    print("number of events (nodes)              : {0}".format(d["event"]))
     print("number of edges                       : {0}".format(d["edge"]))
     print("number of edges across hosts          : {0}".format(d["edge_oh"]))
     print("number of directed edges              : {0}".format(d["d_edge"]))
