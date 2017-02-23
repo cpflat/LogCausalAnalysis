@@ -219,6 +219,15 @@ stat_bin = 10s
 # [fisherz, fisherz_bin, gsq, gsq_rlib] is available
 ci_func = gsq
 
+# Method to estimate skeleton in PC algorithm
+# default : original-PC algorithm, fast but not accurate in sparse data
+# stable : stable-PC algorithm, result is order-independent of input data
+skeleton_method = default
+
+# Maximum depth of conditional independence
+# if -1, no limit is set
+skeleton_depth = -1
+
 # Threshold of p-value for conditional independence test
 threshold = 0.01
 threshold_corr = 0.5

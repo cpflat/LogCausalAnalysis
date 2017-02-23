@@ -8,13 +8,16 @@ import logging
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
-def pc(d_dt, threshold, mode = "pylib"):
-    if mode == "gsq_rlib":   
+def pc(d_dt, threshold, mode = "pylib",
+        skel_method = "default", pc_depth = None):
+    if mode == "gsq_rlib":
+        assert skel_method == "default"
+        # stable is not available now... (todo)
         graph = pc_rlib(d_dt, threshold)
     elif mode == "gsq":
-        graph = pc_gsq(d_dt, threshold)
+        graph = pc_gsq(d_dt, threshold, skel_method, pc_depth)
     elif mode in ("fisherz", "fisherz_bin"):
-        graph = pc_fisherz(d_dt, threshold)
+        graph = pc_fisherz(d_dt, threshold, skel_method, pc_depth)
     else:
         raise ValueError("ci_func invalid ({0})".format(mode))
     #print graph.edges()
@@ -31,28 +34,36 @@ def input_binarize(ci_func):
         return True
 
 
-def pc_gsq(d_dt, threshold):
+def pc_gsq(d_dt, threshold, skel_method, pc_depth = None):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
     dm = np.array([data for nid, data in sorted(d_dt.iteritems())]).transpose()
-    (g, sep_set) = pcalg.estimate_skeleton(indep_test_func=ci_test_bin,
-                                     data_matrix=dm,
-                                     alpha=threshold)
+    args = {"indep_test_func": ci_test_bin,
+            "data_matrix": dm,
+            "alpha": threshold,
+            "method": skel_method}
+    if pc_depth is not None and pc_depth >= 0:
+        args["max_reach"] = pc_depth
+    (g, sep_set) = pcalg.estimate_skeleton(**args)
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
     return g
 
 
-def pc_fisherz(d_dt, threshold):
+def pc_fisherz(d_dt, threshold, skel_method, pc_depth = 0):
     import pcalg
     from ci_test.ci_tests import ci_test_gauss
 
     dm = np.array([data for nid, data in sorted(d_dt.iteritems())]).transpose()
     cm = np.corrcoef(dm.T)
-    (g, sep_set) = pcalg.estimate_skeleton(indep_test_func=ci_test_gauss,
-                                     data_matrix=dm,
-                                     alpha=threshold,
-                                     corr_matrix = cm)
+    args = {"indep_test_func": ci_test_gauss,
+            "data_matrix": dm,
+            "corr_matrix": cm,
+            "alpha": threshold,
+            "method": skel_method}
+    if pc_depth is not None and pc_depth >= 0:
+        args["max_reach"] = pc_depth
+    (g, sep_set) = pcalg.estimate_skeleton(**args)
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
     return g
 
