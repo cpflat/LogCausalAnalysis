@@ -16,7 +16,7 @@ def connect(conf, fn):
     for args in l_args:
         top_dt = args[1]
         area = args[4]
-        edict, evmap = logevent.get_edict(*args)
+        edict, evmap = log2event.get_edict(*args)
         for eid in evmap.iter_eid():
             evdef = evmap.info(eid)
             d_ret[evdef].append(edict[eid])
