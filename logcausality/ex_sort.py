@@ -6,7 +6,10 @@ def ex_sorted(iterable, cmp = None, key = None, reverse = False, none = True):
     """
     Args:
         obj (iterable): a list to be sorted
-        key (function)
+        key (function): key function to compare the component in iterable.
+                        unlike sorted, key can return None in this function.
+                        key(e) = None will be placed in the latter part
+                        if none is True
         reverse (bool)
         none_large (bool): 
 
