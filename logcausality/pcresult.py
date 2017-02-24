@@ -24,7 +24,7 @@ class PCOutput():
         self.conf = conf
         self.ld = None
         self.ll = None
-    
+
     def make(self, graph, evmap, top_dt, end_dt, dur, area):
 
         self.dirname = self.conf.get("dag", "output_dir")

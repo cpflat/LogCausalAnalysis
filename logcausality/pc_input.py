@@ -11,9 +11,7 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 def pc(d_dt, threshold, mode = "pylib",
         skel_method = "default", pc_depth = None):
     if mode == "gsq_rlib":
-        assert skel_method == "default"
-        # stable is not available now... (todo)
-        graph = pc_rlib(d_dt, threshold)
+        graph = pc_rlib(d_dt, threshold, skel_method)
     elif mode == "gsq":
         graph = pc_gsq(d_dt, threshold, skel_method, pc_depth)
     elif mode in ("fisherz", "fisherz_bin"):
@@ -67,9 +65,14 @@ def pc_fisherz(d_dt, threshold, skel_method, pc_depth = 0):
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
     return g
 
-def pc_rlib(d_dt, threshold):
+def pc_rlib(d_dt, threshold, skel_method):
     import pandas
     import pyper
+
+    if skel_method == "default":
+        method = "original"
+    else:
+        method = skel_method
 
     input_data = d_dt
     #input_data = {}
@@ -82,6 +85,7 @@ def pc_rlib(d_dt, threshold):
 
     df = pandas.DataFrame(input_data)
     r.assign("input.df", df)
+    r.assign("method", method)
     r("evts = as.matrix(input.df)")
     #print r("evts")
     #r("t(evts)")
@@ -93,7 +97,7 @@ def pc_rlib(d_dt, threshold):
 
     r("""
         pc.result <- pc(suffStat = list(dm = evts, adaptDF = FALSE),
-            indepTest = binCItest, alpha = threshold,
+            indepTest = binCItest, alpha = threshold, skel.method = method,
             labels = as.character(seq(event.num)-1), verbose = FALSE)
     """)
     #print r("""
