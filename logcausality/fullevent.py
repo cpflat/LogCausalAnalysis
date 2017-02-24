@@ -5,8 +5,7 @@ import sys
 import cPickle as pickle
 from collections import defaultdict
 
-#import logcausality.pc_log as pc_log
-#import logcausality.log2event as log2event
+import config
 import pc_log
 import log2event
 
