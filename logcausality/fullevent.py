@@ -19,7 +19,7 @@ def connect(conf, fn):
         edict, evmap = log2event.get_edict(*args)
         for eid in evmap.iter_eid():
             evdef = evmap.info(eid)
-            d_ret[evdef].append(edict[eid])
+            d_ret[evdef] += edict[eid]
 
     for evdef, l_dt in d_ret.iteritems():
         print("{0} : {1} counts".format(evdef, len(l_dt)))
