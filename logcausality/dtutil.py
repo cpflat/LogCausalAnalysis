@@ -44,7 +44,7 @@ def discretize(l_dt, l_label = None, binarize = False):
         new_dt = l_dt_temp.pop(0)
     else:
         _logger.warning("l_dt is empty")
-        return []
+        return None
 
     # remove data before label term
     while new_dt < l_label[0]:

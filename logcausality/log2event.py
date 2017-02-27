@@ -90,6 +90,15 @@ class EventDefinitionMap():
         else:
             return eid
 
+    def _line2evdef(line):
+        gid = line.get(self.gid_name)
+        d = {"type" : self.type_normal,
+             "note" : None,
+             "gid" : gid,
+             "host" : line.host}
+        evdef = EvDef(**d)
+        return evdef
+
     def generate(self, ld, top_dt = None, end_dt = None):
         l = len(self)
         if self.gid_name == "ltid":
@@ -114,13 +123,7 @@ class EventDefinitionMap():
         return len(self) - l
 
     def process_line(self, line):
-        gid = line.get(self.gid_name)
-        d = {"type" : self.type_normal,
-             "note" : None,
-             "gid" : gid,
-             "host" : line.host}
-        evdef = EvDef(**d)
-
+        evdef = self._line2evdef(line)
         if self._ermap.has_key(evdef):
             return self._ermap[evdef]
         else:
@@ -128,6 +131,13 @@ class EventDefinitionMap():
             self._emap[eid] = evdef
             self._ermap[evdef] = eid
             return eid
+
+    def existing_line(self, line):
+        evdef = self._line2evdef(line)
+        if self._ermap.has_key(evdef):
+            return self._ermap[evdef]
+        else:
+            return None
 
     def add_virtual_event(self, info, type_id, note):
         d = {"type" : type_id,
@@ -323,14 +333,28 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
     return edict, evmap
 
 
-def sample_edict(ld, evmap, end_dt, dt_length, area):
+#def sample_edict(ld, evmap, end_dt, dt_length, area):
+#    top_dt = end_dt - dt_length
+#    iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
+#    
+#    edict = {}
+#    for line in iterobj:
+#        eid = evmap.process_line(line)
+#        edict.setdefault(eid, []).append(line.dt)
+#    return edict
+
+
+def resize_edict(ld, evmap, end_dt, dt_length, area):
     top_dt = end_dt - dt_length
     iterobj = ld.iter_lines(top_dt = top_dt, end_dt = end_dt, area = area)
-    
+
     edict = {}
     for line in iterobj:
-        eid = evmap.process_line(line)
-        edict.setdefault(eid, []).append(line.dt)
+        eid = evmap.existing_line(line)
+        if eid is None:
+            pass
+        else:
+            edict.setdefault(eid, []).append(line.dt)
     return edict
 
 
@@ -368,7 +392,7 @@ def filter_edict_remove(conf, edict, evmap, ld, top_dt, end_dt, area, alg):
         if dt_length == top_dt - end_dt:
             temp_edict = edict
         else:
-            temp_edict = sample_edict(ld, evmap, end_dt, dt_length, area)
+            temp_edict = resize_edict(ld, evmap, end_dt, dt_length, area)
         d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
                 binarize = False)
         for eid, l_stat in d_stat.iteritems():
@@ -412,7 +436,8 @@ def replace_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
         if dt_length == top_dt - end_dt:
             temp_edict = edict
         else:
-            temp_edict = sample_edict(ld, evmap, end_dt, dt_length, area)
+            temp_edict = resize_edict(ld, evmap, end_dt, dt_length, area)
+            #temp_edict = sample_edict(ld, evmap, end_dt, dt_length, area)
         d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
                 binarize = False)
         for eid, l_stat in d_stat.iteritems():
@@ -562,7 +587,12 @@ def event2stat(edict, top_dt, end_dt, dur, binarize = True):
     l_label = dtutil.label(top_dt, end_dt, dur)
 
     for eid, l_ev in edict.iteritems():
-        d_stat[eid] = dtutil.discretize(l_ev, l_label, binarize)
+        val = dtutil.discretize(l_ev, l_label, binarize)
+        if val is None:
+            _logger.warning("empty event {0} given".format(eid))
+            pass
+        else:
+            d_stat[eid] = val
     return d_stat
 
 
