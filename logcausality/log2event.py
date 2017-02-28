@@ -90,7 +90,7 @@ class EventDefinitionMap():
         else:
             return eid
 
-    def _line2evdef(line):
+    def _line2evdef(self, line):
         gid = line.get(self.gid_name)
         d = {"type" : self.type_normal,
              "note" : None,
