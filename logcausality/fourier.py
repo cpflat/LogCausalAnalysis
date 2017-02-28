@@ -28,7 +28,7 @@ def pretest(conf, l_stat, binsize):
 def remove(conf, l_stat, binsize):
     th_spec = conf.getfloat("filter", "threshold_spec")
     th_std = conf.getfloat("filter", "threshold_eval")
-    data = l_stat
+    data = np.array(l_stat)
     #data = l_stat[-power2(len(l_stat)):]
     fdata = scipy.fftpack.fft(data)
     flag, interval = is_periodic(data, fdata, binsize, th_spec, th_std)
@@ -42,7 +42,7 @@ def replace(conf, l_stat, binsize):
     th_restore = conf.getfloat("filter", "threshold_restore")
 
     #data = l_stat[-power2(len(l_stat)):]
-    data = l_stat
+    data = np.array(l_stat)
     fdata = scipy.fftpack.fft(data)
     flag, interval = is_periodic(data, fdata, binsize, th_spec, th_std)
     if flag:
@@ -85,44 +85,56 @@ def is_periodic(data, fdata, binsize, th_spec, th_std):
 
 
 def part_filtered(data, fdata, binsize, th_spec):
-    sf_filtered = set()
     dt = binsize.total_seconds()
-    
     a_label = scipy.fftpack.fftfreq(len(data), d = dt)
     a_spec = np.abs(fdata)
     max_spec = max(a_spec)
-    sf_filtered = {freq for freq, spec in zip(a_label, a_spec)
-            if spec > th_spec * max_spec}
-
-    fdata_filtered = np.array([])
-    for freq, fcond in zip(a_label, fdata): 
-        if freq in sf_filtered:
-            fdata_filtered = np.append(fdata_filtered, fcond)
-        else:
-            fdata_filtered = np.append(fdata_filtered, np.complex(0))
-    data_filtered = np.real(scipy.fftpack.ifft(fdata_filtered))
+    
+    fdata[a_spec > th_spec * max_spec] = np.complex(0)
+    data_filtered = np.real(scipy.fftpack.ifft(fdata))
     return data_filtered
+
+    #sf_filtered = set()
+    #sf_filtered = {freq for freq, spec in zip(a_label, a_spec)
+    #        if spec > th_spec * max_spec}
+
+    #fdata_filtered = np.array([])
+    #for freq, fcond in zip(a_label, fdata): 
+    #    if freq in sf_filtered:
+    #        fdata_filtered = np.append(fdata_filtered, fcond)
+    #    else:
+    #        fdata_filtered = np.append(fdata_filtered, np.complex(0))
+    #data_filtered = np.real(scipy.fftpack.ifft(fdata_filtered))
+    #return data_filtered
 
 
 def restore_data(data, data_filtered, th_restore):
-    threshold_restore = th_restore * max(data_filtered)
+    thval = th_restore * max(data_filtered)
 
-    l_ind = []
-    for ind, (d1, d2) in enumerate(zip(data, data_filtered)):
-        if d1 == 0:
-            pass
-        elif d2 >= threshold_restore:
-            l_ind.append(ind)
-        else:
-            pass
-    # original values on places of periodic appearance
-    l_val = np.array(data)[l_ind]
-
-    periodic_cnt = np.median(l_val)
-    data_periodic = np.array([0] * len(data))
-    data_periodic[l_ind] = periodic_cnt
+    periodic_time = (data > 0) & (data_filtered >= thval) # bool
+    periodic_cnt = np.median(data[periodic_time])
+    data_periodic = np.zeros(len(data))
+    data_periodic[periodic_time] = periodic_cnt
     data_remain = data - data_periodic
+
     return data_remain
+
+    #l_ind = []
+    #for ind, (d1, d2) in enumerate(zip(data, data_filtered)):
+    #    if d1 == 0:
+    #        pass
+    #    elif d2 >= threshold_restore:
+    #        l_ind.append(ind)
+    #    else:
+    #        pass
+    ## original values on places of periodic appearance
+    #l_val = np.array(data)[l_ind]
+
+    #periodic_cnt = np.median(l_val)
+    #data_periodic = np.array([0] * len(data))
+    #data_periodic[l_ind] = periodic_cnt
+    #data_remain = data - data_periodic
+    #return data_remain
 
 
 def is_enough_long(l_stat, p_cnt, p_term, binsize):
