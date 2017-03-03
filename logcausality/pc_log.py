@@ -52,7 +52,7 @@ def pc_log(conf, top_dt, end_dt, dur, area):
         data = log2event.event2stat(edict, top_dt, end_dt, dur, binarize)
         skel_method = conf.get("dag", "skeleton_method")
         pc_depth = conf.getint("dag", "skeleton_depth")
-        skel_verbose = conf.getbool("dag", "skeleton_verbose")
+        skel_verbose = conf.getboolean("dag", "skeleton_verbose")
         graph = pc_input.pc(data, threshold, ci_func, skel_method, pc_depth)
     else:
         _logger.info("insufficient events({0}), return empty dag".format(\
