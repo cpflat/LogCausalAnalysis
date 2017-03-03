@@ -86,7 +86,6 @@ def pc_rlib(d_dt, threshold, skel_method, verbose):
     df = pandas.DataFrame(input_data)
     r.assign("input.df", df)
     r.assign("method", method)
-    r.assign("verbose.flag", verbose)
     r("evts = as.matrix(input.df)")
     #print r("evts")
     #r("t(evts)")
@@ -95,8 +94,9 @@ def pc_rlib(d_dt, threshold, skel_method, verbose):
 
     r.assign("event.num", len(input_data))
     r.assign("threshold", threshold)
+    r.assign("verbose.flag", verbose)
 
-    r("""
+    print r("""
         pc.result <- pc(suffStat = list(dm = evts, adaptDF = FALSE),
             indepTest = binCItest, alpha = threshold, skel.method = method,
             labels = as.character(seq(event.num)-1), verbose = verbose.flag)
