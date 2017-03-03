@@ -40,7 +40,8 @@ def pc_gsq(d_dt, threshold, skel_method, pc_depth = None, verbose = False):
     args = {"indep_test_func": ci_test_bin,
             "data_matrix": dm,
             "alpha": threshold,
-            "method": skel_method}
+            "method": skel_method,
+            "verbose": verbose}
     if pc_depth is not None and pc_depth >= 0:
         args["max_reach"] = pc_depth
     (g, sep_set) = pcalg.estimate_skeleton(**args)
@@ -58,7 +59,8 @@ def pc_fisherz(d_dt, threshold, skel_method, pc_depth = None, verbose = False):
             "data_matrix": dm,
             "corr_matrix": cm,
             "alpha": threshold,
-            "method": skel_method}
+            "method": skel_method,
+            "verbose": verbose}
     if pc_depth is not None and pc_depth >= 0:
         args["max_reach"] = pc_depth
     (g, sep_set) = pcalg.estimate_skeleton(**args)
