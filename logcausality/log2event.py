@@ -405,7 +405,7 @@ def filter_edict_remove(conf, edict, evmap, ld, top_dt, end_dt, area, alg):
                 flag, interval = is_removed(conf, l_stat, binsize, alg)
                 if flag:
                     _logger.info("eid {0} is periodic ({1}, {2})".format(
-                            eid, dt_length, binsize))
+                            eid, interval, binsize))
                     s_eid_periodic.add(eid)
 
     for eid in s_eid_periodic:
