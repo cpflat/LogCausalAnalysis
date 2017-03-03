@@ -9,13 +9,13 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 def pc(d_dt, threshold, mode = "pylib",
-        skel_method = "default", pc_depth = None):
+        skel_method = "default", pc_depth = None, verbose = False):
     if mode == "gsq_rlib":
-        graph = pc_rlib(d_dt, threshold, skel_method)
+        graph = pc_rlib(d_dt, threshold, skel_method, verbose)
     elif mode == "gsq":
-        graph = pc_gsq(d_dt, threshold, skel_method, pc_depth)
+        graph = pc_gsq(d_dt, threshold, skel_method, pc_depth, verbose)
     elif mode in ("fisherz", "fisherz_bin"):
-        graph = pc_fisherz(d_dt, threshold, skel_method, pc_depth)
+        graph = pc_fisherz(d_dt, threshold, skel_method, pc_depth, verbose)
     else:
         raise ValueError("ci_func invalid ({0})".format(mode))
     #print graph.edges()
@@ -32,7 +32,7 @@ def input_binarize(ci_func):
         return True
 
 
-def pc_gsq(d_dt, threshold, skel_method, pc_depth = None):
+def pc_gsq(d_dt, threshold, skel_method, pc_depth = None, verbose = False):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
@@ -48,7 +48,7 @@ def pc_gsq(d_dt, threshold, skel_method, pc_depth = None):
     return g
 
 
-def pc_fisherz(d_dt, threshold, skel_method, pc_depth = 0):
+def pc_fisherz(d_dt, threshold, skel_method, pc_depth = None, verbose = False):
     import pcalg
     from ci_test.ci_tests import ci_test_gauss
 
@@ -65,7 +65,7 @@ def pc_fisherz(d_dt, threshold, skel_method, pc_depth = 0):
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
     return g
 
-def pc_rlib(d_dt, threshold, skel_method):
+def pc_rlib(d_dt, threshold, skel_method, verbose):
     import pandas
     import pyper
 
@@ -86,6 +86,7 @@ def pc_rlib(d_dt, threshold, skel_method):
     df = pandas.DataFrame(input_data)
     r.assign("input.df", df)
     r.assign("method", method)
+    r.assign("verbose.flag", verbose)
     r("evts = as.matrix(input.df)")
     #print r("evts")
     #r("t(evts)")
@@ -98,7 +99,7 @@ def pc_rlib(d_dt, threshold, skel_method):
     r("""
         pc.result <- pc(suffStat = list(dm = evts, adaptDF = FALSE),
             indepTest = binCItest, alpha = threshold, skel.method = method,
-            labels = as.character(seq(event.num)-1), verbose = FALSE)
+            labels = as.character(seq(event.num)-1), verbose = verbose.flag)
     """)
     #print r("""
     #    pc.result <- pc(suffStat = list(dm = evts, adaptDF = FALSE),

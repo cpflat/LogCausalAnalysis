@@ -219,6 +219,9 @@ stat_bin = 10s
 # [fisherz, fisherz_bin, gsq, gsq_rlib] is available
 ci_func = gsq
 
+# for debugging
+skeleton_verbose = false
+
 # Method to estimate skeleton in PC algorithm
 # default : original-PC algorithm, fast but not accurate in sparse data
 # stable : stable-PC algorithm, result is order-independent of input data
