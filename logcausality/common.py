@@ -32,6 +32,13 @@ class singleton(object):
 
 
 class SequenceKeyDict(UserDict):
+    """
+    A dictionary object that requires keys of sequencial data.
+    The given key is automatically translated as tuple,
+    with its components sorted.
+    Here, the order of sequence component is ignored.
+
+    """
 
     def _key(self, key):
         return tuple(sorted(list(key)))

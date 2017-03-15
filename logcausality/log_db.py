@@ -835,7 +835,8 @@ def _iter_line_from_files(targets):
                     yield line
 
 
-def process_line(msg, ld, lp, ha, isnew_check = False, latest = None):
+def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
+            drop_undefhost = False):
     """Add a log message to DB.
     
     Args:
@@ -860,7 +861,8 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None):
     host = ha.resolve_host(org_host)
     #if host is None: host = org_host
     if host is None:
-        if conf.getboolean("database", "undefined_host"):
+        #if conf.getboolean("database", "undefined_host"):
+        if drop_undefhost:
             ld.ltm.failure_output(msg)
             return None
         else:
@@ -896,9 +898,10 @@ def process_files(conf, targets, reset_db, isnew_check = False):
     lp = logparser.LogParser(conf)
     ha = host_alias.HostAlias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
+    drop_undefhost = conf.getboolean("database", "undefined_host")
 
     for line in _iter_line_from_files(targets):
-        process_line(line, ld, lp, ha, isnew_check, latest)
+        process_line(line, ld, lp, ha, isnew_check, latest, drop_undefhost)
 
     ld.commit_db()
 
@@ -925,6 +928,7 @@ def process_init_data(conf, targets, isnew_check = False):
     lp = logparser.LogParser(conf)
     ha = host_alias.HostAlias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
+    drop_undefhost = conf.getboolean("database", "undefined_host")
 
     l_line = []
     l_data = []
@@ -935,7 +939,7 @@ def process_init_data(conf, targets, isnew_check = False):
         l_w = [strutil.add_esc(w) for w in l_w]
         host = ha.resolve_host(org_host)
         if host is None:
-            if conf.getboolean("database", "undefined_host"):
+            if drop_undefhost:
                 ld.ltm.failure_output(msg)
                 return None
             else:
