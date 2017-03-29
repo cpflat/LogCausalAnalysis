@@ -292,6 +292,11 @@ threshold_spec = 0.4
 threshold_eval = 0.1
 threshold_restore = 0.5
 
+# threshold for continuous distribution dt filter
+count_linear = 100
+binsize_linear = 10s
+threshold_linear = 100.0
+
 
 # for remove-corr (outdated)
 #periodic_th = 0.5

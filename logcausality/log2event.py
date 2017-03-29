@@ -328,6 +328,11 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
                     ld, top_dt, end_dt, area, alg = "corr")
             #edict, evmap = filter_edict_corr(conf, edict, evmap,
             #        ld, top_dt, end_dt, area)
+        elif act == "replace+linear":
+            edict, evmap = filter_linear(conf, edict, evmap, 
+                    ld, top_dt, end_dt, area)
+            edict, evmap = filter_edict_remove(conf, edict, evmap,
+                    ld, top_dt, end_dt, area, alg = "corr")
         else:
             raise NotImplementedError
     return edict, evmap
@@ -356,6 +361,25 @@ def resize_edict(ld, evmap, end_dt, dt_length, area):
         else:
             edict.setdefault(eid, []).append(line.dt)
     return edict
+
+
+def filter_linear(conf, edict, evmap, ld, top_dt, end_dt, area):
+    ret_edict = copy.deepcopy(edict)
+    ret_evmap = _copy_evmap(evmap)
+    binsize = conf.getdur("filter", "binsize_linear")
+    threshold = conf.getfloat("filter", "threshold_linear")
+    cnt = conf.getint("filter", "count_linear")
+
+    for eid, l_dt in edict.iteritems():
+        if len(l_dt) < cnt:
+            continue
+        ret = evfilter.remove_dist(l_dt, top_dt, end_dt, binsize, threshold)
+        _logger.info("Event {0} removed with filter linear".format(
+                evmap.info_str(eid)))
+        if not ret:
+            ret_edict.pop(eid)
+            ret_evmap.pop(eid)
+    return ret_edict, ret_evmap
 
 
 #def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):
@@ -396,7 +420,8 @@ def filter_edict_remove(conf, edict, evmap, ld, top_dt, end_dt, area, alg):
         d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
                 binarize = False)
         for eid, l_stat in d_stat.iteritems():
-            _logger.info("periodicity test for eid {0}".format(eid))
+            _logger.info("periodicity test for eid {0} {1}".format(eid,
+                    evmap.info_str(eid)))
             if eid in s_eid_periodic or\
                     not fourier.pretest(conf, l_stat, binsize):
                 pass
@@ -687,4 +712,9 @@ if __name__ == "__main__":
         agg_mprocess(l_args, filename, options.pal)
     elif mode == "test":
         test_log2event(conf)
+
+
+
+
+
 

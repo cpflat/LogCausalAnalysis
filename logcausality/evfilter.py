@@ -3,12 +3,30 @@
 
 import datetime
 import logging
+import math
 import numpy as np
 
 import config
 import dtutil
 
 _logger = logging.getLogger(__name__.rpartition(".")[-1])
+
+
+def remove_dist(l_dt, top_dt, end_dt, binsize, threshold):
+    length = (end_dt - top_dt).total_seconds()
+    bin_length = binsize.total_seconds()
+    bins = math.ceil(1.0 * length / bin_length)
+    a_stat = np.array([0] * int(bins))
+    for dt in l_dt:
+        cnt = int((dt - top_dt).total_seconds() / bin_length)
+        assert cnt < len(a_stat)
+        a_stat[cnt:] += 1
+
+    a_linear = (np.array(range(int(bins))) + 1) * (1.0 * len(l_dt) / bins)
+    val = sum((a_stat - a_linear) ** 2) / bins
+
+    _logger.info("Linear filter evaluation value {0}".format(val))
+    return val < threshold
 
 
 def remove_corr(conf, l_stat, binsize):
