@@ -13,6 +13,8 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 
 def remove_dist(l_dt, top_dt, end_dt, binsize, threshold):
+    assert isinstance(threshold, float)
+
     length = (end_dt - top_dt).total_seconds()
     bin_length = binsize.total_seconds()
     bins = math.ceil(1.0 * length / bin_length)

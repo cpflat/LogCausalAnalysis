@@ -374,9 +374,9 @@ def filter_linear(conf, edict, evmap, ld, top_dt, end_dt, area):
         if len(l_dt) < cnt:
             continue
         ret = evfilter.remove_dist(l_dt, top_dt, end_dt, binsize, threshold)
-        _logger.info("Event {0} removed with filter linear".format(
-                evmap.info_str(eid)))
         if not ret:
+            _logger.info("Event {0} removed with filter linear".format(
+                    evmap.info_str(eid)))
             ret_edict.pop(eid)
             ret_evmap.pop(eid)
     return ret_edict, ret_evmap
