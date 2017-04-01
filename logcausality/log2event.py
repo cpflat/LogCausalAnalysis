@@ -307,6 +307,13 @@ def load_edict(filepath):
     return edict, evmap
 
 
+def load_edict_dir(conf):
+    """Yields (edict, evmap)"""
+    dirname = conf.get("dag", "event_dir")
+    for fp in common.rep_dir(dirname):
+        yield load_edict(fp)
+
+
 def edict_filepath(conf, top_dt, end_dt, dur, area):
     dirname = conf.get("dag", "event_dir")
     filename = pc_log.filename(conf, top_dt, end_dt, dur, area)
@@ -328,11 +335,20 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
                     ld, top_dt, end_dt, area, alg = "corr")
             #edict, evmap = filter_edict_corr(conf, edict, evmap,
             #        ld, top_dt, end_dt, area)
-        elif act == "replace+linear":
+        elif act == "remove+linear":
+            # linear
             edict, evmap = filter_linear(conf, edict, evmap, 
                     ld, top_dt, end_dt, area)
+            # remove
             edict, evmap = filter_edict_remove(conf, edict, evmap,
-                    ld, top_dt, end_dt, area, alg = "corr")
+                    ld, top_dt, end_dt, area, alg = "fourier")
+        elif act == "replace+linear":
+            # linear
+            edict, evmap = filter_linear(conf, edict, evmap, 
+                    ld, top_dt, end_dt, area)
+            # replace
+            edict, evmap = replace_edict(conf, edict, evmap,
+                    ld, top_dt, end_dt, area)
         else:
             raise NotImplementedError
     return edict, evmap
