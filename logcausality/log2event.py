@@ -158,6 +158,9 @@ class EventDefinitionMap():
              "host" : info.host}
         evdef = EvDef(**d)
 
+        old_evdef = self._emap[eid]
+        self._ermap.pop(old_evdef)
+
         self._emap[eid] = evdef
         self._ermap[evdef] = eid
         return eid
