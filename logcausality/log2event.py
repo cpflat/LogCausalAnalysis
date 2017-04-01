@@ -339,18 +339,18 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
             #edict, evmap = filter_edict_corr(conf, edict, evmap,
             #        ld, top_dt, end_dt, area)
         elif act == "remove+linear":
-            # linear
-            edict, evmap = filter_linear(conf, edict, evmap, 
-                    ld, top_dt, end_dt, area)
             # remove
             edict, evmap = filter_edict_remove(conf, edict, evmap,
                     ld, top_dt, end_dt, area, alg = "fourier")
-        elif act == "replace+linear":
             # linear
             edict, evmap = filter_linear(conf, edict, evmap, 
                     ld, top_dt, end_dt, area)
+        elif act == "replace+linear":
             # replace
             edict, evmap = replace_edict(conf, edict, evmap,
+                    ld, top_dt, end_dt, area)
+            # linear
+            edict, evmap = filter_linear(conf, edict, evmap, 
                     ld, top_dt, end_dt, area)
         else:
             raise NotImplementedError
@@ -398,7 +398,7 @@ def filter_linear(conf, edict, evmap, ld, top_dt, end_dt, area):
                     evmap.info_str(eid)))
             ret_edict.pop(eid)
             ret_evmap.pop(eid)
-    return ret_edict, ret_evmap
+    return _remap_eid(ret_edict, ret_evmap)
 
 
 #def filter_edict_corr(conf, edict, evmap, ld, top_dt, end_dt, area):

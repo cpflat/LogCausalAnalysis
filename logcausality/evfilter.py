@@ -24,8 +24,9 @@ def remove_dist(l_dt, top_dt, end_dt, binsize, threshold):
         assert cnt < len(a_stat)
         a_stat[cnt:] += 1
 
+    import sys
     a_linear = (np.array(range(int(bins))) + 1) * (1.0 * len(l_dt) / bins)
-    val = sum((a_stat - a_linear) ** 2) / bins
+    val = sum((a_stat - a_linear) ** 2) / (bins * len(l_dt))
 
     _logger.info("Linear filter evaluation value {0}".format(val))
     return val < threshold
