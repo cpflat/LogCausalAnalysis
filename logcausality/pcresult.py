@@ -572,6 +572,14 @@ def graph_network(graph):
     return ret
 
 
+def graph_clustering_coefficient(graph):
+    return nx.average_clustering(graph)
+
+
+def graph_maximum_clique(graph):
+    return nx.graph_clique_number(graph)
+
+
 # function for results
 
 def results(conf, src_dir = None):
@@ -684,6 +692,24 @@ def whole_netsize(conf):
             d_size[len(net)] = d_size.get(len(net), 0) + 1
     for size, cnt in d_size.items():
         print size, cnt
+
+
+def list_clustering_coefficient(conf):
+    src_dir = conf.get("dag", "output_dir")
+    for fp in common.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        g = r.graph.to_undirected()
+        ret = graph_clustering_coefficient(g)
+        print ret, r.filename
+
+
+def list_maximum_clique(conf):
+    src_dir = conf.get("dag", "output_dir")
+    for fp in common.rep_dir(src_dir):
+        r = PCOutput(conf).load(fp)
+        g = r.graph.to_undirected()
+        ret = graph_maximum_clique(g)
+        print ret, r.filename
 
 
 def show_result(conf, result, graph, dflag, limit):
@@ -804,10 +830,14 @@ args:
         list_results(conf, src_dir)
     elif mode == "show-all-detail":
         list_detailed_results(conf)
-    elif mode == "all-netsize":
+    elif mode == "list-netsize":
         list_netsize(conf)
     elif mode == "whole-netsize":
         whole_netsize(conf)
+    elif mode == "list-cluster-coef":
+        list_clustering_coefficient(conf)
+    elif mode == "list-max-clique":
+        list_maximum_clique(conf)
     elif mode == "show":
         if len(args) < 1:
             sys.exit("give me filename of pc result object")
