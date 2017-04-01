@@ -336,8 +336,9 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
         elif act == "remove-corr":
             edict, evmap = filter_edict_remove(conf, edict, evmap,
                     ld, top_dt, end_dt, area, alg = "corr")
-            #edict, evmap = filter_edict_corr(conf, edict, evmap,
-            #        ld, top_dt, end_dt, area)
+        elif act == "linear":
+            edict, evmap = filter_linear(conf, edict, evmap, 
+                    ld, top_dt, end_dt, area)
         elif act == "remove+linear":
             # remove
             edict, evmap = filter_edict_remove(conf, edict, evmap,
