@@ -47,7 +47,8 @@ def diff_event(conf1, conf2):
     for evdef, cnt in sorted(d_diff.iteritems(), key = lambda x: x[1],
             reverse = True):
         print cnt, evdef
-        evmap1.info_repr(ld, evmap1.get_eid(evdef))
+        ld.show_ltgroup(evdef.gid)
+        #evmap1.info_repr(ld, evmap1.get_eid(evdef))
         print
 
 

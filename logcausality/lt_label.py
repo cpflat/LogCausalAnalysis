@@ -124,6 +124,10 @@ class LTLabel():
         else:
             return None
 
+    def get_lt_group(self, ltline):
+        label = self.get_lt_label(ltline)
+        return self.d_rgroup[label]
+
     def get_ltg_label(self, ltgid, l_ltline):
         d_score = {} # key : ruleid, value : score
         for ltline in l_ltline:
@@ -148,11 +152,25 @@ class LTLabel():
         else:
             return None
 
+    def get_ltg_group(self, ltgid, l_ltline):
+        label = self.get_ltg_label(ltgid, l_ltline)
+        return self.d_rgroup[label]
+
+    def get_group(self, label):
+        return self.d_rgroup[label]
+
+
+def init_ltlabel(conf):
+    ltconf_path = conf.get("visual", "ltlabel")
+    if ltconf_path == "":
+        ltconf_path = DEFAULT_LABEL_CONF
+    return LTLabel(ltconf_path)
+
 
 def test_ltlabel(conf):
 
-    def output(ld, ltgid, label):
-        return " ".join((label, ld.show_ltgroup(ltgid)))
+    def output(ld, ltgid, label, group):
+        return " ".join((group, label, ld.show_ltgroup(ltgid)))
 
     ld = log_db.LogData(conf)
     ltconf_path = conf.get("visual", "ltlabel")
@@ -167,12 +185,14 @@ def test_ltlabel(conf):
         if len(l_gid) == 1:
             #label = ll.get_lt_label(ltgid, ld.ltg_members(ltgid))
             label = ll.get_ltg_label(ltgid, ld.ltg_members(ltgid))
+            group = ll.get_group(label)
         else:
             label = ll.get_ltg_label(ltgid, ld.ltg_members(ltgid))
+            group = ll.get_group(label)
         if label is None:
             buf_none.append(output(ld, ltgid, str(label)))
         else:
-            d_buf.setdefault(label, []).append(output(ld, ltgid, label))
+            d_buf.setdefault(label, []).append(output(ld, ltgid, label, group))
     for k, buf in sorted(d_buf.iteritems()):
         print "\n".join(buf)
         print
