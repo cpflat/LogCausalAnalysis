@@ -184,7 +184,7 @@ def test_ltlabel(conf):
     ltconf_path = conf.get("visual", "ltlabel")
     if ltconf_path == "":
         ltconf_path = DEFAULT_LABEL_CONF
-    ll = LTLabel(ltconf_path)
+    ll = LTLabel(ltconf_path, default_group = "None")
     
     d_buf = {}
     buf_none = []
