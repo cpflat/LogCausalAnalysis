@@ -28,9 +28,10 @@ class LTLabel():
     group_header = "group_"
     label_header = "label_"
 
-    def __init__(self, conf_fn):
+    def __init__(self, conf_fn, default_group = None):
         self.conf = config.ExtendedConfigParser()
         self.conf.read(conf_fn)
+        self.default_group = default_group
 
         self.groups = []
         self.labels = []
@@ -157,9 +158,12 @@ class LTLabel():
         return self.get_group(label)
 
     def get_group(self, label):
-        group = self.d_rgroup[label]
-        assert len(group) == 1
-        return group[0]
+        if label is None:
+            return self.default_group
+        else:
+            group = self.d_rgroup[label]
+            assert len(group) == 1
+            return group[0]
 
 
 def init_ltlabel(conf):
