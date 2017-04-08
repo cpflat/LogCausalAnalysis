@@ -196,7 +196,7 @@ def test_ltlabel(conf):
             label = ll.get_ltg_label(ltgid, ld.ltg_members(ltgid))
             group = ll.get_group(label)
         if label is None:
-            buf_none.append(output(ld, ltgid, str(label)))
+            buf_none.append(output(ld, ltgid, str(label), group))
         else:
             d_buf.setdefault(label, []).append(output(ld, ltgid, label, group))
     for k, buf in sorted(d_buf.iteritems()):
