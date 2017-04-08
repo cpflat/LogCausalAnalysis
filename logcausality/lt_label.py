@@ -176,6 +176,8 @@ def init_ltlabel(conf):
 def test_ltlabel(conf):
 
     def output(ld, ltgid, label, group):
+        if label is None:
+            label = str(label)
         return " ".join((group, label, ld.show_ltgroup(ltgid)))
 
     ld = log_db.LogData(conf)
