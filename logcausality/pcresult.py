@@ -91,24 +91,30 @@ class PCOutput():
 
     def _print_edge(self, edge, label):
         src_info = self.evmap.info(edge[0])
+        src_str = self.evmap.info_str(edge[0])
         dst_info = self.evmap.info(edge[1])
-        if label == "directed":
+        dst_str = self.evmap.info_str(edge[1])
+        if label == "directed" or label == True:
             arrow = "->"
-        elif label == "undirected":
+        elif label == "undirected" or label == False:
             arrow = "<->"
         else:
             raise ValueError
-        print("{0} [{1}] ({2}) {6} {3}[{4}] ({5})".format(
-                src_info.gid, self._label_ltg(src_info.gid), src_info.host, 
-                dst_info.gid, self._label_ltg(dst_info.gid), dst_info.host,
-                arrow))
+        #print("{0} [{1}] ({2}) {6} {3}[{4}] ({5})".format(
+        #        src_info.gid, self._label_ltg(src_info.gid), src_info.host, 
+        #        dst_info.gid, self._label_ltg(dst_info.gid), dst_info.host,
+        #        arrow))
+        print("{0} ({1}) {2} {3} ({4})".format(
+                src_str, self._label_ltg(src_info.gid), arrow,
+                dst_str, self._label_ltg(dst_info.gid)))
     
     def _print_edge_lt(self, edge):
         for eid, header in zip(edge, ("src", "dst")):
             info = self.evmap.info(eid)
-            print("{0}> gid {1} [label {2}] (host {3})".format(
-                    header, info.gid,
-                    self._label_ltg(info.gid), info.host))
+            info_str = self.evmap.info_str(eid)
+            print("{0}> {1} ({2})".format(
+                    header, info_str,
+                    self._label_ltg(info.gid)))
             print("\n".join(
                 [str(ltline) for ltline in self.ld.ltg_members(info.gid)]))
             print
@@ -298,7 +304,10 @@ class PCOutput():
         if eflag:
             graph = graph_no_orphan(graph)
         rgraph = self.relabel_graph(graph)
-        g = nx.to_agraph(rgraph)
+        # before networkx 1.0
+        #g = nx.to_agraph(rgraph)
+        # after networkx 1.1
+        g = nx.nx_agraph.to_agraph(rgraph)
         g.draw(fn, prog='circo')
         print ">", fn
 
@@ -548,28 +557,30 @@ def graph_edit_distance(r1, r2, ig_direction = False, weight = None):
 
 
 def graph_network(graph):
+    temp_graph = graph.to_undirected()
+    return nx.connected_components(temp_graph)
     
-    l_net = []
-    d_rnet = {}
-    for node in graph.nodes():
-        l_net.append([node])
-        d_rnet[node] = len(l_net) - 1
+    #l_net = []
+    #d_rnet = {}
+    #for node in graph.nodes():
+    #    l_net.append([node])
+    #    d_rnet[node] = len(l_net) - 1
 
-    for edge in graph.edges():
-        src_node, dst_node = edge
-        if d_rnet[src_node] == d_rnet[dst_node]:
-            pass
-        else:
-            # remove network with dst, save as temp,
-            # and add to network with src
-            src_netid = d_rnet[src_node]
-            dst_netid = d_rnet[dst_node]
-            l_net[src_netid] += l_net[dst_netid][:]
-            l_net[dst_netid] = []
+    #for edge in graph.edges():
+    #    src_node, dst_node = edge
+    #    if d_rnet[src_node] == d_rnet[dst_node]:
+    #        pass
+    #    else:
+    #        # remove network with dst, save as temp,
+    #        # and add to network with src
+    #        src_netid = d_rnet[src_node]
+    #        dst_netid = d_rnet[dst_node]
+    #        l_net[src_netid] += l_net[dst_netid][:]
+    #        l_net[dst_netid] = []
 
-    ret = [net for net in l_net if len(net) >= 1]
-    ret.sort(key = lambda x: len(x), reverse = True)
-    return ret
+    #ret = [net for net in l_net if len(net) >= 1]
+    #ret.sort(key = lambda x: len(x), reverse = True)
+    #return ret
 
 
 def graph_clustering_coefficient(graph):
