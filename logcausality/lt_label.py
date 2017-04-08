@@ -126,7 +126,7 @@ class LTLabel():
 
     def get_lt_group(self, ltline):
         label = self.get_lt_label(ltline)
-        return self.d_rgroup[label]
+        return self.get_group(label)
 
     def get_ltg_label(self, ltgid, l_ltline):
         d_score = {} # key : ruleid, value : score
@@ -154,10 +154,12 @@ class LTLabel():
 
     def get_ltg_group(self, ltgid, l_ltline):
         label = self.get_ltg_label(ltgid, l_ltline)
-        return self.d_rgroup[label]
+        return self.get_group(label)
 
     def get_group(self, label):
-        return self.d_rgroup[label]
+        group = self.d_rgroup[label]
+        assert len(group) == 1
+        return group[0]
 
 
 def init_ltlabel(conf):
