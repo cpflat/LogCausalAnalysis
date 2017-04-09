@@ -12,6 +12,7 @@ import os
 import re
 import optparse
 import logging
+from collections import defaultdict
 
 import config
 import strutil
@@ -166,11 +167,55 @@ class LTLabel():
             return group[0]
 
 
-def init_ltlabel(conf):
+def init_ltlabel(conf, default_group = None):
     ltconf_path = conf.get("visual", "ltlabel")
     if ltconf_path == "":
         ltconf_path = DEFAULT_LABEL_CONF
-    return LTLabel(ltconf_path)
+    if default_group is None:
+        default_group = conf.get("visual", "ltlabel_default_group")
+    return LTLabel(ltconf_path, default_group)
+
+
+def count_ltlabel(conf):
+    ld = log_db.LogData(conf)
+    ll = init_ltlabel(conf)
+    default_label = conf.get("visual", "ltlabel_default_label")
+    default_group = conf.get("visual", "ltlabel_default_group")
+
+    d_lt_group = defaultdict(int)
+    d_lt_label = defaultdict(int)
+    d_line_group = defaultdict(int)
+    d_line_label = defaultdict(int)
+    for ltgid in ld.iter_ltgid():
+        l_gid = ld.ltg_members(ltgid)
+        l_lt = ld.ltg_members(ltgid)
+        label = ll.get_ltg_label(ltgid, l_lt)
+        group = ll.get_group(label)
+
+        if label is None:
+            label = default_label
+            group = default_group
+
+        d_lt_group[group] += 1
+        d_lt_label[label] += 1
+
+        cnt_line = sum(lt.cnt for lt in l_lt)
+        d_line_group[group] += cnt_line
+        d_line_label[label] += cnt_line
+
+
+    for group, l_label in ll.d_group.iteritems():
+        cnt_group = d_lt_group[group]
+        lines_group = d_line_group[group]
+        print "group {0} : {1} templates, {2} lines".format(group,
+                cnt_group, lines_group)
+
+        for label in l_label:
+            cnt_label = d_lt_label[label]
+            lines_label = d_line_label[label]
+            print "  label {0} : {1} templates, {2} lines".format(label,
+                    cnt_label, lines_label)
+        print
 
 
 def test_ltlabel(conf):
@@ -181,10 +226,7 @@ def test_ltlabel(conf):
         return " ".join((group, label, ld.show_ltgroup(ltgid)))
 
     ld = log_db.LogData(conf)
-    ltconf_path = conf.get("visual", "ltlabel")
-    if ltconf_path == "":
-        ltconf_path = DEFAULT_LABEL_CONF
-    ll = LTLabel(ltconf_path, default_group = "None")
+    ll = init_ltlabel(conf)
     
     d_buf = {}
     buf_none = []
@@ -208,7 +250,7 @@ def test_ltlabel(conf):
 
 
 if __name__ == "__main__":
-    usage = "usage: {0} [options]".format(sys.argv[0])
+    usage = "usage: {0} [options] mode".format(sys.argv[0])
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
@@ -216,5 +258,13 @@ if __name__ == "__main__":
     options, args = op.parse_args()
     conf = config.open_config(options.conf)
     config.set_common_logging(conf, _logger, [])
-    test_ltlabel(conf)
+
+    if len(args) == 0:
+        sys.exit(usage)
+    mode = args.pop(0)
+    if mode == "list":
+        test_ltlabel(conf)
+    elif mode == "count":
+        count_ltlabel(conf)
+
 

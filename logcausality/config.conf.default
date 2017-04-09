@@ -317,6 +317,10 @@ self_corr_diff = 1h, 1d
 # If empty, use default configuration (lt_label.conf.sample)
 ltlabel = 
 
+ltlabel_default_label = None
+ltlabel_default_group = None
+
+
 # If true, remove frequently appearing edges from the result
 filter_edges = false
 edge_filter_method = count_ighost
