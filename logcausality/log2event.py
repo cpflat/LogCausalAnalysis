@@ -61,6 +61,7 @@ class EventDefinitionMap():
     type_periodic_top = 1
     type_periodic_end = 2
     type_periodic_remainder = 3
+    l_attr = ["gid", "host"]
 
     def __init__(self, top_dt, end_dt, gid_name = "ltgid"):
         """
@@ -72,7 +73,7 @@ class EventDefinitionMap():
         self.end_dt = end_dt
         assert gid_name in ("ltid", "ltgid")
         self.gid_name = gid_name
-        self.l_attr = ["gid", "host"]
+        #self.l_attr = ["gid", "host"]
 
         self._emap = {} # key : eid, val : evdef
         self._ermap = {} # key : evdef, val : eid
@@ -180,17 +181,21 @@ class EventDefinitionMap():
 
     def info_str(self, eid):
         info = self._emap[eid]
-        string = ", ".join(["{0}={1}".format(key, getattr(info, key))
-                for key in self.l_attr])
+        return self.get_str(info)
+
+    @classmethod
+    def get_str(cls, evdef):
+        string = ", ".join(["{0}={1}".format(key, getattr(evdef, key))
+                for key in cls.l_attr])
         
-        if info.type == self.type_normal:
+        if evdef.type == cls.type_normal:
             return "[{0}]".format(string)
-        elif info.type == self.type_periodic_top:
-            return "start[{0}]({1}sec)".format(string, info.note)
-        elif info.type == self.type_periodic_end:
-            return "end[{0}]({1}sec)".format(string, info.note)
-        elif info.type == self.type_periodic_remainder:
-            return "remain[{0}]({1}sec)".format(string, info.note)
+        elif evdef.type == cls.type_periodic_top:
+            return "start[{0}]({1}sec)".format(string, evdef.note)
+        elif evdef.type == cls.type_periodic_end:
+            return "end[{0}]({1}sec)".format(string, evdef.note)
+        elif evdef.type == cls.type_periodic_remainder:
+            return "remain[{0}]({1}sec)".format(string, evdef.note)
         else:
             # NotImplemented
             return "({0})".format(string)
@@ -352,6 +357,13 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
                     ld, top_dt, end_dt, area)
             # linear
             edict, evmap = filter_linear(conf, edict, evmap, 
+                    ld, top_dt, end_dt, area)
+        elif act == "linear+replace":
+            # linear
+            edict, evmap = filter_linear(conf, edict, evmap, 
+                    ld, top_dt, end_dt, area)
+            # replace
+            edict, evmap = replace_edict(conf, edict, evmap,
                     ld, top_dt, end_dt, area)
         else:
             raise NotImplementedError
