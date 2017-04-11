@@ -13,6 +13,7 @@ def diff_event_type(conf):
     cnt = 0
     for r in pcresult.results(conf):
         dataset_flag = False
+        set_undirected = set()
         for edge in r.graph.edges():
             types = [r.evmap.info(eid).type for eid in edge]
             if types[0] == types[1]:
@@ -23,10 +24,16 @@ def diff_event_type(conf):
                     dataset_flag = True
                 if (edge[1], edge[0]) in r.graph.edges():
                     directed = False
+                    if (edge[1], edge[0]) in set_undirected:
+                        pass
+                    else:
+                        set_undirected.add(edge)
+                        r._print_edge(edge, directed)
+                        cnt += 1
                 else:
                     directed = True
-                r._print_edge(edge, directed)
-                cnt += 1
+                    r._print_edge(edge, directed)
+                    cnt += 1
     print
     print("Edges among different event type: {0}".format(cnt))
 
@@ -79,8 +86,23 @@ def search_gid(conf, gid):
                     print r.filename
 
 
-def diff_event_edge(conf1, conf2):
+def diff_evset_edge(conf1, conf2):
+    import eventmgr
+    d_diff = eventmgr.diff_event_edge(conf1, conf2)
 
+    for r in pcresult.results(conf1):
+        dataset_flag = False
+        fn = r.filename.split("/")[-1]
+        s_evdef = d_diff[fn]
+        for edge in r.graph.edges():
+            if r.evmap.info(edge[0]) in s_evdef or \
+                    r.evmap.info(edge[1]) in s_evdef:
+                if not dataset_flag:
+                    print("# {0}".format(r.filename.partition("/")[-1]))
+                    dataset_flag = True
+                directed = (edge[1], edge[0]) in r.graph.edges()
+                r._print_edge(edge, directed)
+        print
 
 
 if __name__ == "__main__":
@@ -98,7 +120,7 @@ usage: {0} [options] args...
     conf = config.open_config(options.conf)
     if len(args) == 0:
         sys.exit(usage)
-    
+
     mode = args.pop(0)
     if mode == "diff-event-type":
         diff_event_type(conf)
@@ -111,6 +133,12 @@ usage: {0} [options] args...
             sys.exit("give me gid")
         gid = args[0]
         search_gid(conf, gid)
+    elif mode == "diff-evset-edge":
+        if len(args) == 0:
+            sys.exit("give me another config")
+        conf2 = config.open_config(args[0])
+        diff_evset_edge(conf, conf2)
+
     else:
         raise NotImplementedError
 

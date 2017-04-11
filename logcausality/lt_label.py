@@ -14,6 +14,7 @@ import optparse
 import logging
 from collections import defaultdict
 
+import common
 import config
 import strutil
 import logparser
@@ -203,19 +204,34 @@ def count_ltlabel(conf):
         d_line_group[group] += cnt_line
         d_line_label[label] += cnt_line
 
+    print("all templates : {0}".format(sum(d_lt_group.values())))
+    print("all lines : {0}".format(sum(d_line_group.values())))
+    print
 
     for group, l_label in ll.d_group.iteritems():
-        cnt_group = d_lt_group[group]
-        lines_group = d_line_group[group]
+        if d_lt_group.has_key(group):
+            cnt_group = d_lt_group.pop(group)
+            lines_group = d_line_group.pop(group)
+        else:
+            cnt_group = 0; lines_group = 0
+        #cnt_group = d_lt_group[group]
+        #lines_group = d_line_group[group]
         print "group {0} : {1} templates, {2} lines".format(group,
                 cnt_group, lines_group)
 
         for label in l_label:
-            cnt_label = d_lt_label[label]
-            lines_label = d_line_label[label]
+            if d_lt_label.has_key(label):
+                cnt_label = d_lt_label.pop(label)
+                lines_label = d_line_label.pop(label)
+            else:
+                cnt_label = 0; lines_label = 0
+            #cnt_label = d_lt_label[label]
+            #lines_label = d_line_label[label]
             print "  label {0} : {1} templates, {2} lines".format(label,
                     cnt_label, lines_label)
         print
+    
+    print d_line_group; print d_line_label
 
 
 def test_ltlabel(conf):
@@ -249,6 +265,64 @@ def test_ltlabel(conf):
     print "\n".join(buf_none)
 
 
+def count_event_label(conf):
+    import log2event
+    ld = log_db.LogData(conf)
+    ll = init_ltlabel(conf)    
+    d_label = defaultdict(int)
+    d_group = defaultdict(int)
+    
+    dirname = conf.get("dag", "event_dir")
+    for fp in common.rep_dir(dirname):
+        fn = fp.split("/")[-1]
+        edict, evmap = log2event.load_edict(fp)
+        for eid, l_dt in edict.iteritems():
+            gid = evmap.info(eid).gid
+            l_lt = ld.ltg_members(gid)
+            label = ll.get_ltg_label(gid, l_lt)
+            group = ll.get_group(label)
+
+            d_label[label] += len(l_dt)
+            d_group[group] += len(l_dt)
+
+    print("all lines : {0}".format(sum(d_group.values())))
+    print
+    
+    for group, l_label in ll.d_group.iteritems():
+        cnt_group = d_group.pop(group)
+        print("group {0}: {1} lines".format(group, cnt_group))
+        for label in l_label:
+            cnt_label = d_label.pop(label)
+            print("  label {0}: {1} lines".format(label, cnt_label))
+        print
+
+
+def count_edge_label(conf):
+    ll = init_ltlabel(conf)
+    import pcresult
+    d_cnt_label = defaultdict(int)
+    d_cnt_group = defaultdict(int)
+    src_dir = conf.get("dag", "output_dir")
+    for fp in common.rep_dir(src_dir):
+        _logger.info("count_edge_label processing {0}".format(fp))
+        r = pcresult.PCOutput(conf).load(fp)
+        for edge in r.graph.edges():
+            for eid in edge:
+                gid = r.evmap.info(eid).gid
+                label = r._label_ltg(gid)
+                d_cnt_label[label] += 1
+                group = r._label_group_ltg(gid)
+                d_cnt_group[group] += 1
+
+    for group, l_label in ll.d_group.iteritems():
+        cnt_group = d_cnt_group[group]
+        print("group {0}: {1} nodes".format(group, cnt_group))
+        for label in l_label:
+            cnt_label = d_cnt_label[label]
+            print("  label {0}: {1} nodes".format(label, cnt_label))
+        print
+
+
 if __name__ == "__main__":
     usage = "usage: {0} [options] mode".format(sys.argv[0])
     op = optparse.OptionParser(usage)
@@ -266,5 +340,9 @@ if __name__ == "__main__":
         test_ltlabel(conf)
     elif mode == "count":
         count_ltlabel(conf)
+    elif mode == "event":
+        count_event_label(conf)
+    elif mode == "edge":
+        count_edge_label(conf)
 
 

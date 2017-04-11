@@ -37,19 +37,56 @@ def diff_event(conf1, conf2):
         for ev in (s1 - s2):
             d_diff[ev] += 1
 
+    return d_diff
+
+
+def show_diff_event(conf1, conf2):
+    d_diff = diff_event(conf1, conf2)
+    import log2event
+    import log_db
+    ld = log_db.LogData(conf1)
+    import lt_label
+    ll = lt_label.init_ltlabel(conf1)
+
     for evdef, cnt in sorted(d_diff.iteritems(), key = lambda x: x[1],
             reverse = True):
         print cnt, evdef
 
-    import log_db
-    ld = log_db.LogData(conf1)
     print
     for evdef, cnt in sorted(d_diff.iteritems(), key = lambda x: x[1],
             reverse = True):
-        print cnt, evdef
-        ld.show_ltgroup(evdef.gid)
-        #evmap1.info_repr(ld, evmap1.get_eid(evdef))
+        print cnt, log2event.EventDefinitionMap.get_str(evdef)
+        print "  " + ld.show_ltgroup(evdef.gid)
         print
+
+
+def diff_event_edge(conf1, conf2):
+    d_set1 = defaultdict(set)
+    d_set2 = defaultdict(set)
+    d_diff = {}
+
+    dirname = conf1.get("dag", "event_dir")
+    for fp in common.rep_dir(dirname):
+        fn = fp.split("/")[-1]
+        edict1, evmap1 = log2event.load_edict(fp)
+        for evdef in [evmap1.info(k) for k in edict1.keys()]:
+            d_set1[fn].add(evdef)
+
+    dirname = conf2.get("dag", "event_dir")
+    for fp in common.rep_dir(dirname):
+        fn = fp.split("/")[-1]
+        edict2, evmap2 = log2event.load_edict(fp)
+        for evdef in [evmap2.info(k) for k in edict2.keys()]:
+            d_set2[fn].add(evdef)
+
+    for k in d_set1.keys():
+        if not d_set2.has_key(k):
+            raise KeyError("{0} not found in event set 2".format(k))
+        s1 = d_set1[k]
+        s2 = d_set2[k]
+        d_diff[k] = (s1 - s2)
+
+    return d_diff
 
 
 if __name__ == "__main__":
@@ -70,6 +107,6 @@ if __name__ == "__main__":
         if len(args) == 0:
             sys.exit(usage)
         conf2 = config.open_config(args[0])
-        diff_event(conf, conf2)
+        show_diff_event(conf, conf2)
 
 

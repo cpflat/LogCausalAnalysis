@@ -75,6 +75,11 @@ class PCOutput():
         self._init_ll()
         return self.ll.get_ltg_label(gid, self.ld.ltg_members(gid))
 
+    def _label_group_ltg(self, gid):
+        self._init_ld()
+        self._init_ll()
+        return self.ll.get_ltg_group(gid, self.ld.ltg_members(gid))
+
     def get_fn(self):
         import pc_log
         return pc_log.thread_name(self.conf, self.top_dt, self.end_dt,
@@ -849,6 +854,8 @@ args:
         list_clustering_coefficient(conf)
     elif mode == "list-max-clique":
         list_maximum_clique(conf)
+    elif mode == "count_label":
+        lt_label.count_edge_label(conf)
     elif mode == "show":
         if len(args) < 1:
             sys.exit("give me filename of pc result object")
