@@ -73,12 +73,18 @@ class PCOutput():
     def _label_ltg(self, gid):
         self._init_ld()
         self._init_ll()
-        return self.ll.get_ltg_label(gid, self.ld.ltg_members(gid))
+        label = self.ll.get_ltg_label(gid, self.ld.ltg_members(gid))
+        if label is None:
+            label = self.conf.get("visual", "ltlabel_default_label")
+        return label
 
     def _label_group_ltg(self, gid):
         self._init_ld()
         self._init_ll()
-        return self.ll.get_ltg_group(gid, self.ld.ltg_members(gid))
+        group = self.ll.get_ltg_group(gid, self.ld.ltg_members(gid))
+        if group is None:
+            group = self.conf.get("visual", "ltlabel_default_group")
+        return group
 
     def get_fn(self):
         import pc_log
@@ -629,11 +635,14 @@ def results_in_area(conf, src_dir, area):
 # functions for visualization
 
 def list_results(conf, src_dir):
-    print "datetime\t\tarea\tnodes\tedges\tfilepath"
+    table = []
+    table.append(["datetime", "area", "nodes", "edges", "filepath"])
     for r in results(conf, src_dir):
+        node_num = r.graph.number_of_nodes()
         edge_num = number_of_edges(r.graph)
-        print "\t".join((str(r.top_dt), r.area,
-                str(len(r.evmap)), str(edge_num), r.result_fn()))
+        table.append([str(r.top_dt), r.area,
+                node_num, edge_num, r.result_fn()])
+    print common.cli_table(table)
 
 
 def list_detailed_results(conf):

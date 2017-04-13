@@ -289,10 +289,16 @@ def count_event_label(conf):
     print
     
     for group, l_label in ll.d_group.iteritems():
-        cnt_group = d_group.pop(group)
+        if d_group.has_key(group):
+            cnt_group = d_group.pop(group)
+        else:
+            cnt_group = 0
         print("group {0}: {1} lines".format(group, cnt_group))
         for label in l_label:
-            cnt_label = d_label.pop(label)
+            if d_label.has_key(label):
+                cnt_label = d_label.pop(label)
+            else:
+                cnt_label = 0
             print("  label {0}: {1} lines".format(label, cnt_label))
         print
 
@@ -323,6 +329,66 @@ def count_edge_label(conf):
         print
 
 
+def count_edge_label_detail(conf):
+    ll = init_ltlabel(conf)
+    ld = log_db.LogData(conf)
+    import pcresult
+    d_group = defaultdict(int)
+    d_group_directed = defaultdict(int)
+    d_group_intype = defaultdict(int)
+    d_group_intype_directed = defaultdict(int)
+    d_group_mean = defaultdict(int)
+    d_group_mean_directed = defaultdict(int)
+    import edge_filter
+    ef = edge_filter.EdgeFilter(conf)
+
+    src_dir = conf.get("dag", "output_dir")
+    for fp in common.rep_dir(src_dir):
+        _logger.info("count_edge_label_detail processing {0}".format(fp))
+        r = pcresult.PCOutput(conf).load(fp)
+        dedges, udedges = r._separate_edges()
+        for edge in dedges:
+            cedge = [r.evmap.info(eid) for eid in edge]
+            fflag = ef.isfiltered(cedge)
+            l_group = [r._label_group_ltg(r.evmap.info(eid).gid)
+                    for eid in edge]
+            iflag = (l_group[0] == l_group[1])
+
+            for group in l_group:
+                d_group[group] += 1
+                d_group_directed[group] += 1
+                if iflag:
+                    d_group_intype[group] += 1
+                    d_group_intype_directed[group] += 1
+                if fflag:
+                    d_group_mean[group] += 1
+                    d_group_mean_directed[group] += 1
+
+        for edge in udedges:
+            cedge = [r.evmap.info(eid) for eid in edge]
+            fflag = ef.isfiltered(cedge)
+            l_group = [r._label_group_ltg(r.evmap.info(eid).gid)
+                    for eid in edge]
+            iflag = (l_group[0] == l_group[1])
+
+            for group in l_group:
+                d_group[group] += 1
+                if iflag:
+                    d_group_intype[group] += 1
+                if fflag:
+                    d_group_mean[group] += 1
+
+    for key in d_group.keys():
+        l_buf = [key]
+        l_buf.append(d_group[key])
+        l_buf.append(d_group_directed[key])
+        l_buf.append(d_group_intype[key])
+        l_buf.append(d_group_intype_directed[key])
+        l_buf.append(d_group_mean[key])
+        l_buf.append(d_group_mean_directed[key])
+        print " ".join([str(s) for s in l_buf])
+
+
 if __name__ == "__main__":
     usage = "usage: {0} [options] mode".format(sys.argv[0])
     op = optparse.OptionParser(usage)
@@ -344,5 +410,9 @@ if __name__ == "__main__":
         count_event_label(conf)
     elif mode == "edge":
         count_edge_label(conf)
+    elif mode == "edge-detail":
+        count_edge_label_detail(conf)
+    else:
+        raise NotImplementedError
 
 

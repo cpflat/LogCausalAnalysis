@@ -215,6 +215,11 @@ def test_edge_filter_cont(conf):
     ef.show_all(l_result)
 
 
+def graph_edge_filter(conf):
+    ef = EdgeFilter(conf)
+
+
+
 if __name__ == "__main__":
     usage = "usage: {0} [options]".format(sys.argv[0])
     import optparse

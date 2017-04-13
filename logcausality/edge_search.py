@@ -3,6 +3,7 @@
 
 import sys
 import os
+from collections import defaultdict
 
 import common
 import config
@@ -105,6 +106,42 @@ def diff_evset_edge(conf1, conf2):
         print
 
 
+def diff_edge_all(conf1, conf2):
+    d_c1 = {}
+    d_c2 = {}
+    for r in pcresult.results(conf1):
+        fn = r.filename.split("/")[-1]
+        d_c1[fn] = set()
+        dedges, udedges = r._separate_edges()
+        for edge in dedges + udedges:
+            cedge = tuple([r.evmap.info(eid) for eid in edge])
+            d_c1[fn].add(cedge)
+    for r in pcresult.results(conf2):
+        fn = r.filename.split("/")[-1]
+        d_c2[fn] = set()
+        dedges, udedges = r._separate_edges()
+        for edge in dedges + udedges:
+            cedge = tuple([r.evmap.info(eid) for eid in edge])
+            d_c2[fn].add(cedge)
+
+    cnt_and = 0
+    cnt_or = 0
+    for key in d_c1.keys():
+        assert d_c2.has_key(key)
+        cnt_and += len(d_c1[key] & d_c2[key])
+        cnt_or += len(d_c1[key] | d_c2[key])
+    
+    cnt_c1 = sum([len(s) for s in d_c1.values()])
+    cnt_c2 = sum([len(s) for s in d_c2.values()])
+    print("{0}: {1}".format(conf1.filename, cnt_c1))
+    print("{0}: {1}".format(conf2.filename, cnt_c2))
+    print("Union: {0}".format(cnt_and))
+    print("Intersection: {0}".format(cnt_or))
+    print("Jaccard: {0}".format(1.0 * cnt_and / cnt_or))
+    print("Dice: {0}".format(2.0 * cnt_and / (cnt_c1 + cnt_c2)))
+    print("Simpson: {0}".format(1.0 * cnt_and / min(cnt_c1, cnt_c2)))
+
+
 if __name__ == "__main__":
     usage = """
 usage: {0} [options] args...
@@ -138,7 +175,11 @@ usage: {0} [options] args...
             sys.exit("give me another config")
         conf2 = config.open_config(args[0])
         diff_evset_edge(conf, conf2)
-
+    elif mode == "diff-edge":
+        if len(args) == 0:
+            sys.exit("give me another config")
+        conf2 = config.open_config(args[0])
+        diff_edge_all(conf, conf2)
     else:
         raise NotImplementedError
 

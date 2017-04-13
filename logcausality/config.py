@@ -222,6 +222,7 @@ def open_config(fn = None):
                     conf3.read(conf.get("general", "import"))
                     conf.merge(conf3)
 
+        conf.filename = fn
     return conf
 
 

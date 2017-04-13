@@ -286,5 +286,43 @@ class Timer():
                 self.end_dt - self.start_dt))
 
 
+# visualization
 
+def cli_table(table, spl = " ", fill = " ", align = "left"):
+    """
+    Args:
+        table (List[List[str]]): input data
+        spl (str): splitting string of columns
+        fill (str): string of 1 byte, used to fill the space
+        align (str): left and right is available
+    """
+    len_row = len(table)
+    len_column = len(table[0])
+    col_max = [0] * len_column
+
+    for row in table:
+        for cid, val in enumerate(row):
+            if cid >= len_column:
+                raise ValueError
+            val = str(val)
+            if len(val) > col_max[cid]:
+                col_max[cid] = len(val)
+
+    l_buf = []
+    for row in table:
+        line = []
+        for cid, val in enumerate(row):
+            cell = str(val)
+            len_cell = col_max[cid]
+            len_space = len_cell - len(cell)
+            if align == "left":
+                cell = cell + fill * len_space
+            elif align == "right":
+                cell = fill * len_space + cell
+            else:
+                raise NotImplementedError
+            line.append(cell)
+        l_buf.append(spl.join(line))
+
+    return "\n".join(l_buf)
 
