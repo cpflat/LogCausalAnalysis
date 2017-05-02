@@ -121,6 +121,8 @@ class LogData():
         self.lttable = lt_common.LTTable(sym) # lt_common.LTTable
         self.db = LogDB(conf, self.lttable, edit, reset_db) # log_db.LogDB
         self.ltm = None # lt_common.LTManager
+        import lt_label
+        self.ll = lt_label.init_ltlabel(conf)
 
     def init_ltmanager(self):
         """Initialize log template classifier object.
@@ -341,14 +343,18 @@ class LogData():
             str: Output message buffer.
         """
         buf = []
+        l_lt = self.ltg_members(gid)
         l_ltid = self.db.get_ltg_members(gid)
+        group = self.ll.get_ltg_group(gid, l_lt)
+        label = self.ll.get_ltg_label(gid, l_lt)
         length = len(l_ltid)
         cnt = 0
         for ltid in l_ltid:
             ltline = self.lttable[ltid]
             cnt += ltline.cnt
             buf.append(self._str_ltline(ltline))
-        buf = ["[ltgroup {0} ({1}, {2})]".format(gid, length, cnt)] + buf
+        
+        buf = ["[ltgroup {0} ({1}, {2})] # {3}({4})".format(gid, length, cnt, group, label)] + buf
         return "\n".join(buf)
 
     def add_line(self, ltid, dt, host, l_w):
@@ -974,6 +980,26 @@ def info(conf):
     print("Hosts : {0}".format(len(ld.whole_host())))
 
 
+def info_term(conf, top_dt, end_dt):
+    cnt_line = 0
+    s_ltid = set()
+    s_gid = set()
+    s_host = set()
+
+    ld = LogData(conf)
+    for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt):
+        cnt_line += 1
+        s_ltid.add(line.lt.ltid)
+        s_gid.add(line.lt.ltgid)
+        s_host.add(line.host)
+
+    print("[DB status] in {0} - {1}".format(top_dt, end_dt))
+    print("Registered log lines : {0}".format(cnt_line))
+    print("Log templates : {0}".format(len(s_ltid)))
+    print("Log template groups : {0}".format(len(s_gid)))
+    print("Hosts : {0}".format(len(s_host)))
+
+
 def show_lt(conf):
     ld = LogData(conf)
     print ld.show_all_ltgroup()
@@ -1128,6 +1154,12 @@ args:
         timer.stop()
     elif mode == "info":
         info(conf)
+    elif mode == "info-term":
+        if len(args) < 2:
+            sys.exit("give me 2 date string (top_dt, end_dt)")
+        top_dt = datetime.datetime.strptime(args[0], "%Y-%m-%d")
+        end_dt = datetime.datetime.strptime(args[1], "%Y-%m-%d")
+        info_term(conf, top_dt, end_dt)
     elif mode == "show-lt":
         show_lt(conf)
     elif mode == "dump-lt":
