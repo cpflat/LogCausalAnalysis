@@ -92,7 +92,8 @@ class _ClassifierOfCount(_Classifier):
         _Classifier.__init__(self, l_result, threshold)
         self._d_cnt = common.SequenceKeyDict()
         for r in l_result:
-            for cedge in r.iter_edge_info():
+            dedges, udedges = r._separate_edges()
+            for cedge in r.iter_edge_info(dedges + udedges):
                 key = self._key(cedge)
                 self._add_expl(cedge, r)
                 self._d_cnt[key] = self._d_cnt.get(key, 0) + 1
@@ -100,7 +101,7 @@ class _ClassifierOfCount(_Classifier):
                 key = lambda x: x[1], reverse = True)
         length = len(self._d_cnt)
         filtered_num = int(length * threshold)
-        self._th_val = l_stat[filtered_num]
+        self._th_val = l_stat[filtered_num][1]
 
     def _key(self, cedge):
         return cedge
@@ -120,7 +121,14 @@ class _ClassifierOfCount(_Classifier):
 class _ClassifierOfCountIgHost(_ClassifierOfCount):
 
     def _key(self, cedge):
-        return cedge[0]
+        return [info.gid for info in cedge]
+
+    def show_all(self, *args):
+        for key, cnt in sorted(self._d_cnt.items(),
+                key = lambda x: x[1], reverse = True):
+            if cnt >= self._th_val:
+                sys.stdout.write("! ")
+            print "{0} times : {1}".format(cnt, key)
 
 
 class _ClassifierOfContinuation(_Classifier):
@@ -201,6 +209,17 @@ class _ClassifierOfContinuationIgHost(_ClassifierOfContinuation):
 #        self.tfidf
 
 
+def show_count(conf, mode = "count"):
+    l_result = pcresult.results(conf)
+    #ef = EdgeFilter(conf)
+    if mode == "count":
+        ef = _ClassifierOfCount(l_result, 0.1)
+    elif mode == "count-ighost":
+        ef = _ClassifierOfCountIgHost(l_result, 0.1)
+    ef._th_val = 100000000
+    ef.show_all(l_result)
+
+
 def test_edge_filter(conf):
     l_result = pcresult.results(conf)
     ef = EdgeFilter(conf)
@@ -213,11 +232,6 @@ def test_edge_filter_cont(conf):
     l_result = pcresult.results(conf)
     ef = EdgeFilter(conf)
     ef.show_all(l_result)
-
-
-def graph_edge_filter(conf):
-    ef = EdgeFilter(conf)
-
 
 
 if __name__ == "__main__":
@@ -238,7 +252,18 @@ if __name__ == "__main__":
         filename = conf.get("visual", "edge_filter_file")
         common.rm(filename)
     #test_edge_filter(conf)
-    test_edge_filter_cont(conf)
+    if len(args) == 0:
+        sys.exit("give me mode name")
+    mode = args.pop(0)
+    if mode == "list":
+        test_edge_filter(conf)
+        #test_edge_filter_cont(conf)
+    elif mode == "show-count":
+        show_count(conf, "count")
+    elif mode == "show-count-ighost":
+        show_count(conf, "count-ighost")
+    else:
+        raise NotImplementedError
 
 
 

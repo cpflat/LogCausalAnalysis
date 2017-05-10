@@ -10,6 +10,25 @@ import config
 import log2event
 
 
+def event_label(conf):
+    import log_db
+    ld = log_db.LogData(conf)
+    import lt_label
+    ll = lt_label.init_ltlabel(conf)
+
+    d_group = defaultdict(int)
+    dirname = conf.get("dag", "event_dir")
+    for fp in common.rep_dir(dirname):
+        fn = fp.split("/")[-1]
+        edict, evmap = log2event.load_edict(fp)
+        for evdef in [evmap.info(k) for k in edict.keys()]:
+            gid = evdef.gid
+            l_lt = ld.ltg_members(gid)
+            group = ll.get_ltg_group(gid, l_lt)
+            d_group[group] += 1
+    return d_group
+
+
 def diff_event(conf1, conf2):
     d_set1 = defaultdict(set)
     d_set2 = defaultdict(set)
@@ -60,6 +79,29 @@ def show_diff_event(conf1, conf2):
         print
 
 
+def show_diff_event_label(conf1, conf2):
+    d_diff = diff_event(conf1, conf2)
+    import log_db
+    ld = log_db.LogData(conf1)
+    import lt_label
+    ll = lt_label.init_ltlabel(conf1)
+
+    d_group = defaultdict(int)
+    for evdef in d_diff.keys():
+        gid = evdef.gid
+        l_lt = ld.ltg_members(gid)
+        group = ll.get_ltg_group(gid, l_lt)
+        d_group[group] += 1
+
+    d_group_all = event_label(conf1)
+
+    if len(d_group) == 0:
+        print "return empty, is the config order right?"
+    for group, cnt in d_group.items():
+        cnt_all = d_group_all[group]
+        print group, cnt, "/", cnt_all
+
+
 def diff_event_edge(conf1, conf2):
     d_set1 = defaultdict(set)
     d_set2 = defaultdict(set)
@@ -108,5 +150,10 @@ if __name__ == "__main__":
             sys.exit(usage)
         conf2 = config.open_config(args[0])
         show_diff_event(conf, conf2)
+    elif mode == "diff-label":
+        if len(args) == 0:
+            sys.exit(usage)
+        conf2 = config.open_config(args[0])
+        show_diff_event_label(conf, conf2)
 
 

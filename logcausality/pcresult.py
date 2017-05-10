@@ -684,11 +684,22 @@ def show_results_sum(conf, src_dir):
         d["d_edge"] = d.get("d_edge", 0) + d_edge
         d["d_edge_oh"] = d.get("d_edge_oh", 0) + d_edge_oh
 
-    print("number of events (nodes)              : {0}".format(d["event"]))
-    print("number of edges                       : {0}".format(d["edge"]))
-    print("number of edges across hosts          : {0}".format(d["edge_oh"]))
-    print("number of directed edges              : {0}".format(d["d_edge"]))
-    print("number of directed edges across hosts : {0}".format(d["d_edge_oh"]))
+    table = []
+    table.append(["number of events (nodes)", d["event"], ""])
+    table.append(["number of edges", d["edge"], ""])
+    table.append(["number of edges across hosts",
+            d["edge_oh"], 1.0 * d["edge_oh"] / d["edge"]])
+    table.append(["number of directed edges",
+            d["d_edge"], 1.0 * d["d_edge"] / d["edge"]])
+    table.append(["number of directed edges across hosts",
+            d["d_edge_oh"], 1.0 * d["d_edge_oh"] / d["edge"]])
+    table.append(["number of undirected edges",
+            d["edge"] - d["d_edge"],
+            1.0 * (d["edge"] - d["d_edge"]) / d["edge"]])
+    table.append(["number of undirected edges across hosts",
+            d["edge_oh"] - d["d_edge_oh"],
+            1.0 * (d["edge_oh"] - d["d_edge_oh"]) / d["edge"]])
+    print common.cli_table(table)
 
 
 def list_netsize(conf):
@@ -857,7 +868,7 @@ args:
         list_detailed_results(conf)
     elif mode == "list-netsize":
         list_netsize(conf)
-    elif mode == "whole-netsize":
+    elif mode == "all-netsize":
         whole_netsize(conf)
     elif mode == "list-cluster-coef":
         list_clustering_coefficient(conf)

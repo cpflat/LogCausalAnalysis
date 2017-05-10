@@ -106,23 +106,32 @@ def diff_evset_edge(conf1, conf2):
         print
 
 
-def diff_edge_all(conf1, conf2):
-    d_c1 = {}
-    d_c2 = {}
-    for r in pcresult.results(conf1):
-        fn = r.filename.split("/")[-1]
-        d_c1[fn] = set()
-        dedges, udedges = r._separate_edges()
-        for edge in dedges + udedges:
-            cedge = tuple([r.evmap.info(eid) for eid in edge])
-            d_c1[fn].add(cedge)
-    for r in pcresult.results(conf2):
-        fn = r.filename.split("/")[-1]
-        d_c2[fn] = set()
-        dedges, udedges = r._separate_edges()
-        for edge in dedges + udedges:
-            cedge = tuple([r.evmap.info(eid) for eid in edge])
-            d_c2[fn].add(cedge)
+def diff_edge_all(conf1, conf2, flag = None, ac_host = False):
+
+    def get_edge_dict(conf, flag, ac_host):
+        d = {}
+        for r in pcresult.results(conf):
+            fn = r.filename.split("/")[-1]
+            d[fn] = set()
+            dedges, udedges = r._separate_edges()
+            if flag is None:
+                edges = dedges + udedges
+            elif flag == "directed":
+                edges = dedges
+            elif flag == "undirected":
+                edges = udedges
+            else:
+                raise ValueError
+            for edge in edges:
+                cedge = tuple([r.evmap.info(eid) for eid in edge])
+                if ac_host and cedge[0].host == cedge[1].host:
+                    pass
+                else:
+                    d[fn].add(cedge)
+        return d
+
+    d_c1 = get_edge_dict(conf1, flag, ac_host)
+    d_c2 = get_edge_dict(conf2, flag, ac_host)
 
     cnt_and = 0
     cnt_or = 0
@@ -133,6 +142,17 @@ def diff_edge_all(conf1, conf2):
     
     cnt_c1 = sum([len(s) for s in d_c1.values()])
     cnt_c2 = sum([len(s) for s in d_c2.values()])
+    if flag is None:
+        state_flag = "All edges"
+    elif flag == "directed":
+        state_flag = "Directed edges"
+    elif flag == "undirected":
+        state_flag = "Undirected edges"
+    if ac_host:
+        state_ac = "across hosts"
+    else:
+        state_ac = ""
+    print("# {0} {1}".format(state_flag, state_ac))
     print("{0}: {1}".format(conf1.filename, cnt_c1))
     print("{0}: {1}".format(conf2.filename, cnt_c2))
     print("Union: {0}".format(cnt_and))
@@ -140,6 +160,7 @@ def diff_edge_all(conf1, conf2):
     print("Jaccard: {0}".format(1.0 * cnt_and / cnt_or))
     print("Dice: {0}".format(2.0 * cnt_and / (cnt_c1 + cnt_c2)))
     print("Simpson: {0}".format(1.0 * cnt_and / min(cnt_c1, cnt_c2)))
+    print
 
 
 if __name__ == "__main__":
@@ -179,7 +200,11 @@ usage: {0} [options] args...
         if len(args) == 0:
             sys.exit("give me another config")
         conf2 = config.open_config(args[0])
-        diff_edge_all(conf, conf2)
+        diff_edge_all(conf, conf2, "directed", False)
+        diff_edge_all(conf, conf2, "directed", True)
+        diff_edge_all(conf, conf2, "undirected", False)
+        diff_edge_all(conf, conf2, "undirected", True)
+        diff_edge_all(conf, conf2, None, False)
     else:
         raise NotImplementedError
 

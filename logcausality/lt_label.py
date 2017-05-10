@@ -360,7 +360,7 @@ def count_edge_label_detail(conf):
                 if iflag:
                     d_group_intype[group] += 1
                     d_group_intype_directed[group] += 1
-                if fflag:
+                if not fflag:
                     d_group_mean[group] += 1
                     d_group_mean_directed[group] += 1
 
@@ -375,18 +375,85 @@ def count_edge_label_detail(conf):
                 d_group[group] += 1
                 if iflag:
                     d_group_intype[group] += 1
-                if fflag:
+                if not fflag:
                     d_group_mean[group] += 1
 
+    table = [["key", "all", "directed", "intype", "intype_directed",
+            "important", "important_directed"]]
     for key in d_group.keys():
-        l_buf = [key]
-        l_buf.append(d_group[key])
-        l_buf.append(d_group_directed[key])
-        l_buf.append(d_group_intype[key])
-        l_buf.append(d_group_intype_directed[key])
-        l_buf.append(d_group_mean[key])
-        l_buf.append(d_group_mean_directed[key])
-        print " ".join([str(s) for s in l_buf])
+        temp = [key]
+        temp.append(d_group[key])
+        temp.append(d_group_directed[key])
+        temp.append(d_group_intype[key])
+        temp.append(d_group_intype_directed[key])
+        temp.append(d_group_mean[key])
+        temp.append(d_group_mean_directed[key])
+        table.append(temp)
+
+    table.append(["total", sum(d_group.values()),
+            sum(d_group_directed.values()),
+            sum(d_group_intype.values()),
+            sum(d_group_intype_directed.values()),
+            sum(d_group_mean.values()),
+            sum(d_group_mean_directed.values())])
+
+    print common.cli_table(table)
+
+
+def count_edge_label_extype(conf):
+    ll = init_ltlabel(conf)
+    ld = log_db.LogData(conf)
+    import pcresult
+    s_keys = set()
+    d_extype = defaultdict(int)
+
+    src_dir = conf.get("dag", "output_dir")
+    for fp in common.rep_dir(src_dir):
+        r = pcresult.PCOutput(conf).load(fp)
+        dedges, udedges = r._separate_edges()
+        for edge in dedges + udedges:
+            l_group = [r._label_group_ltg(r.evmap.info(eid).gid)
+                    for eid in edge]
+            for group in l_group:
+                s_keys.add(group)
+            if l_group[0] == l_group[1]:
+                d_extype[tuple(l_group)] += 1
+            else:
+                d_extype[(l_group[0], l_group[1])] += 1
+                d_extype[(l_group[1], l_group[0])] += 1
+
+    table = []
+    table.append(["group"] + list(s_keys))
+    for key1 in s_keys:
+        buf = [key1]
+        for key2 in s_keys:
+            cnt = d_extype[(key1, key2)]
+            buf.append(cnt)
+        table.append(buf)
+
+    print common.cli_table(table)
+
+
+def search_edge_label_extype(conf, label1, label2):
+    ll = init_ltlabel(conf)
+    ld = log_db.LogData(conf)
+    import pcresult
+
+    src_dir = conf.get("dag", "output_dir")
+    for fp in common.rep_dir(src_dir):
+        r = pcresult.PCOutput(conf).load(fp)
+        rflag = False
+        dedges, udedges = r._separate_edges()
+        for edge in dedges + udedges:
+            l_group = [r._label_group_ltg(r.evmap.info(eid).gid)
+                    for eid in edge]
+            if (l_group[0] == label1 and l_group[1] == label2) or \
+                    (l_group[1] == label1 and l_group[0] == label2):
+                if not rflag:
+                    print("# {0}".format(r.filename))
+                    rflag = True
+                r._print_edge(edge, False)
+                r._print_edge_lt(edge)
 
 
 if __name__ == "__main__":
@@ -412,6 +479,12 @@ if __name__ == "__main__":
         count_edge_label(conf)
     elif mode == "edge-detail":
         count_edge_label_detail(conf)
+    elif mode == "edge-extype":
+        count_edge_label_extype(conf)
+    elif mode == "edge-search-extype":
+        if len(args) < 2:
+            sys.exit("give me 2 label names")
+        search_edge_label_extype(conf, args[0], args[1])
     else:
         raise NotImplementedError
 
