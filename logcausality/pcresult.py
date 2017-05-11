@@ -748,7 +748,7 @@ def list_maximum_clique(conf):
         print ret, r.filename
 
 
-def show_result(conf, result, graph, dflag, limit):
+def show_result(conf, result, graph, dflag, limit = 10):
     result.print_env() 
     result.print_result(graph)
     if dflag:

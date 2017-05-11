@@ -1025,17 +1025,12 @@ def dump_template_table(conf):
     ld = LogData(conf)
     print ld.dump_template_table()
 
-def show_repr(conf):
-    ld = LogData(conf)
-    for ltgid in ld.iter_ltgid():
-        print ld.show_ltgroup(ltgid)
-        print ld.show_log_repr(head = 5, foot = 5, ltgid = ltgid)
-        print
 
 def show_all_host(conf, top_dt = None, end_dt = None):
     ld = LogData(conf)
     for host in ld.whole_host():
         print host
+
 
 def migrate(conf):
     ld = LogData(conf, edit = True)

@@ -163,9 +163,12 @@ class LTLabel():
         if label is None:
             return self.default_group
         else:
-            group = self.d_rgroup[label]
-            assert len(group) == 1
-            return group[0]
+            if self.d_rgroup.has_key(label):
+                group = self.d_rgroup[label]
+                assert len(group) == 1
+                return group[0]
+            else:
+                return None
 
 
 def init_ltlabel(conf, default_group = None):
