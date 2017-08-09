@@ -642,22 +642,24 @@ def _remap_eid(edict, evmap):
 def event2stat(edict, top_dt, end_dt, dur, binarize = True,
                overlap = datetime.timedelta(seconds = 0)):
     d_stat = {}
-    l_label = dtutil.label((top_dt, end_dt), dur)
 
     for eid, l_ev in edict.iteritems():
         if overlap == datetime.timedelta(seconds = 0):
-            val = dtutil.discretize(l_ev, l_label, binarize = binarize)
+            #l_label = dtutil.label((top_dt, end_dt), dur)
+            #val = dtutil.discretize(l_ev, l_label, binarize = binarize)
+            val = dtutil.auto_discretize(l_ev, dur,
+                                         dt_range = (top_dt, end_dt),
+                                         binarize = binarize)
         else:
             val = dtutil.auto_discretize_slide(
                 l_ev, dur, overlap, dt_range = (top_dt, end_dt),
                 binarize = binarize)
-            _logger.info(val)
-        _logger.info("hoge")
         if val is None:
             _logger.warning("empty event {0} given".format(eid))
             pass
         else:
             d_stat[eid] = val
+    _logger.info("stat sum {0}".format(sum([sum(d_stat[eid]) for eid in d_stat])))
     return d_stat
 
 

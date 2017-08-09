@@ -58,7 +58,7 @@ def discretize(l_dt, l_label, method = "count", binarize = False):
         if method == "count":
             return 0
         elif method == "binary":
-            return 1
+            return 0
         elif method == "datetime":
             return []
         else:
@@ -175,8 +175,8 @@ def auto_discretize(l_dt, binsize, dt_range = None, binarize = False):
             end_dt = radj_sep(max(l_dt), binsize)
         else:
             top_dt, end_dt = dt_range
-        l_label = label(top_dt, end_dt, binsize)
-        return discretize(l_dt, l_label, binarize)
+        l_label = label((top_dt, end_dt), binsize)
+        return discretize(l_dt, l_label, binarize = binarize)
 
 
 def auto_discretize_slide(l_dt, binsize, slide,
