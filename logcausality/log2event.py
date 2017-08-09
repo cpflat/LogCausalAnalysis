@@ -641,10 +641,10 @@ def _remap_eid(edict, evmap):
 
 def event2stat(edict, top_dt, end_dt, dur, binarize = True):
     d_stat = {}
-    l_label = dtutil.label(top_dt, end_dt, dur)
+    l_label = dtutil.label((top_dt, end_dt), dur)
 
     for eid, l_ev in edict.iteritems():
-        val = dtutil.discretize(l_ev, l_label, binarize)
+        val = dtutil.discretize(l_ev, l_label, binarize = binarize)
         if val is None:
             _logger.warning("empty event {0} given".format(eid))
             pass

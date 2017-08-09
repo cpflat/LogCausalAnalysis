@@ -7,7 +7,7 @@ import random
 import numpy as np
 
 TIMEFMT = "%Y-%m-%d %H:%M:%S"
-_logger = logging.getLogger(__name__.rpartition(".")[-1])
+_logger = logging.getLogger(__package__)
 
 
 def dtrange(top_dt, end_dt, duration, include_end = False):
@@ -28,53 +28,140 @@ def dtrange(top_dt, end_dt, duration, include_end = False):
 # -> iter_term
 
 
-def discretize(l_dt, l_label = None, binarize = False):
+def discretize(l_dt, l_label, method = "count", binarize = False):
     """
     Args:
         l_dt (List[datetime.datetime]): An input datetime sequence.
         l_label (List[datetime.datetime]): A sequence of separating times
                 of data bins. The number of labels is equal to
                 number of bins + 1. (Including the end of data term)
+        method (str): Returned data style. "count" returns the number of
+                object in each bin. "binary" returns 0 or 1 for each bin.
+                (1 means some object is in the bin.) "datetime" returns
+                the list of datetime object in each bin.
         binarize (bool): If True, return 0 or 1 for each bin. 1 means
                 some datetime found in l_dt.
+                This is argument only for comparibility.
+                Use "method" instead of this argument.
     """
-    l_val = []
-    l_dt_temp = sorted(l_dt)
-    if len(l_dt_temp) > 0:
-        new_dt = l_dt_temp.pop(0)
-    else:
-        _logger.warning("l_dt is empty")
-        return None
 
-    # remove data before label term
-    while new_dt < l_label[0]:
-        if len(l_dt_temp) > 0:
-            new_dt = l_dt_temp.pop(0)
+    def return_empty(size, method):
+        if method in ("count", "binary"):
+            return [0] * bin_num
+        elif method == "datetime":
+            return [[] for i in range(bin_num)]
         else:
-            _logger.warning("all datetime values are out of given label term")
+            raise NotImplementedError(
+                "Invalid method name ({0})".format(method))
+
+    def init_tempobj(method):
+        if method == "count":
+            return 0
+        elif method == "binary":
+            return 1
+        elif method == "datetime":
             return []
-    for label_dt in l_label[1:]:
-        cnt = 0
-        while new_dt is not None and new_dt < label_dt:
-            cnt += 1
-            if len(l_dt_temp) > 0:
-                new_dt = l_dt_temp.pop(0)
-            else:
-                new_dt = None
-                break
-        
-        if cnt > 0:
-            if binarize:
-                l_val.append(1)
-            else:
-                l_val.append(cnt)
         else:
-            l_val.append(0)
-    # data after label term is ignored
-    return l_val
+            raise NotImplementedError(
+                "Invalid method name ({0})".format(method))
+
+    def update_tempobj(temp, new_dt, method):
+        if method == "count":
+            return temp + 1
+        elif method == "binary":
+            return 1
+        elif method == "datetime":
+            temp.append(new_dt)
+            return temp
+        else:
+            raise NotImplementedError(
+                "Invalid method name ({0})".format(method))
+
+    if binarize:
+        method = "binary"
+
+    bin_num = len(l_label) - 1
+    l_dt_temp = sorted(l_dt)
+    if len(l_dt_temp) <= 0:
+        return_empty(bin_num, method)
+
+    iterobj = iter(l_dt_temp)
+    try:
+        new_dt = next(iterobj)
+    except StopIteration:
+        raise ValueError("Not empty list, but failed to get initial value")
+    while new_dt < l_label[0]:
+        try:
+            new_dt = next(iterobj)
+        except StopIteration:
+            return_empty(bin_num, method)
+
+    ret = []
+    stop = False
+    for label_dt in l_label[1:]:
+        temp = init_tempobj(method)
+        if stop:
+            ret.append(temp)
+            continue
+        while new_dt < label_dt:
+            temp = update_tempobj(temp, new_dt, method)
+            try:
+                new_dt = next(iterobj)
+            except StopIteration:
+                # "stop" make data after label term be ignored
+                stop = True
+                break
+        ret.append(temp)
+    return ret
 
 
-def auto_discretize(l_dt, binsize, binarize = False):
+#def discretize(l_dt, l_label, binarize = False):
+#    """
+#    Args:
+#        l_dt (List[datetime.datetime]): An input datetime sequence.
+#        l_label (List[datetime.datetime]): A sequence of separating times
+#                of data bins. The number of labels is equal to
+#                number of bins + 1. (Including the end of data term)
+#        binarize (bool): If True, return 0 or 1 for each bin. 1 means
+#                some datetime found in l_dt.
+#    """
+#    l_val = []
+#    l_dt_temp = sorted(l_dt)
+#    if len(l_dt_temp) > 0:
+#        new_dt = l_dt_temp.pop(0)
+#    else:
+#        _logger.warning("l_dt is empty")
+#        return None
+#
+#    # remove data before label term
+#    while new_dt < l_label[0]:
+#        if len(l_dt_temp) > 0:
+#            new_dt = l_dt_temp.pop(0)
+#        else:
+#            _logger.warning("all datetime values are out of given label term")
+#            return []
+#    for label_dt in l_label[1:]:
+#        cnt = 0
+#        while new_dt is not None and new_dt < label_dt:
+#            cnt += 1
+#            if len(l_dt_temp) > 0:
+#                new_dt = l_dt_temp.pop(0)
+#            else:
+#                new_dt = None
+#                break
+#        
+#        if cnt > 0:
+#            if binarize:
+#                l_val.append(1)
+#            else:
+#                l_val.append(cnt)
+#        else:
+#            l_val.append(0)
+#    # data after label term is ignored
+#    return l_val
+
+
+def auto_discretize(l_dt, binsize, dt_range = None, binarize = False):
     """
     Args:
         l_dt (List[datetime.datetime])
@@ -83,13 +170,49 @@ def auto_discretize(l_dt, binsize, binarize = False):
     if binsize == datetime.timedelta(seconds = 1):
         return l_dt
     else:
-        top_dt = adj_sep(min(l_dt), binsize)
-        end_dt = radj_sep(max(l_dt), binsize)
+        if dt_range is None:
+            top_dt = adj_sep(min(l_dt), binsize)
+            end_dt = radj_sep(max(l_dt), binsize)
+        else:
+            top_dt, end_dt = dt_range
         l_label = label(top_dt, end_dt, binsize)
         return discretize(l_dt, l_label, binarize)
 
 
-def periodic(top_dt, end_dt, interval):
+def auto_discretize_slide(l_dt, binsize, slide,
+                          dt_range = None, method = "count", binarize = False):
+    assert slide <= binsize
+    if dt_range is None:
+        top_dt = adj_sep(min(l_dt), binsize)
+        end_dt = radj_sep(max(l_dt), binsize)
+    else:
+        top_dt, end_dt = dt_range
+
+    overlap = binsize - slide
+    l_top = label((top_dt, end_dt), slide)[:-1]
+    l_end = [min(t + binsize, end_dt) for t in l_top]
+
+    ret = []
+    noslide = discretize(l_dt, l_top + [end_dt], method = "datetime")
+    for bin_end, l_bin_dt, l_bin_dt_next in zip(l_end, noslide,
+                                                noslide[1:] + [[]]):
+        temp = [dt for dt in l_bin_dt + l_bin_dt_next if dt <= bin_end]
+        if method == "count":
+            ret.append(len(temp))
+        elif method == "binary":
+            if len(temp) > 0:
+                ret.append(1)
+            else:
+                ret.append(0)
+        else:
+            raise NotImplementedError(
+                "Invalid method name ({0})".format(method))
+
+    return ret
+
+
+def periodic(dt_range, interval):
+    top_dt, end_dt = dt_range
     l_label = []
     #temp_dt = top_dt + duration
     temp_dt = top_dt
@@ -100,8 +223,8 @@ def periodic(top_dt, end_dt, interval):
     return l_label
 
 
-def label(top_dt, end_dt, duration):
-    return periodic(top_dt, end_dt, duration)
+def label(dt_range, duration):
+    return periodic(dt_range, duration)
 
 
 def is_sep(dt, duration):
@@ -338,6 +461,21 @@ def separate_periodic(data, dur, err):
     return ret, remain_dt
 
 
+def convert_binsize(array, org_binsize, new_binsize):
+    assert org_binsize <= new_binsize, \
+        "new_binsize needs to be larger than org_binsize"
+    if org_binsize == new_binsize:
+        return array
+
+    ratio = int(new_binsize.total_seconds() / org_binsize.total_seconds())
+    l = []
+    i = 0
+    while i < array.size:
+        l.append(array[i:i+ratio].sum())
+        i += ratio
+    return np.array(l)
+
+
 def rand_uniform(top_dt, end_dt, lambd):
     """Generate a random event that follows uniform distribution of
     LAMBD times a day on the average.
@@ -405,7 +543,7 @@ def test_discretize():
             "2112-07-16 20:17:01",
             "2112-07-16 20:17:02",
             "2112-07-16 20:17:21",
-            "2112-07-16 20:18:00",
+            "2112-07-16 21:00:00",
             "2112-07-16 21:17:01",
             "2112-07-16 22:17:01",
             "2112-07-16 23:17:01",
@@ -416,11 +554,17 @@ def test_discretize():
     binsize = datetime.timedelta(hours = 1)
     top_dt = adj_sep(min(l_dt), binsize)
     end_dt = radj_sep(max(l_dt), binsize)
-    l_label = label(top_dt, end_dt, binsize)
-    data = discretize(l_dt, l_label, binarize = False)
-    print "result"
+    l_label = label((top_dt, end_dt), binsize)
+    #data = discretize(l_dt, l_label, binarize = False)
+    data = auto_discretize_slide(l_dt,
+                                 binsize + datetime.timedelta(minutes = 30),
+                                 #binsize,
+                                 binsize,
+                                 dt_range = (top_dt, end_dt),
+                                 method = "count")
+    print("result")
     for l, cnt in zip(l_label, data):
-        print l, cnt
+        print(l, cnt)
 
 
 def test_separate_periodic():
@@ -455,13 +599,13 @@ def test_separate_periodic():
     l_seq, remain_dt = separate_periodic(data, dur, err)
     #l_seq, remain_dt = separate_periodic_dup(data, dur, err)
     for cnt, seq in enumerate(l_seq):
-        print "sequence", cnt
+        print("sequence", cnt)
         for dt in seq:
-            print dt
-        print
+            print(dt)
+        print()
     print("remains")
     for dt in remain_dt:
-        print dt
+        print(dt)
 
 
 def test_randlog_exp():
@@ -469,15 +613,15 @@ def test_randlog_exp():
     end_dt = datetime.datetime.strptime("2112-07-17 00:00:00", TIMEFMT)
     lambd = 10000.0
     for i in range(10):
-        print "exp 1"
+        print("exp 1")
         for dt in rand_exp(top_dt, end_dt, lambd):
-            print dt
-        print
+            print(dt)
+        print()
 
 
 if __name__ == "__main__":
     #test_separate_periodic()
-    #test_discretize()
-    test_randlog_exp()
+    test_discretize()
+    #test_randlog_exp()
 
 
