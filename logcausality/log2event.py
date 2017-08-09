@@ -450,7 +450,7 @@ def filter_edict_remove(conf, edict, evmap, ld, top_dt, end_dt, area, alg):
         else:
             temp_edict = resize_edict(ld, evmap, end_dt, dt_length, area)
         d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
-                binarize = False)
+                            binarize = False)
         for eid, l_stat in d_stat.iteritems():
             _logger.info("periodicity test for eid {0} {1}".format(eid,
                     evmap.info_str(eid)))
@@ -639,12 +639,18 @@ def _remap_eid(edict, evmap):
     return edict, evmap
 
 
-def event2stat(edict, top_dt, end_dt, dur, binarize = True):
+def event2stat(edict, top_dt, end_dt, dur, binarize = True,
+               overlap = datetime.timedelta(seconds = 0)):
     d_stat = {}
     l_label = dtutil.label((top_dt, end_dt), dur)
 
     for eid, l_ev in edict.iteritems():
-        val = dtutil.discretize(l_ev, l_label, binarize = binarize)
+        if overlap == datetime.timedelta(seconds = 0):
+            val = dtutil.discretize(l_ev, l_label, binarize = binarize)
+        else:
+            val = dtutil.auto_discretize_slide(
+                l_ev, dur, overlap, dt_range = (top_dt, end_dt),
+                binarize = binarize)
         if val is None:
             _logger.warning("empty event {0} given".format(eid))
             pass

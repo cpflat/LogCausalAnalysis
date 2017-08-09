@@ -215,6 +215,9 @@ unit_diff = 24h
 # Bin size of discrete data for G square test
 stat_bin = 10s
 
+# Overlapping bin size (addtional to dag.stat_bin)
+stat_bin_overlap = 0s
+
 # Method to estimate conditional independency
 # [fisherz, fisherz_bin, gsq, gsq_rlib] is available
 ci_func = gsq

@@ -48,6 +48,7 @@ def pc_log(conf, top_dt, end_dt, dur, area):
     if len(edict) > 2:
         threshold = conf.getfloat("dag", "threshold")
         ci_func = conf.get("dag", "ci_func")
+        bin_overlap = conf.getdur("dag", "stat_bin_overlap")
         binarize = pc_input.input_binarize(ci_func)
         data = log2event.event2stat(edict, top_dt, end_dt, dur, binarize)
         skel_method = conf.get("dag", "skeleton_method")
