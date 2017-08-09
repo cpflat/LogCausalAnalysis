@@ -651,6 +651,8 @@ def event2stat(edict, top_dt, end_dt, dur, binarize = True,
             val = dtutil.auto_discretize_slide(
                 l_ev, dur, overlap, dt_range = (top_dt, end_dt),
                 binarize = binarize)
+            _logger.info(val)
+        _logger.info("hoge")
         if val is None:
             _logger.warning("empty event {0} given".format(eid))
             pass
