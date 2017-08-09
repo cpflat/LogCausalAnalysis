@@ -188,7 +188,8 @@ def auto_discretize_slide(l_dt, binsize, slide,
     else:
         top_dt, end_dt = dt_range
 
-    overlap = binsize - slide
+    if binarize:
+        method = "binary"
     l_top = label((top_dt, end_dt), slide)[:-1]
     l_end = [min(t + binsize, end_dt) for t in l_top]
 
