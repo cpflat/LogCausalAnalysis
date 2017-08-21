@@ -187,21 +187,29 @@ def auto_discretize_slide(l_dt, binsize, slide,
         end_dt = radj_sep(max(l_dt), binsize)
     else:
         top_dt, end_dt = dt_range
-
     if binarize:
         method = "binary"
+
+    if binsize < slide:
+        _logger.warning("binsize is smaller than slide, "
+                        "which means there is time-series sampling gap")
+    slide_width = max(int(binsize.total_seconds() / slide.total_seconds()), 1)
     l_top = label((top_dt, end_dt), slide)[:-1]
     l_end = [min(t + binsize, end_dt) for t in l_top]
 
     ret = []
     noslide = discretize(l_dt, l_top + [end_dt], method = "datetime")
-    for bin_end, l_bin_dt, l_bin_dt_next in zip(l_end, noslide,
-                                                noslide[1:] + [[]]):
-        temp = [dt for dt in l_bin_dt + l_bin_dt_next if dt <= bin_end]
+
+    for i, bin_end in enumerate(l_end):
+        slide_area = chain.from_iterable(noslide[i:i+slide_width])
+        l_dt = []
+        for b in slide_area:
+            l_dt_temp.extend([dt for dt in b if dt <= bin_end])
+        
         if method == "count":
-            ret.append(len(temp))
+            ret.append(len(l_dt_temp))
         elif method == "binary":
-            if len(temp) > 0:
+            if len(l_dt_temp) > 0:
                 ret.append(1)
             else:
                 ret.append(0)
