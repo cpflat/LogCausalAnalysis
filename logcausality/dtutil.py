@@ -181,7 +181,7 @@ def auto_discretize(l_dt, binsize, dt_range = None, binarize = False):
 
 def auto_discretize_slide(l_dt, binsize, slide,
                           dt_range = None, method = "count", binarize = False):
-    assert slide <= binsize
+    #assert slide <= binsize
     if dt_range is None:
         top_dt = adj_sep(min(l_dt), binsize)
         end_dt = radj_sep(max(l_dt), binsize)
