@@ -5,7 +5,7 @@ import datetime
 import logging
 import random
 import numpy as np
-from itertools import chain
+#from itertools import chain
 
 TIMEFMT = "%Y-%m-%d %H:%M:%S"
 _logger = logging.getLogger(__package__)
@@ -202,10 +202,10 @@ def auto_discretize_slide(l_dt, binsize, slide,
     noslide = discretize(l_dt, l_top + [end_dt], method = "datetime")
 
     for i, bin_end in enumerate(l_end):
-        slide_area = chain.from_iterable(noslide[i:i+slide_width])
+        #slide_area = chain.from_iterable(noslide[i:i+slide_width])
         l_dt_temp = []
-        for b in slide_area:
-            l_dt_temp.extend([dt for dt in b if dt <= bin_end])
+        for b in noslide[i:i+slide_width]:
+            l_dt_temp.extend([dt for dt in slide_area if dt <= bin_end])
         
         if method == "count":
             ret.append(len(l_dt_temp))
