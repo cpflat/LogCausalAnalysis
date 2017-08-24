@@ -203,7 +203,7 @@ def auto_discretize_slide(l_dt, binsize, slide,
 
     for i, bin_end in enumerate(l_end):
         slide_area = chain.from_iterable(noslide[i:i+slide_width])
-        l_dt = []
+        l_dt_temp = []
         for b in slide_area:
             l_dt_temp.extend([dt for dt in b if dt <= bin_end])
         
