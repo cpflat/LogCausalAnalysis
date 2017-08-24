@@ -5,6 +5,7 @@ import datetime
 import logging
 import random
 import numpy as np
+from itertools import chain
 
 TIMEFMT = "%Y-%m-%d %H:%M:%S"
 _logger = logging.getLogger(__package__)
