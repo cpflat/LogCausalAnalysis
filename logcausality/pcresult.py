@@ -315,6 +315,7 @@ class PCOutput():
         if eflag:
             graph = graph_no_orphan(graph)
         rgraph = self.relabel_graph(graph)
+        #rgraph = graph
         # before networkx 1.0
         #g = nx.to_agraph(rgraph)
         # after networkx 1.1
