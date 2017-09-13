@@ -651,8 +651,9 @@ def event2stat(edict, top_dt, end_dt, dur, binarize = True,
                                          dt_range = (top_dt, end_dt),
                                          binarize = binarize)
         else:
+            slide = dur - overlap
             val = dtutil.auto_discretize_slide(
-                l_ev, dur, overlap, dt_range = (top_dt, end_dt),
+                l_ev, dur, slide, dt_range = (top_dt, end_dt),
                 binarize = binarize)
         if val is None:
             _logger.warning("empty event {0} given".format(eid))
