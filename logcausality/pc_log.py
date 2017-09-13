@@ -49,6 +49,8 @@ def pc_log(conf, top_dt, end_dt, dur, area):
         threshold = conf.getfloat("dag", "threshold")
         ci_func = conf.get("dag", "ci_func")
         bin_overlap = conf.getdur("dag", "stat_bin_overlap")
+        if bin_overlap is None or bin_overlap == "":
+            bin_overlap = datetime.timedelta(seconds = 0)
         binarize = pc_input.input_binarize(ci_func)
         data = log2event.event2stat(edict, top_dt, end_dt, dur,
                                     binarize, bin_overlap)
