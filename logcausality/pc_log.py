@@ -52,7 +52,6 @@ def pc_log(conf, top_dt, end_dt, dur, area):
         binarize = pc_input.input_binarize(ci_func)
         data = log2event.event2stat(edict, top_dt, end_dt, dur,
                                     binarize, bin_overlap)
-        import pdb; pdb.set_trace()
         skel_method = conf.get("dag", "skeleton_method")
         skel_verbose = conf.getboolean("dag", "skeleton_verbose")
         pc_depth = conf.getint("dag", "skeleton_depth")
