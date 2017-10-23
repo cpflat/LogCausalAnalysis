@@ -660,7 +660,9 @@ def event2stat(edict, top_dt, end_dt, dur, binarize = True,
             pass
         else:
             d_stat[eid] = val
-    _logger.info("stat sum {0}".format(sum([sum(d_stat[eid]) for eid in d_stat])))
+    _logger.info("stat sum {0}".format(
+        sum(sum(val) for val in d_stat.values()))
+    )
     return d_stat
 
 
