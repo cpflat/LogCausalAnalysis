@@ -169,7 +169,7 @@ def auto_discretize(l_dt, binsize, dt_range = None, binarize = False):
         binsize (datetime.timedelta)
     """
     if binsize == datetime.timedelta(seconds = 1):
-        return l_dt
+        l_label = l_dt
     else:
         if dt_range is None:
             top_dt = adj_sep(min(l_dt), binsize)
@@ -177,7 +177,7 @@ def auto_discretize(l_dt, binsize, dt_range = None, binarize = False):
         else:
             top_dt, end_dt = dt_range
         l_label = label((top_dt, end_dt), binsize)
-        return discretize(l_dt, l_label, binarize = binarize)
+    return discretize(l_dt, l_label, binarize = binarize)
 
 
 def auto_discretize_slide(l_dt, binsize, slide,
