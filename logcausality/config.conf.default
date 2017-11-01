@@ -83,6 +83,9 @@ default_year =
 remove_header_filename = 
 
 
+header_size = 
+
+
 [log_template]
 
 # 1st step algorithms / methods to generate log templates

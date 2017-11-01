@@ -37,6 +37,11 @@ class LogParser():
             self.symdef = DEFAULT_SYMDEF
         self.sep_variable = sep_variable
         self.sym_ignore = conf.getboolean("log_template", "sym_ignore")
+        hsize = conf.get("database", "header_size")
+        if hsize == "" or hsize is None:
+            self.header_size = None
+        else:
+            self.header_size = int(hsize)
         self.rm_header = []
         if self.rmheader_fl is not None and len(self.rmheader_fl) > 0:
             self._init_remove_header(self.rmheader_fl)
@@ -219,6 +224,8 @@ class LogParser():
         except:
             return None, None, None
 
+        if self.header_size is not None:
+            message = line.split()[self.header_size:]
         return dt, host, message
 
     def process_line(self, line):
