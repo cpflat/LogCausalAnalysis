@@ -90,7 +90,7 @@ def part_filtered(data, fdata, binsize, th_spec):
     a_spec = np.abs(fdata)
     max_spec = max(a_spec)
     
-    fdata[a_spec > th_spec * max_spec] = np.complex(0)
+    fdata[a_spec <= th_spec * max_spec] = np.complex(0)
     data_filtered = np.real(scipy.fftpack.ifft(fdata))
     return data_filtered
 
