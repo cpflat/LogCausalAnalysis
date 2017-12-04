@@ -188,7 +188,7 @@ class LogParser():
             else:
                 return self.month_name.index(string) + 1
 
-        line = src_line
+        line = src_line[:]
 
         try:
             if self.re_datetime.match(line):
@@ -225,7 +225,8 @@ class LogParser():
             return None, None, None
 
         if self.header_size is not None:
-            message = line.split()[self.header_size:]
+            #message = line.split()[self.header_size:]
+            message = " ".join(src_line.split()[self.header_size:])
         return dt, host, message
 
     def process_line(self, line):

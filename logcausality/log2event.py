@@ -172,6 +172,13 @@ class EventDefinitionMap():
     def has_info(self, info):
         return self._ermap.has_key(info)
 
+    def search_event(self, gid, host):
+        l_evdef = []
+        for evdef in self._ermap:
+            if evdef.gid == gid and evdef.host == host:
+                l_evdef.append(evdef)
+        return l_evdef
+
     def info(self, eid):
         return self._emap[eid]
 

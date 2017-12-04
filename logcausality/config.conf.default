@@ -330,7 +330,7 @@ ltlabel_default_group = None
 # If true, remove frequently appearing edges from the result
 filter_edges = false
 edge_filter_method = count_ighost
-edge_filter_th = 0.1
+edge_filter_th = 0.05
 edge_filter_file = edge.temp
 
 

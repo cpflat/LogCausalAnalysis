@@ -29,6 +29,45 @@ def event_label(conf):
     return d_group
 
 
+def get_dict_event_replaced(conf):
+    d = {}
+    type_rp = log2event.EventDefinitionMap.type_periodic_remainder
+    dirname = conf.get("dag", "event_dir")
+    for fp in common.rep_dir(dirname):
+        fn = fp.split("/")[-1]
+        edict, evmap = log2event.load_edict(fp)
+        l_evdef = []
+        for eid in edict.keys():
+            evdef = evmap.info(eid)
+            if evdef.type == type_rp:
+                l_evdef.append(evdef)
+            else:
+                pass
+        if len(l_evdef) > 0:
+            d[fn] = l_evdef
+    return d
+
+
+def event_replaced(conf):
+    type_rp = log2event.EventDefinitionMap.type_periodic_remainder
+    dirname = conf.get("dag", "event_dir")
+    for fp in common.rep_dir(dirname):
+        fn = fp.split("/")[-1]
+        area, gid = fn.split("_")
+        edict, evmap = log2event.load_edict(fp)
+        l_evdef = []
+        for eid in edict.keys():
+            evdef = evmap.info(eid)
+            if evdef.type == type_rp:
+                l_evdef.append(evdef)
+            else:
+                pass
+        if len(l_evdef) > 0:
+            print("# {0}".format(fn))
+            for evdef in l_evdef:
+                print(evdef)
+
+
 def get_dict_eventset(conf):
     d_set = defaultdict(set)
     dirname = conf.get("dag", "event_dir")
@@ -56,33 +95,6 @@ def diff_event(conf1, conf2):
             d_diff[ev] += 1
 
     return d_diff
-
-
-def filter_info(conf_org, conf):
-    d_org = get_dict_eventset(conf_org)
-    d_set = get_dict_eventset(conf)
-
-    d_rm = defaultdict(int)
-    d_rp = defaultdict(int)
-    type_rp = log2event.EventDefinitionMap.type_periodic_remainder
-    for k in d_org.keys():
-        if not d_set.has_key(k):
-            raise KeyError("{0} not found in event set 2".format(k))
-        s1 = d_org[k]
-        s2 = d_set[k]
-        s_rp = set()
-        for ev in s2:
-            if ev.type == type_rp:
-                d_rp[ev] += 1
-                s_rp.add((ev.gid, ev.host))
-        for ev in (s1 - s2):
-            if (ev.gid, ev.host) in s_rp:
-                # replaced, not removed
-                pass
-            else:
-                d_rm[ev] += 1
-
-    return d_rm, d_rp
 
 
 def filter_compare(conf_org, conf1, conf2):
@@ -188,51 +200,6 @@ def show_diff_event(conf1, conf2):
         print
 
 
-#def diff_event_stat(conf1, conf2):
-#    d_diff = diff_event(conf1, conf2)
-#
-#    s_ev1 = set()
-#    dirname = conf1.get("dag", "event_dir")
-#    for fp in common.rep_dir(dirname):
-#        fn = fp.split("/")[-1]
-#        edict1, evmap1 = log2event.load_edict(fp)
-#        s_ev1 = s_ev1 | set([evmap1.info(eid) for eid in edict1.keys()])
-#
-#    s_ev2 = set()
-#    dirname = conf2.get("dag", "event_dir")
-#    for fp in common.rep_dir(dirname):
-#        fn = fp.split("/")[-1]
-#        edict2, evmap2 = log2event.load_edict(fp)
-#        s_ev2 = s_ev2 | set([evmap2.info(eid) for eid in edict2.keys()])
-#
-#    s_diff1 = s_ev1 - s_ev2
-#    s_diff2 = s_ev2 - s_ev1
-#
-#    rep_type = log2event.EventDefinitionMap.type_periodic_remainder
-#    s_diff1_rep = [evdef for evdef in s_diff1 if evdef.type == rep_type]
-#    s_diff2_rep = [evdef for evdef in s_diff2 if evdef.type == rep_type]
-#
-#    print("Set 1")
-#    org = len(s_ev1)
-#    print("Events: {0}".format(org))
-#    num = len(s_diff1)
-#    print("Not in Set1: {0} ({1})".format(num, 1.0 * num / org))
-#    num = len(s_diff1) - len(s_diff1_rep)
-#    print("Removed events: {0} ({1})".format(num, 1.0 * num / org))
-#    num = len(s_diff1_rep)
-#    print("Replaced events: {0} ({1})".format(num, 1.0 * num / org))
-#    print("")
-#    print("Set 2")
-#    org = len(s_ev2)
-#    print("Events: {0}".format(org))
-#    num = len(s_diff2)
-#    print("Edited events: {0} ({1})".format(num, 1.0 * num / org))
-#    num = len(s_diff2) - len(s_diff2_rep)
-#    print("Removed events: {0} ({1})".format(num, 1.0 * num / org))
-#    num = len(s_diff2_rep)
-#    print("Replaced events: {0} ({1})".format(num, 1.0 * num / org))
-
-
 def show_diff_event_label(conf1, conf2):
     d_diff = diff_event(conf1, conf2)
     import log_db
@@ -304,11 +271,6 @@ if __name__ == "__main__":
             sys.exit(usage)
         conf2 = config.open_config(args[0])
         show_diff_event(conf, conf2)
-    #elif mode == "diff-event-stat":
-    #    if len(args) == 0:
-    #        sys.exit(usage)
-    #    conf2 = config.open_config(args[0])
-    #    diff_event_stat(conf, conf2)
     elif mode == "diff-filter":
         if len(args) < 3:
             sys.exit(("give me 3 config files: 1 for original events, "
@@ -322,5 +284,8 @@ if __name__ == "__main__":
             sys.exit(usage)
         conf2 = config.open_config(args[0])
         show_diff_event_label(conf, conf2)
+    elif mode == "event_replaced":
+        event_replaced(conf)
+
 
 
