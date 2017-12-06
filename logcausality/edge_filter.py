@@ -15,13 +15,13 @@ _logger = logging.getLogger(__name__.rpartition(".")[-1])
 
 class EdgeFilter():
 
-    def __init__(self, conf):
+    def __init__(self, conf, init = False):
         self.method = conf.get("visual", "edge_filter_method")
         self.threshold = conf.getfloat("visual", "edge_filter_th")
         self.filename = conf.get("visual", "edge_filter_file")
         self.src_dir = conf.get("dag", "output_dir")
         self.latest = None
-        if os.path.exists(self.filename):
+        if os.path.exists(self.filename) and not init:
             self.load()
         if self.latest is None or self._update_check():
             self._init_dict(conf)

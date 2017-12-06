@@ -276,8 +276,8 @@ cf_smooth = 5
 # periodic-whole : 'periodic' with the interval calculated with 'self-corr'
 
 # Action to apply for periodic events
-# [remove, replace, remove-corr, (to be added)]
-action = remove
+# [remove, replace, remove-corr, linear, remove+linear, replace+linear, linear+replace (to be added)]
+action = replace+linear
 
 # Sampling term to calculate interval candidate in 'periodic-whole'
 # If empty, use whole log data in DB

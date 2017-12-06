@@ -284,7 +284,7 @@ if __name__ == "__main__":
             sys.exit(usage)
         conf2 = config.open_config(args[0])
         show_diff_event_label(conf, conf2)
-    elif mode == "event_replaced":
+    elif mode == "event-replaced":
         event_replaced(conf)
 
 
