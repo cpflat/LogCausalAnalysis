@@ -101,7 +101,10 @@ class _ClassifierOfCount(_Classifier):
                 key = lambda x: x[1], reverse = True)
         length = len(self._d_cnt)
         filtered_num = int(length * threshold)
-        self._th_val = l_stat[filtered_num][1]
+        if filtered_num >= length:
+            self._th_val = max(self._d_cnt.values()) + 1
+        else:
+            self._th_val = l_stat[filtered_num][1]
 
     def _key(self, cedge):
         return cedge
