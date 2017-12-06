@@ -459,7 +459,7 @@ def filter_edict_remove(conf, edict, evmap, ld, top_dt, end_dt, area, alg):
         d_stat = event2stat(temp_edict, top_dt, end_dt, binsize,
                             binarize = False)
         for eid, l_stat in d_stat.iteritems():
-            _logger.info("periodicity test for eid {0} {1}".format(eid,
+            _logger.debug("periodicity test for eid {0} {1}".format(eid,
                     evmap.info_str(eid)))
             if eid in s_eid_periodic or\
                     not fourier.pretest(conf, l_stat, binsize):
@@ -468,12 +468,12 @@ def filter_edict_remove(conf, edict, evmap, ld, top_dt, end_dt, area, alg):
                 #flag, interval = fourier.remove(conf, l_stat, binsize)
                 flag, interval = is_removed(conf, l_stat, binsize, alg)
                 if flag:
-                    _logger.info("eid {0} is periodic ({1}, {2})".format(
+                    _logger.debug("eid {0} is periodic ({1}, {2})".format(
                             eid, interval, binsize))
                     s_eid_periodic.add(eid)
 
     for eid in s_eid_periodic:
-        _logger.info("remove eid {0} from dataset".format(eid))
+        _logger.debug("remove eid {0} from dataset".format(eid))
         ret_edict.pop(eid)
         ret_evmap.pop(eid)
 
@@ -509,19 +509,19 @@ def replace_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
                     not fourier.pretest(conf, l_stat, binsize):
                 pass
             else:
-                _logger.info("periodicity test for eid {0}".format(eid))
+                _logger.debug("periodicity test for eid {0}".format(eid))
                 flag, remain_data, interval = fourier.replace(conf,
                         l_stat, binsize)
                 if flag:
-                    _logger.info("eid {0} is periodic ({1}, {2})".format(
+                    _logger.debug("eid {0} is periodic ({1}, {2})".format(
                             eid, dt_length, binsize))
                     s_eid_periodic.add(eid)
                     if sum(remain_data) == 0:
-                        _logger.info("remove eid {0} from dataset".format(eid))
+                        _logger.debug("remove eid {0} from dataset".format(eid))
                         ret_edict.pop(eid)
                         ret_evmap.pop(eid)
                     else:
-                        _logger.info("replace eid {0} (count:{1})".format(
+                        _logger.debug("replace eid {0} (count:{1})".format(
                                 eid, sum(remain_data)))
                         ret_edict[eid] = revert_event(remain_data,
                                 top_dt, end_dt, binsize)
@@ -667,7 +667,7 @@ def event2stat(edict, top_dt, end_dt, dur, binarize = True,
             pass
         else:
             d_stat[eid] = val
-    _logger.info("stat sum {0}".format(
+    _logger.debug("stat sum {0}".format(
         sum(sum(val) for val in d_stat.values()))
     )
     return d_stat
