@@ -292,6 +292,7 @@ def generate_evmap(conf, ld, top_dt, end_dt):
 def get_edict(conf, top_dt, end_dt, dur, area):
     filepath = edict_filepath(conf, top_dt, end_dt, dur, area)
     if os.path.exists(filepath):
+        _logger.info("Preprocessed event data found ({0})".format(filepath))
         edict, evmap = load_edict(filepath)
     else:
         init_edict_dir(conf)
@@ -339,6 +340,7 @@ def filter_edict(conf, edict, evmap, ld, top_dt, end_dt, area):
     usefilter = conf.getboolean("dag", "usefilter")
     if usefilter:
         act = conf.get("filter", "action")
+        _logger.info("Filter periodic events (method: {0})".format(act))
         if act == "remove":
             edict, evmap = filter_edict_remove(conf, edict, evmap,
                     ld, top_dt, end_dt, area, alg = "fourier")
