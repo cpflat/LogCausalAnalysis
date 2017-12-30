@@ -115,7 +115,7 @@ def pc_arg_date(conf, datestr):
     diff = conf.getdur("dag", "unit_diff")
     dur = conf.getdur("dag", "stat_bin")
     top_dt = datetime.datetime.strptime(datestr, "%Y-%m-%d")
-    end_dt = top_date + term
+    end_dt = top_dt + term
 
     for area in l_area:
         l_args.append((conf, top_dt, end_dt, dur, area))
