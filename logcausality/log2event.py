@@ -653,6 +653,10 @@ def event2stat(edict, top_dt, end_dt, dur, binarize = True,
     d_stat = {}
 
     for eid, l_ev in edict.iteritems():
+        if len(l_ev) == 0:
+            _logger.warning("Event {0} is empty: seems a bug "
+                            "in preprocessing".format(eid))
+            continue
         if overlap == datetime.timedelta(seconds = 0):
             #l_label = dtutil.label((top_dt, end_dt), dur)
             #val = dtutil.discretize(l_ev, l_label, binarize = binarize)

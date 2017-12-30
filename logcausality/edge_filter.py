@@ -212,14 +212,14 @@ class _ClassifierOfContinuationIgHost(_ClassifierOfContinuation):
 #        self.tfidf
 
 
-def show_count(conf, mode = "count"):
+def show_count(conf, threshold = 0.005, mode = "count"):
     l_result = pcresult.results(conf)
     #ef = EdgeFilter(conf)
     if mode == "count":
-        ef = _ClassifierOfCount(l_result, 0.1)
+        ef = _ClassifierOfCount(l_result, threshold)
     elif mode == "count-ighost":
-        ef = _ClassifierOfCountIgHost(l_result, 0.1)
-    ef._th_val = 100000000
+        ef = _ClassifierOfCountIgHost(l_result, threshold)
+    #ef._th_val = threshold
     ef.show_all(l_result)
 
 
@@ -262,9 +262,13 @@ if __name__ == "__main__":
         test_edge_filter(conf)
         #test_edge_filter_cont(conf)
     elif mode == "show-count":
-        show_count(conf, "count")
+        show_count(conf, mode = "count")
     elif mode == "show-count-ighost":
-        show_count(conf, "count-ighost")
+        if len(args) > 0:
+            th = float(args[0])
+            show_count(conf, threshold = th, mode = "count-ighost")
+        else:
+            show_count(conf, mode = "count-ighost")
     else:
         raise NotImplementedError
 
