@@ -110,6 +110,19 @@ def whole_term(conf, ld = None):
         return w_term
 
 
+def pc_arg_date(conf, datestr):
+    term = conf.getdur("dag", "unit_term")
+    diff = conf.getdur("dag", "unit_diff")
+    dur = conf.getdur("dag", "stat_bin")
+    top_dt = datetime.datetime.strptime(datestr, "%Y-%m-%d")
+    end_dt = top_date + term
+
+    for area in l_area:
+        l_args.append((conf, top_dt, end_dt, dur, area))
+
+    return l_args
+
+
 def pc_all_args(conf):
     ld = log_db.LogData(conf)
     w_top_dt, w_end_dt = whole_term(conf, ld)
@@ -194,6 +207,8 @@ if __name__ == "__main__":
             help="configuration file path")
     op.add_option("-e", action="store_true", dest="make_event",
             default=False, help="only making event set")
+    op.add_option("-d", action="store", dest="date",
+            default=None, help="use data of given date (prior to config)")
     op.add_option("-p", "--parallel", action="store", dest="pal", type="int",
             default=1, help="multithreading")
     #op.add_option("-r", action="store_true", dest="rflag",
@@ -210,7 +225,10 @@ if __name__ == "__main__":
             ["evfilter", "log2event"], lv = lv)
 
     common.mkdir(conf.get("dag", "output_dir"))
-    l_args = pc_all_args(conf)
+    if options.date is None:
+        l_args = pc_all_args(conf)
+    else:
+        l_args = pc_arg_date(conf, options.date)
     if options.test:
         test_pc(l_args); sys.exit()
     elif options.make_event:
