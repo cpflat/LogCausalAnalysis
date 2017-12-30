@@ -117,6 +117,7 @@ def pc_arg_date(conf, datestr):
     top_dt = datetime.datetime.strptime(datestr, "%Y-%m-%d")
     end_dt = top_dt + term
 
+    l_args = []
     l_area = conf.getlist("dag", "area")
     if "each" in l_area:
         l_area.pop(l_area.index("each"))
