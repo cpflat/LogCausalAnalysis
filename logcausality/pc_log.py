@@ -117,6 +117,11 @@ def pc_arg_date(conf, datestr):
     top_dt = datetime.datetime.strptime(datestr, "%Y-%m-%d")
     end_dt = top_dt + term
 
+    l_area = conf.getlist("dag", "area")
+    if "each" in l_area:
+        l_area.pop(l_area.index("each"))
+        l_area += ["host_" + host for host
+                in ld.whole_host(top_dt, end_dt)]
     for area in l_area:
         l_args.append((conf, top_dt, end_dt, dur, area))
 
