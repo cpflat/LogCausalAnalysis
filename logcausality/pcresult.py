@@ -129,7 +129,7 @@ class PCOutput():
             print("\n".join(
                 [str(ltline) for ltline in self.ld.ltg_members(info.gid)]))
             print
-    
+
     def _print_edge_detail(self, edge, limit = None):
         if self.area == "all":
             area = None

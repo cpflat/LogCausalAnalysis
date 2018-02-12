@@ -61,6 +61,29 @@ def related_filtered(conf):
     print("Edges related to filtered event: {0}".format(cnt))
 
 
+def related_filtered_all(conf, key = "date"):
+    import networkx as nx
+    d_nodes = defaultdict(int)
+    d_edges = defaultdict(int)
+    d_filtered = defaultdict(int)
+    for r in pcresult.results(conf):
+        key = r.filename.split("_")[-1]
+        d_nodes[key] += r.graph.number_of_nodes()
+        d_edges[key] += pcresult.number_of_edges(r.graph)
+        g = nx.Graph(r.graph)
+        for edge in g.edges():
+            types = [r.evmap.info(eid).type for eid in edge]
+            if types[0] == 0 and types[1] == 0:
+                pass
+            else:
+                d_filtered[key] += 1
+
+    for k in sorted(d_nodes.keys()):
+        print("{0} {1} {2} {3}".format(k, d_nodes[k],
+                                       d_edges[k], d_filtered[k]))
+
+
+
 def list_all_gid(conf):
     import log_db
     import lt_label
@@ -183,7 +206,7 @@ usage: {0} [options] args...
     if mode == "diff-event-type":
         diff_event_type(conf)
     elif mode == "related-filtered":
-        related_filtered(conf)
+        related_filtered_all(conf)
     elif mode == "list-all-gid":
         list_all_gid(conf)
     elif mode == "search-gid":
