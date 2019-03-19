@@ -66,7 +66,7 @@ $ python pcresult.py -g graph.pdf show pc_output/all_21120901
 
 ## Reference
 
-This project is evaluated in our [paper](https://doi.org/10.1109/TNSM.2017.2778096).
+This project is evaluated in a [paper](https://doi.org/10.1109/TNSM.2017.2778096).
 If you use this code, please consider citing:
 ```
 @article{Kobayashi2018,
@@ -80,4 +80,7 @@ If you use this code, please consider citing:
 }
 ```
 
+## Author
+
+Satoru Kobayashi
 
