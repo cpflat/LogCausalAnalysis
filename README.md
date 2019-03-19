@@ -4,7 +4,7 @@
 
 This project will not be updated in the future.
 Instead, consider to use [amulog](https://github.com/cpflat/amulog) and [logdag](https://github.com/cpflat/logdag)
-which provides equivalent functions, improved interface and newer tools.
+which provides equivalent functions, improved interface, and newer tools.
 This project will be left as is for validating our previous published paper (see [Reference](#Reference)).
 
 ## Overview
