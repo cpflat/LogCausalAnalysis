@@ -80,6 +80,10 @@ If you use this code, please consider citing:
 }
 ```
 
+## License
+
+3-Clause BSD license
+
 ## Author
 
 Satoru Kobayashi
